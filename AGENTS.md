@@ -10,6 +10,7 @@ Help community organizers run free giveaways whose committed entrant list, rules
 - Keep payments, revenue splitting, bookings, token issuance, NFTs, betting and cryptocurrency prizes outside the product core.
 - Distinguish blockchain commitments and validator checks from claims about external facts.
 - Run `make check` before reporting implementation completion. Browser checks use existing Playwright and Chrome installations through explicit environment variables; do not read personal browser profiles or request private keys.
+- Decision records (ADR) live in `docs/adr/`.
 
 ## Project-specific boundary
 
