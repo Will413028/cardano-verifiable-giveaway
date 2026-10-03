@@ -1,0 +1,8 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+spikes/a-commit-tx/dist/
+spikes/a-commit-tx/local-results/

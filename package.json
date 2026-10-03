@@ -1,0 +1,27 @@
+{
+  "name": "cardano-verifiable-giveaway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/serve.mjs",
+    "check": "make check",
+    "verify": "node apps/verifier-cli/index.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@harmoniclabs/crypto": "0.2.5",
+    "@meshsdk/core": "1.9.1",
+    "buffer": "6.0.3",
+    "crypto-browserify": "3.12.1",
+    "esbuild": "0.28.2",
+    "events": "3.3.0",
+    "process": "0.11.10",
+    "stream-browserify": "3.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

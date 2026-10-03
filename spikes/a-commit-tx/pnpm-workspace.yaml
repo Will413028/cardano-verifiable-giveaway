@@ -1,0 +1,4 @@
+allowBuilds:
+  cbor-extract: false
+  chacha-native: false
+  esbuild: false

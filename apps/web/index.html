@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Open Draw — verifiable community giveaways</title>
+<meta name="description" content="Commit a participant list, draw with verifiable randomness, and independently check the result.">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header><a class="brand" href="./">◈ <span>OPEN DRAW</span></a><span class="preview">DEVELOPMENT PREVIEW</span><a href="#verify">Verify a draw ↗</a></header>
+<main>
+<section class="hero"><p class="eyebrow">A FAIR DRAW. A CHECKABLE RESULT.</p><h1>Leave less<br>to trust.</h1><p class="intro">Commit your list before the draw. Use public randomness.<br>Give everyone the data to check the result.</p></section>
+<div class="workspace">
+<section class="panel" aria-labelledby="create-title">
+<div class="panel-heading"><span class="step-number">01</span><h2 id="create-title">Set up your draw</h2></div>
+<form id="draw-form">
+<label for="network">Mode</label><select id="network"><option value="demo">Demo — no wallet needed</option><option value="preprod">Cardano preprod — test ADA</option></select>
+<p id="mode-note" class="note">Demo uses a recorded, cryptographically verified drand beacon and simulated chain timing. It is not an on-chain giveaway.</p>
+<div id="wallet-area" hidden><label for="wallet">Your wallet</label><div class="inline"><select id="wallet"></select><button type="button" id="refresh-wallets" class="secondary">Refresh</button></div><p class="note">Use a preprod wallet. Mainnet is disabled. Development support requires one ADA-only UTxO with at least 5 test ADA.</p></div>
+<label for="entrants">Public participant labels</label><textarea id="entrants" rows="7" spellcheck="false" placeholder="One label per line, or CSV with a label header">alice
+bob
+carol
+dana
+eli</textarea>
+<div class="upload-row"><label class="file-label" for="csv">↑ Import CSV<input id="csv" type="file" accept=".csv,text/csv" hidden></label><span id="entrant-count">5 participants</span></div>
+<p class="note">Only the label column is used. Emails and phone numbers are rejected. Other CSV columns stay out of the public bundle.</p>
+<div class="form-grid"><div><label for="winner-count">Number of winners</label><input id="winner-count" type="number" min="1" value="1" required></div><div><label for="round">drand round</label><input id="round" type="number" min="1" required></div></div>
+<button class="primary" type="submit" id="prepare">Preview commitment →</button>
+</form>
+</section>
+<section class="panel draw-panel" aria-labelledby="draw-title">
+<div class="panel-heading"><span class="step-number">02</span><h2 id="draw-title">Commit. Wait. Reveal.</h2></div>
+<ol class="timeline"><li id="stage-prepare"><span>1</span><div><strong>Lock the list</strong><p>Review the participants and rules.</p></div></li><li id="stage-commit"><span>2</span><div><strong>Commit before randomness</strong><p>Confirm the commitment before the round.</p></div></li><li id="stage-result"><span>3</span><div><strong>Reveal and verify</strong><p>Recompute the winners independently.</p></div></li></ol>
+<div id="draw-status" role="status" aria-live="polite">Your draw starts with a committed list.</div>
+<div id="commit-preview" hidden><dl><dt>Participants</dt><dd id="preview-count"></dd><dt>Winners</dt><dd id="preview-winners"></dd><dt>Commitment</dt><dd id="preview-hash" class="hash"></dd><dt>Round time</dt><dd id="preview-time"></dd></dl></div>
+<div class="actions"><button id="commit" class="primary" hidden>Commit demo draw</button><button id="confirm" class="secondary" hidden>Simulate 15 confirmations</button><button id="late" class="text-button" hidden>Test late confirmation</button><button id="open" class="primary" hidden>Reveal winners →</button></div>
+<div id="result" hidden><div id="winner-result" hidden><p class="eyebrow">THE WINNERS</p><ol id="winners"></ol></div><p id="result-note" class="note"></p><div class="actions"><a id="download" class="secondary" download>↓ Download verification bundle</a><button id="share" class="secondary">Copy verification link ↗</button></div><input id="share-link" aria-label="Verification link" readonly hidden></div>
+</section>
+</div>
+<section id="verify" class="verify-section">
+<div><p class="eyebrow">INDEPENDENTLY CHECKABLE</p><h2>Bring the data.<br>Check the draw.</h2><p>Verify the commitment, timing, drand signature and winners.<br>A downloaded bundle also works with the independent CLI.</p></div>
+<div class="panel"><label class="file-label" for="proof-file">↑ Load verification bundle<input id="proof-file" type="file" accept=".json,application/json" hidden></label><label for="bundle-url">Or use a publicly hosted bundle URL</label><div class="inline"><input id="bundle-url" type="url" placeholder="https://…"><button id="load-url" class="secondary">Load</button></div><p class="note">The host must allow browser access (CORS). The link can pin a SHA-256 file hash.</p><div id="verification" role="status" aria-live="polite">No bundle loaded.</div><ul id="checks"></ul><div id="verified-result" hidden><strong>Recomputed winners</strong><ol id="verified-winners"></ol><label for="lookup">Find your public label in the bundle</label><input id="lookup" type="text" placeholder="Your public label"><p id="lookup-result" class="note"></p><details><summary id="labels-summary">Public labels</summary><ol id="verified-labels"></ol></details></div></div>
+</section>
+<section class="boundary"><strong>What this proves</strong><p id="boundary"></p></section>
+</main><footer><span>Open source. Free giveaways. Verifiable outcomes.</span><span>Cardano + drand · Development protocol</span></footer>
+<script type="module" src="./app.js"></script>
+</body></html>

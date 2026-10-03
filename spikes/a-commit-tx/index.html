@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spike A — preprod only</title>
+<style>body{font:16px system-ui;max-width:850px;margin:32px auto;padding:0 20px}button,select{padding:10px;margin:6px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eee;padding:16px}</style>
+<h1>Spike A — preprod only</h1>
+<p>Experimental metadata format. Verification covers selection from a committed list, not eligibility, completeness or prize delivery.</p>
+<p>Build a self-transfer with metadata, review the fee, then sign in your wallet. No private keys are requested.</p>
+<select id="wallet" aria-label="Wallet"></select>
+<button id="refresh">Refresh wallets</button>
+<button id="connect">1. Connect wallet</button>
+<button id="build">2. Build unsigned transaction</button>
+<button id="sign">3. Sign and submit to preprod</button>
+<p><a id="download" hidden>Download sample for the confirmation monitor</a></p>
+<pre id="output">Loading SDK…</pre>
+<script type="module" src="/dist/wallet.js"></script>
+</html>
