@@ -12,7 +12,7 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 
 2026-10-18 Will 拍板：新增產品後端，全端使用 TypeScript；兩份獨立草稿建議只做無狀態 proxy，Will 檢視後仍選便利層後端。本 ADR 取代原 ADR 的 D2-A（無產品後端）與 D6-A（主辦者自行公開 bundle），其餘 D 項不變。
 
-- `external` Koios 免 key 公開層的實際回應不帶 `Access-Control-Allow-Origin`（2026-10-18 以 curl 量測 `/tip`、`/blocks`、`/tx_metadata`，Origin 含 `127.0.0.1:4320`、`github.io`；只有 OPTIONS 預檢回 `*`）。[Koios tiers](https://koios.rest/tiers.html) 標示 Public 層「CORS: Restricted」、Free 層需要 key。推論瀏覽器直連會被擋，尚未在真瀏覽器實測；瀏覽器 E2E 以 mock 取代 Koios，因此先前沒有發現。
+- `external` Koios 免 key 公開層的實際回應不帶 `Access-Control-Allow-Origin`（2026-10-18 以 curl 量測 `/tip`、`/blocks`、`/tx_metadata`，Origin 含 `127.0.0.1:4320`、`github.io`；只有 OPTIONS 預檢回 `*`）。[Koios tiers](https://koios.rest/tiers.html) 標示 Public 層「CORS: Restricted」、Free 層需要 key。同日以 Playwright 驅動 Chrome（暫用 profile）從 `http://127.0.0.1:4320` 實測：`/tip`、`/blocks`、`/epoch_params`、`/tx_metadata`、`/address_txs` 全部 `Failed to fetch`，console 為「No 'Access-Control-Allow-Origin' header is present」；對照組 drand relay 回 200。正式網域的 origin 只有 curl 證據。瀏覽器 E2E 以 mock 取代 Koios，因此先前沒有發現。
 - `external` 前端內嵌的 key 等於公開；[Blockfrost](https://blockfrost.dev/overview/getting-started) 建議由自己的後端保管 `project_id`。
 - `external` 目標使用者是非工程背景的主辦者（原 ADR Context）；自行託管 bundle 與處理 CORS 是操作門檻。
 - `external` 參加者標籤可能屬於個人資料：保存它就要有保存期限、刪除流程與濫用處理。已上鏈承諾與已公開標籤無法撤回。
@@ -58,7 +58,7 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 
 ## Followup
 
-- 在真瀏覽器確認 Koios CORS 阻擋並記錄；加一條不 mock indexer 的 E2E 路徑。
+- 加一條不 mock indexer 的 E2E 路徑（真瀏覽器 CORS 阻擋已於 2026-10-18 確認，見 Context）。
 - 查證 Koios 條款是否允許代理轉發與快取；`external-interfaces.md` E5 的 pricing 連結已 404，改指 tiers 頁。
 - (決策) 是否需要主辦者帳號，以及濫用防護方式（限流、驗證碼、帳號）。
 - (決策) 資料保存：bundle 與草稿的保存期限、刪除流程、隱私說明；申請 indexer API key（碰憑證，由 Will 處理）。
@@ -68,7 +68,7 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 
 ## Revocation Triggers
 
-- 真瀏覽器實測 Koios 不擋，且主辦者不需要託管 → 重評 A 或 B。
+- Koios 公開層改為開放 CORS，或找到免 key、開放 CORS 的 indexer，且主辦者不需要託管 → 重評 A 或 B。
 - 保存責任（刪除請求、濫用、成本）超過單人維運能力 → 縮回 B，bundle 回到下載與自行託管。
 - 後端功能需要進入驗證路徑才能運作 → 停止並另開決策，不得默默改變 I4。
 
