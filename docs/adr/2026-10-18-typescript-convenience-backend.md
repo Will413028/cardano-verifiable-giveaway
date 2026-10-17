@@ -60,8 +60,8 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 
 - 加一條不 mock indexer 的 E2E 路徑（真瀏覽器 CORS 阻擋已於 2026-10-18 確認，見 Context）。
 - 查證 Koios 條款是否允許代理轉發與快取；`external-interfaces.md` E5 的 pricing 連結已 404，改指 tiers 頁。
-- (決策) 是否需要主辦者帳號，以及濫用防護方式（限流、驗證碼、帳號）。
-- (決策) 資料保存：bundle 與草稿的保存期限、刪除流程、隱私說明；申請 indexer API key（碰憑證，由 Will 處理）。
+- 帳號、濫用防護與保存期限已於 2026-10-18 決定，見 [錢包簽章與限期保存](./2026-10-18-wallet-auth-and-bounded-retention.md)。
+- 申請 indexer API key（碰憑證，由 Will 處理）。
 - 量測一次完整驗證的 Koios 請求數，據此設定限流值。
 - 以交易 CBOR 驗證 metadata，讓 indexer 只負責收錄與時間證據。
 - 更新 `AGENTS.md`、README 與 `docs/protocol-development.md` 的架構描述。
