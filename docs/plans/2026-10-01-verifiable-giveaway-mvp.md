@@ -169,6 +169,7 @@
   - 子題：託管平台（A 或 C 時）——GitHub Pages（repo 已在 GitHub，免費，建議）／Cloudflare Pages（免費層，需另一個帳號）／自架（有成本）。
   - 相依：D6 選 B（本產品保存 bundle）需要寫入端點與憑證，會把本題推向 B 或加一個 serverless 端點；兩題一起拍。
   - 結論：A：靜態網站＋CLI verifier，無產品後端；網站托管採 GitHub Pages。瀏覽器可行性仍由步驟 3 驗證。
+  - 修訂：2026-10-18 Will 改為新增 TypeScript 便利層後端（Koios 公開層擋瀏覽器 CORS）；ADR：`docs/adr/2026-10-18-typescript-convenience-backend.md`；實作由 `docs/plans/2026-10-18-hardening-and-backend.md` 接手。
 
 - **D3 承諾錨定與唯一性機制**（狀態：已允許 A metadata 作未凍結開發預設，實測後定案；擋住步驟：6 的 v1 凍結；需要的事實：步驟 2、4）
   - A：交易 metadata 承諾（固定 label、drawId、bundle hash、round、協定版本），唯一性由協定規則加社會機制擋：驗證連結必須在 round 前公開，verifier 列出同一地址同一 drawId 的所有承諾並以最早一筆為準——無合約，成本最低（約 0.17 ADA／場）；無法阻止主辦者用新地址另開承諾，要靠「round 前已公開連結」讓參與者察覺。（建議：步驟 4 若證實 B 也擋不住「另開地址」，B 的額外成本換不到更多保證）
@@ -195,6 +196,7 @@
   - C：內容定址的公開鏡像（IPFS pinning、Arweave 永久儲存）——不依賴單一營運者；Arweave 依大小付費、IPFS 需持續 pin。
   - 建議：A（永遠可下載，任何副本都以 hash 核對；驗證連結可帶 bundle 的公開網址參數），與 D2 的 A 相容；B 等 D2 改選 B 時再議；C 延後到有使用者要求。
   - 結論：A：主辦者下載 bundle 並自行公開；任何副本均以 hash 核對。
+  - 修訂：2026-10-18 改為後端代管已上鏈承諾的 bundle，下載副本仍可驗證；ADR：`docs/adr/2026-10-18-wallet-auth-and-bounded-retention.md`。
 
 - **D7 抽選協定 v1：drand 網路、演算法、時間與唯一性規則**（狀態：已允許 quicknet、hash 排序、15 確認、拒絕重複標籤、Unicode NFC 作未凍結開發預設，實測後定案；擋住步驟：6 的 v1 凍結；需要的事實：步驟 2 的確認延遲、步驟 3 的驗證可行性、步驟 4 的攻擊劇本結果）。發布後不可改（I3），所以列為決定題。
   - drand 網路：quicknet（3 秒、unchained、官方主推）（建議）／default（30 秒、chained，官方表示可能淘汰）。
