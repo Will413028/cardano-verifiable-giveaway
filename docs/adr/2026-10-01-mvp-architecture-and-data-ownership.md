@@ -36,9 +36,9 @@ tags: [cardano-verifiable-giveaway, decision, architecture]
 ## Decision
 
 - **D1-B**：直接建 MVP，需求由公開試用驗證；不執行先驗需求步驟。
-- **D2-A**：靜態主辦者頁與驗證頁＋Node CLI verifier，無產品後端；托管選 GitHub Pages。
+- **D2-A**：靜態主辦者頁與驗證頁＋Node CLI verifier，無產品後端；托管選 GitHub Pages。（2026-10-18 由 [TypeScript 便利層後端](./2026-10-18-typescript-convenience-backend.md) 取代）
 - **D4-A／D8-A**：主辦者自己簽署付費，自己收集整理名單；只支援貼上／CSV。
-- **D5-C／D6-A**：公開必要標籤，聯絡資料不收集、不保存、不強制 hash；主辦者下載 bundle 自行公開，副本以 hash 核對。
+- **D5-C／D6-A**：公開必要標籤，聯絡資料不收集、不保存、不強制 hash；主辦者下載 bundle 自行公開，副本以 hash 核對。（D6-A 於 2026-10-18 由 [TypeScript 便利層後端](./2026-10-18-typescript-convenience-backend.md) 取代；D5-C 不變）
 - **D10-A／D11-B**：MIT；產品分析無 cookie、只有彙總數字，具體服務尚未選定。
 - D3／D7 的 v1 定案與 D9 發布網路不由本 ADR 決定；本次選擇不授權對外登入、部署或註冊。
 
@@ -75,6 +75,7 @@ tags: [cardano-verifiable-giveaway, decision, architecture]
 
 ## Related
 
+- 部分被取代：D2-A、D6-A → [TypeScript 便利層後端](./2026-10-18-typescript-convenience-backend.md)。
 - Provenance：2026-10-01 Will 與 coding agent 當場逐題拍板；本 ADR 即原始決策紀錄，無必要外部來源文件；未壓縮或刪除計畫。
 - [MIT 原文](https://opensource.org/license/mit)、[Apache-2.0 原文](https://www.apache.org/licenses/LICENSE-2.0)、[AGPL-3.0 原文](https://www.gnu.org/licenses/agpl-3.0.html)；其他基準來源見 Options／Rationale。
 - 通用規則：0；本次是產品範圍與責任分配，未新增跨專案規則。
