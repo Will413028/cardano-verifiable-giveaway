@@ -77,12 +77,20 @@
     - build 仍由根目錄 `tools/build.mjs` 一支腳本建網頁與 CLI，網頁以 `absWorkingDir: apps/web` 解析它宣告的 alias；觸發條件：步驟 6 移除 alias 或步驟 8 加入 Wrangler 時，改成各套件自己的 `build` script 由根目錄 `pnpm -r run build` 串起。
     - 套件邊界的業界替代：會解析路徑的 dependency-cruiser、eslint-plugin-boundaries，或每套件一份 tsconfig 搭配 Project References；觸發條件：任一套件出現第二層子目錄，或依深度寫的 override 漏擋一次。
 
-- [ ] **4. verifier 正確性修正與 `development-2`**（被擋於：步驟 3）
+- [x] **4. verifier 正確性修正與 `development-2`**（被擋於：步驟 3）
   - 範圍：F3（相依檢查在證據失敗時標「未評估」，`Check.passed` 改成三態，網頁與 CLI 的 JSON 輸出同步）、F4（刪除「Round has arrived」與對應的動態 import）、F5（proof 只帶 network、bundle、`txHash`、owner、beacon、winners；「已收錄」與「已確認」分成兩個型別，移除 `confirmedAt: 0`）、F6（torsion point 負向測試）、F7（改用開發期私有 label）；F18（確認輪詢的回應在抽獎被重設或取代後丟棄，不寫入狀態與畫面）；`giveaway-pending-1` 的型別與驗證器移到 `packages/protocol`（目前型別在 `apps/web/services.ts`，只驗 bundle）；`tests/core.test.mjs` 的 `GIVEAWAY_LIBRARY` 替換與 mutation-check 的產物文字竄改一併重評；協定文件定義 canonical bundle 的 byte 上限（由 entrant 數與長度上限推導最壞情況），網頁、CLI 與後端共用同一常數，取代各自的 8 MB 常數。協定版本升為 `development-2`：`tools/reference.py` 改版本字串後重產 `tests/vectors.json`，同步更新 `docs/protocol-development.md`。`tools/mutation-check.mjs` 改用新格式並接進 `make check`。round 前公告（`giveaway-pending-1`）改帶 `txHash`＋owner，不再帶完整 commitment。
   - 消費端：`rg -n "confirmedAt|giveaway-proof-1|giveaway-pending-1|development-1|LABEL|Round has arrived|validateProof|passed|Verdict|count\(\), 8|mutation-check|GIVEAWAY_LIBRARY|8_000_000|8 MB" packages apps tools tests docs Makefile`
   - 不能動：bundle 的欄位集合與 canonical JSON 規則；抽選演算法；DEMO PASS 與 PASS 的區分。
   - 驗收：`make check` 全綠（含 mutation-check）；重產的 vectors 由 Node 與 Python 兩邊算出相同的 bundle hash 與得獎者；inventory F3–F7 各一個回歸測試，把修正改回舊寫法時該測試要失敗；瀏覽器 E2E 與基線的差異只有已知的檢查項數與 proof 格式。
   - 停止條件：canonical 輸出除了 `version` 欄位之外有任何差異——停下，代表動到 canonical 規則。
+  - 完成後的形狀（2026-10-18）：
+    - 型別：`CommitmentRef`（`txHash`、owner）← `Inclusion`（唯一性列舉用）← `Confirmed`（加 `confirmedAt`，只有 `readCommitment` 產生）；proof 為 `giveaway-proof-2`、公告為 `giveaway-pending-2`，驗證器 `validateProof`、`validatePending` 都在 `packages/protocol`，多餘欄位一律拒收。
+    - Demo：proof 不再帶 commitment，verifier 以 `demoInclusion(bundle)` 重算模擬證據；demo `txHash` 為 `SHA-256("giveaway-demo-commitment:" || bundleHash)`，只擋「改 bundle 沒重算 reference」，demo 證據不綁定任何東西（文件寫明）。
+    - 檢查三態 `pass`／`fail`／`unevaluated`，欄位名 `result`；網頁以 `–` 顯示未評估。檢查項 8 → 7。
+    - label `20261018`（CIP-10 registry 查於 2026-10-18，CIPs commit `befcdb7`）。
+    - byte 上限：`BUNDLE_BYTE_LIMIT` 6,030,512、`ARTIFACT_BYTE_LIMIT` 12,224,608，推導寫在 `docs/protocol-development.md`；網頁兩處與 CLI 共用 `ARTIFACT_BYTE_LIMIT`，後端（步驟 8 起）同樣引用。
+    - `GIVEAWAY_LIBRARY` 重評：刪除。它只為了讓測試載入被竄改的產物；改成 mutation-check 就地改寫檔案、跑指定測試、在 `finally` 還原，與原本的 vectors 竄改同一做法，測試不再有注入點。產物文字竄改保留（找不到目標時大聲失敗），新增「移除子群檢查」一項；步驟 6 換掉 `@harmoniclabs/crypto` 時那項會因找不到目標而失敗，屆時改寫成對應新函式庫的位置。
+    - F18：每個流程在 await 前保存 `state.draw` 物件，await 後不是同一份就丟棄。`commit()` 的錢包等待不加判斷：`#network` 在 `#draw-form` 內，`run()` 期間被 `lockControls` 停用，使用者無法重設。
 
 - [ ] **5. 唯一性重設計**（被擋於：步驟 4）
   - 範圍：開工先確認 Koios 能依 PD3 的身分列舉交易（stake credential 用 `account_txs`、payment credential 用 `credential_txs`），記錄端點、排序是否穩定、分頁數與請求數。依 PD3 改寫 `checkUniqueness` 與 `findCommitments`，驗證頁與 CLI 列出衝突的承諾。同步改 `BOUNDARY` 常數、`docs/protocol-development.md` 的唯一性段，並在 MVP 計畫 I5、I7、D3、D7 加註由 PD3 接手（F1）。
@@ -188,10 +196,10 @@
 
 | 步驟 | 狀態 | 已跑的驗收 | 未跑的驗收與原因 | 消費端搜尋結果 | commit |
 |---|---|---|---|---|---|
-| 1 開工基線與設計審查 | 完成 | 在 `1d0b4b5` 上：`browser-check.mjs` 11 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core）；`mutation-check.mjs` 5 項（3 個 CLI 竄改、2 個測試竄改）全被擋下、exit 0；design-review 10 個發現：改 8（F-2、F-3、F-4、F-5、F-6、F-8、F-9、F-10）、提 2（F-1→PD3 身分子題重議、F-7→PD5）、駁回 0；指令檔對帳改 1 處（`AGENTS.md` 補後端邊界） | 無 | 無（不改程式） | 見本列提交 |
-| 2 Spike S1：SDK 比較 | 完成 | `spikes/s1-sdk/` 的 `run-node.mjs`、`run-build-node.mjs`、`bundle.mjs`、`runtime.mjs`（Chrome 155.0.8059.82、miniflare 4.20260730.0）、`probe/run.mjs`，原始輸出在 `results/`；fixture `515d0ea3…`、`3883c2a9…`（preprod）＋2 筆合成；四個選項 × 每個量測項都有數字或「不支援」；每個選項的 tx hash 等於 txHash、翻一個 bit 後不同（Mesh 在 workerd 只能以只引 `resolveTxHash` 的入口量）；停止條件未觸發；`make check` exit 0 | 真錢包對 stake key 的 `signData`／`signTx`（等真錢包）；部署後的 Workers（只跑本機 workerd） | 無（spike 不被引用） | 見本列提交 |
+| 1 開工基線與設計審查 | 完成 | 在 `1d0b4b5` 上：`browser-check.mjs` 11 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core）；`mutation-check.mjs` 5 項（3 個 CLI 竄改、2 個測試竄改）全被擋下、exit 0；design-review 10 個發現：改 8（F-2、F-3、F-4、F-5、F-6、F-8、F-9、F-10）、提 2（F-1→PD3 身分子題重議、F-7→PD5）、駁回 0；指令檔對帳改 1 處（`AGENTS.md` 補後端邊界） | 無 | 無（不改程式） | `cffdb0d`、本列提交 |
+| 2 Spike S1：SDK 比較 | 完成 | `spikes/s1-sdk/` 的 `run-node.mjs`、`run-build-node.mjs`、`bundle.mjs`、`runtime.mjs`（Chrome 155.0.8059.82、miniflare 4.20260730.0）、`probe/run.mjs`，原始輸出在 `results/`；fixture `515d0ea3…`、`3883c2a9…`（preprod）＋2 筆合成；四個選項 × 每個量測項都有數字或「不支援」；每個選項的 tx hash 等於 txHash、翻一個 bit 後不同（Mesh 在 workerd 只能以只引 `resolveTxHash` 的入口量）；停止條件未觸發；`make check` exit 0 | 真錢包對 stake key 的 `signData`／`signTx`（等真錢包）；部署後的 Workers（只跑本機 workerd） | 無（spike 不被引用） | `cffdb0d`、本列提交 |
 | 3 工程基線 | 完成 | `make check` exit 0（Biome 30 檔、tsc 三份 tsconfig、13 個測試、10 組 Python vectors、MVP `check_plan.py` OK）；瀏覽器 E2E 11 項 PASS、`mutation-check.mjs` 5 項擋下，與步驟 1 基線相同；pin 轉紅：把查詢結果文字改掉，E2E exit 1；library 打包結果除路徑註解與 `?? []` 外相同；mutation 各自讓 `make check` exit 2：未格式化的一行（format）、`apps/web` 相對引用 `spikes/`（noRestrictedImports）、`packages/protocol` 引用未宣告的 `@giveaway/verifier-cli`（noUndeclaredDependencies，根目錄可解析仍被擋）、`packages/beacon` 相對引用兄弟套件、`packages/chain` 引用 Mesh、`tests` 相對引用套件、`packages` 使用 `document`（tsc TS2584）；`pnpm install --frozen-lockfile` exit 0；design-review 開工 9 項（改 7、記 2）、完成前 6 項（改 3、記 3）；行為等價審查 2 項競態：改為 await 後重讀狀態保留舊行為，缺陷記為 F18 | CI 上的 `make check`（未推送） | `from '../…(packages\|apps\|spikes)'`：0 筆；`app.ts\|dist/library`：只剩 `tools/build.mjs` 的入口與 CLI 產物路徑 | `d031696`、`69fb0e0`、`bf266ae`、本列提交 |
-| 4 verifier 正確性與 development-2 | 未開始 | | | | |
+| 4 verifier 正確性與 development-2 | 完成 | `make check` exit 0（Biome 30 檔、三份 tsc、20 個測試、mutation-check 4 個 CLI 竄改擋下＋3 個檔案竄改讓測試失敗、10 組 Python vectors、MVP `check_plan.py` OK）；本計畫 `check_plan.py` OK；停止條件：10 組 canonical 除 `version` 外差異 0 筆，Node 與 Python hash／得獎者相同；回歸測試改回舊寫法各自 exit 1：F3（相依檢查標 pass）、F4（加回本機時鐘檢查）、F5（拿掉欄位集合檢查）、F7（label 674）、F6（mutation-check 移除 `isTorsionFree`；另以 scratchpad 實驗確認 S+T 不經子群檢查時 pairing 成立）；瀏覽器 E2E 12 項 PASS、exit 0（基線 11 項；檢查數 8→7；新增 F18 劇本，涵蓋輪詢回應的失敗與成功兩條路），F18 mutation：拿掉兩處判斷、只拿掉 `confirm` 的判斷，E2E 各自 AssertionError；獨立 review 0 HIGH、0 MED、4 LOW（改 3：E2E 補成功路徑、mutation-check 先驗未竄改 proof 為 DEMO PASS、文件改正 demo 綁定說法；駁回 1：`commit()` 等待期間重設，`#network` 被 `lockControls` 停用） | CI 上的 `make check`（未推送）；E2E 的 500 ms 固定等待只能判斷「這段時間內畫面沒變」 | 步驟 4 的消費端搜尋：剩餘命中都是刻意保留（測試裡拒收舊格式、`app.ts` 主辦端提示「Round has arrived without verified confirmations」、`docs/adr/2026-10-01-local-first-protocol-defaults.md` 的歷史紀錄） | `cffdb0d`、本列提交 |
 | 5 唯一性重設計 | 未開始 | | | | |
 | 6 依 PD1、PD6 更換依賴 | 未開始 | | | | |
 | 7 CBOR 驗證 metadata、身分與時間上限 | 未開始 | | | | |
