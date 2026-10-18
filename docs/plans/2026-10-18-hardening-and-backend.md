@@ -75,7 +75,7 @@
   - 驗收：`make check` 全綠（含 mutation-check）；重產的 vectors 由 Node 與 Python 兩邊算出相同的 bundle hash 與得獎者；inventory F3–F7 各一個回歸測試，把修正改回舊寫法時該測試要失敗；瀏覽器 E2E 與基線的差異只有已知的檢查項數與 proof 格式。
   - 停止條件：canonical 輸出除了 `version` 欄位之外有任何差異——停下，代表動到 canonical 規則。
 
-- [ ] **5. 唯一性重設計**（被擋於：步驟 4；PD3 身分子題）
+- [ ] **5. 唯一性重設計**（被擋於：步驟 4）
   - 範圍：開工先確認 Koios 能依 PD3 的身分列舉交易（stake credential 用 `account_txs`、payment credential 用 `credential_txs`），記錄端點、排序是否穩定、分頁數與請求數。依 PD3 改寫 `checkUniqueness` 與 `findCommitments`，驗證頁與 CLI 列出衝突的承諾。同步改 `BOUNDARY` 常數、`docs/protocol-development.md` 的唯一性段，並在 MVP 計畫 I5、I7、D3、D7 加註由 PD3 接手（F1）。
   - 消費端：`rg -n "checkUniqueness|findCommitments|address_txs|BOUNDARY|different-drawId" packages apps tools tests docs`
   - 不能動：「同一區塊多筆時 fail closed」；分頁上限超過時判 FAIL；round 時間之後才收錄的承諾不影響已完成的抽獎（`docs/protocol-development.md` 現行規則）。
@@ -89,11 +89,11 @@
   - 驗收：`make check` 與瀏覽器 E2E 全綠；同一組輸入在換 SDK 前後產生的未簽交易，解碼後比對語意欄位：輸入、輸出地址與金額、metadata 解碼後相等、找零地址、fee 在即時參數估計值的 2 倍以內；bundle 大小記錄在進度表。
   - 停止條件：新 SDK 產生的交易無法通過既有的 mock preprod 檢查。
 
-- [ ] **7. 以交易 CBOR 驗證 metadata、身分與時間上限**（被擋於：步驟 5、6；PD3 身分子題；PD5）
-  - 範圍：verifier 向 indexer 取原始交易 CBOR，自行確認 tx hash 與 auxiliary data hash，再從 CBOR 解出 metadata（F2）。身分依 PD3：從 body 讀出 `required_signers`，驗對應 vkey witness 對 tx hash 的簽章，不回溯 input 的前一筆交易。PD5 選 A 時，從 body 讀出 `invalid_hereafter`，以釘死的網路參數換算成時間，必須早於 round 時間（F17）；網頁 `prepareTransaction` 同步加上 `required_signers` 與 `invalid_hereafter`。CBOR 自驗只做承諾交易本身與唯一性列舉中 metadata label 符合的交易——indexer 能漏列交易，對其他交易自驗擋不住任何新攻擊，只會放大 Koios 用量。剩下的信任面（漏列交易、謊報收錄區塊與時間、謊報 input 地址；後者與漏列等價）寫進 inventory F13 的處置與 `docs/protocol-development.md`（F13）。CLI 與瀏覽器共用同一實作；`tools/reference.py` 以同一份 fixture CBOR 重算 tx hash 與 auxiliary data hash，維持雙實作交叉核對。
+- [ ] **7. 以交易 CBOR 驗證 metadata、身分與時間上限**（被擋於：步驟 5、6）
+  - 範圍：verifier 向 indexer 取原始交易 CBOR，自行確認 tx hash 與 auxiliary data hash，再從 CBOR 解出 metadata（F2）。身分依 PD3：從 body 讀出 `required_signers`，驗對應 vkey witness 對 tx hash 的簽章，不回溯 input 的前一筆交易；沒有身分 key 簽章的交易不算任何身分的承諾（F1 的第三方劇本）。依 PD5，從 body 讀出 `invalid_hereafter`，以釘死的網路參數換算成時間，必須早於 round 時間（F17）；網頁 `prepareTransaction` 同步加上 `required_signers` 與 `invalid_hereafter`。CBOR 自驗只做承諾交易本身與唯一性列舉中 metadata label 符合的交易——indexer 能漏列交易，對其他交易自驗擋不住任何新攻擊，只會放大 Koios 用量。剩下的信任面（漏列交易、謊報收錄區塊與時間、謊報 input 地址；後者與漏列等價）寫進 inventory F13 的處置與 `docs/protocol-development.md`（F13）。CLI 與瀏覽器共用同一實作；`tools/reference.py` 以同一份 fixture CBOR 重算 tx hash 與 auxiliary data hash，維持雙實作交叉核對。
   - 消費端：`rg -n "readCommitment|tx_metadata|tx_info|commitmentFrom|payment_addr|prepareTransaction|setTTL|invalid" packages apps tools tests`
   - 不能動：確認數規則；`--indexer` 參數。
-  - 驗收：F2 的回歸測試（indexer 回傳竄改的 metadata JSON、CBOR 不變），舊實作 PASS、新實作 FAIL；身分 key 的 witness 缺少或簽錯時 FAIL；CBOR 被改一個 byte 時 FAIL；PD5 選 A 時，`invalid_hereafter` 晚於 round 或缺少時 FAIL；Node 與 Python 對 fixture 算出相同 hash；mutation：略過 auxiliary data hash 比對、witness 驗章或時間上限檢查，各自的測試要失敗。
+  - 驗收：F2 的回歸測試（indexer 回傳竄改的 metadata JSON、CBOR 不變），舊實作 PASS、新實作 FAIL；身分 key 的 witness 缺少或簽錯時 FAIL；CBOR 被改一個 byte 時 FAIL；`invalid_hereafter` 晚於 round 或缺少時 FAIL，網頁提示逾期須改用更晚的 round 重送；Node 與 Python 對 fixture 算出相同 hash；mutation：略過 auxiliary data hash 比對、witness 驗章或時間上限檢查，各自的測試要失敗。
 
 - [ ] **8. 後端 walking skeleton**（被擋於：步驟 3）
   - 範圍：新增 `apps/api/`（Workers，TypeScript），共用 `packages/`；`apps/api/tsconfig.json` 使用 Workers 型別，`make typecheck` 涵蓋它；依需要調整 `pnpm-workspace.yaml` 的 `allowBuilds`，CI 的 `pnpm install --frozen-lockfile` 要能通過。本機以 Wrangler 執行，`make check` 跑後端測試。網頁以建置時的 `GIVEAWAY_API_URL`（預設 `http://127.0.0.1:8787`）取得 proxy 位址。接通最薄的一條路徑：網頁經 proxy 取得 Koios `/tip` 並顯示（BR-01 的第一個端點）。B1 邊界以步驟 3 的套件邊界守住：`packages/*` 與 `apps/verifier-cli` 不宣告 `apps/api` 的套件，Biome 規則禁止相對路徑繞過（B1）。
@@ -155,17 +155,17 @@
   - A：Free——零成本；每請求 CPU 10 ms。
   - B：付費方案——每月固定費用；CPU 預設 30 秒。
   - 建議：最壞情況超過 10 ms 就選 B，不為了留在 Free 而縮小 bundle 上限。
-- **PD3 唯一性規則**（狀態：規則子題已決 2026-10-18，Will：A；身分子題重新未決；擋住步驟：5、7；需要的事實：步驟 5 開頭的列舉端點確認。ADR：`docs/adr/2026-10-18-uniqueness-by-interval-overlap.md`）
+- **PD3 唯一性規則**（狀態：已決 2026-10-18，Will：規則 A；身分 A 即 `required_signers`＋witness，同日 design-review 後重新拍板；擋住步驟：無；需要的事實：步驟 5 開頭的列舉端點確認，不成立時重議身分。ADR：`docs/adr/2026-10-18-uniqueness-by-interval-overlap.md`）
   - 規則子題（攻擊劇本：主辦者送多筆承諾，開獎後公布有利的那一場；或開獎後補送一筆讓已完成的抽獎失效）：
     - A：時間區間重疊即衝突——每筆承諾的區間是〔收錄時間, round 時間〕；同一身分的兩筆承諾區間重疊就兩筆都判 FAIL，round 之後才收錄的承諾不影響已完成的抽獎。擋住換 drawId、換相鄰 round 與事後補送三種劇本；代價是同一錢包不能同時進行兩場時間重疊的抽獎，要同時辦就得用不同錢包，而跨錢包本來就無法判定。（建議）
     - B：（身分, round）——換相鄰 round 就能繞過。
     - C：維持（地址, drawId）以最早一筆為準——換 drawId 就能繞過，等於沒修 F1。
-  - 身分子題（2026-10-18 Will 曾選「stake credential 取自地址」；同日 design-review 指出地址的 stake 部分不需持有者簽章即可放入，見 [CIP-19](https://cips.cardano.org/cip/CIP-0019)「both parts are owned and managed by separate entities」，第三方能用帶主辦者 stake 部分的地址送重疊承諾，讓主辦者的抽獎被判 FAIL；重新交 Will）：
+  - 身分子題（2026-10-18 Will 曾選「stake credential 取自地址」；同日 design-review 指出地址的 stake 部分不需持有者簽章即可放入，見 [CIP-19](https://cips.cardano.org/cip/CIP-0019)「both parts are owned and managed by separate entities」，第三方能用帶主辦者 stake 部分的地址送重疊承諾，讓主辦者的抽獎被判 FAIL；已重新拍板）：
     - A：身分 key 列在 `required_signers` 並附 witness——有 stake 部分時用 stake key，否則用 payment key；且承諾交易至少一個 input 來自帶此 credential 的地址，保證列舉看得到。ledger 強制 `required_signers` 的簽章，第三方送不出算數的承諾，也不必回溯前一筆交易。代價：CIP-30 錢包是否會為 `required_signers` 裡的 stake key 簽章尚未驗證（步驟 2 確認 SDK 能組、真錢包驗收確認錢包會簽），不支援時退回 B。（建議）
     - B：payment key 列在 `required_signers`——錢包支援度高；同一 HD 錢包換收款地址就是不同身分，能繞過。
     - C：stake credential 直接取自 input 地址（原選項）——第三方可製造衝突，讓任何主辦者的抽獎作廢。
   - 對不變量的影響：改寫 MVP 計畫 I5（唯一性規則）與 I7、`BOUNDARY` 常數的驗證邊界文字；提前拍板 MVP 計畫 D3、D7 的唯一性子題，步驟 5 在 MVP 計畫加註。
-- **PD5 承諾交易的時間上限**（狀態：未決；擋住步驟：7；需要的事實：無）
+- **PD5 承諾交易的時間上限**（狀態：已決 2026-10-18，Will：A；擋住步驟：無；需要的事實：無。ADR：`docs/adr/2026-10-18-commitment-validity-upper-bound.md`）
   - 問題：「承諾在 round 之前收錄」目前完全採信 indexer 的 `tx_timestamp`。
   - A：承諾交易的 `invalid_hereafter` 必須早於 round 對應的 slot，verifier 從 CBOR 讀出並換算——ledger 保證超過上限的交易不會被收錄，收錄時間的上界不再依賴 indexer；代價：主辦者要預留上鏈時間，交易逾期未收錄就要改用更晚的 round 重送；slot 與時間的換算要釘死各網路參數。（建議，納入 `development-2`）
   - B：維持採信 indexer 的時間——不改交易；信任面不縮小。
@@ -177,7 +177,7 @@
   - 草稿身分：簽章錢包的身分（與 PD3 身分子題同一規則）；草稿在上鏈前就存在，無法取自承諾交易。
   - 額度與上限（數字為建議預設）：每個身分最多 5 份伺服器草稿、每份不超過協定的 bundle 上限；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
 
-拍板順序：PD4 已決；PD3 身分子題與 PD5 現在交 Will；PD1、PD6 等步驟 2；PD2 等步驟 10 的量測。
+拍板順序：PD3、PD4、PD5 已決；PD1、PD6 等步驟 2；PD2 等步驟 10 的量測。
 
 ## 進度
 

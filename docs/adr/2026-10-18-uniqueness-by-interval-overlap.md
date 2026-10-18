@@ -27,19 +27,21 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 
 | 選項 | 取捨 |
 |---|---|
-| stake credential，地址無 stake 部分時用 payment credential（選用） | 同一 HD 錢包換收款地址仍被算進同一身分；需要 indexer 能依 stake credential 列舉交易 |
-| payment credential | 列舉最簡單；換地址就能繞過 |
+| 身分 key 列在 `required_signers` 並附 witness；有 stake 部分用 stake key，否則 payment key；至少一個 input 來自帶此 credential 的地址（選用） | ledger 強制簽章，第三方送不出算數的承諾；同一 HD 錢包換地址仍是同一身分；不必回溯前一筆交易。錢包是否會替 stake key 簽章未驗證 |
+| payment key 列在 `required_signers` | 錢包支援度高；換收款地址就是不同身分，能繞過 |
+| stake credential 直接取自 input 地址 | 地址的 stake 部分不需持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)），第三方可製造衝突讓任何主辦者的抽獎作廢 |
 
 ## Decision
 
 - 規則採 A：同一身分的兩筆承諾，〔收錄時間, round 時間〕區間重疊就兩筆都 FAIL；收錄時間晚於 round 時間的承諾本身 FAIL，且不影響其他承諾。
-- 身分子題暫停：原決定「stake credential 取自 input 地址」已撤回，見 Review Notes；重新交 Will，規則子題不受影響。
+- 身分：承諾交易把身分 key 列在 `required_signers` 並附 witness，verifier 驗 witness 對 tx hash 的簽章；有 stake 部分時用 stake key，否則用 payment key；且至少一個 input 來自帶此 credential 的地址，讓依身分的列舉看得到它。沒有身分 key 簽章的交易不算任何身分的承諾。
 - 驗證頁與 CLI 列出衝突的承諾；MVP 計畫 I5、I7 與 `BOUNDARY` 常數由階段計畫步驟 5 改寫。
 
 ## Rationale
 
 - 相較 B，A 同時擋住換 drawId、換相鄰 round、開獎後補送三種劇本；代價是同一錢包不能同時進行兩場時間重疊的抽獎，要同時辦得用不同錢包。這個代價可以接受，因為跨錢包本來就無法判定，A 沒有比 B 少擋任何劇本。
 - 相較 C，C 不修 F1；保留它只是因為程式已寫好，而協定尚未有使用者，不構成成本。
+- 身分要靠簽章而非地址，因為地址的 stake 部分誰都能放；要求 input 帶此 credential，是因為列舉只能依地址查，不加這條主辦者可以從別的地址送出簽了同一 key 的承諾而不被列出。相較只用 payment key，stake key 擋住「同錢包換地址」；代價是錢包支援度未驗證。
 - 收錄時間晚於 round 的承諾一律 FAIL 而不是忽略，是因為 randomness 已公開，這筆承諾沒有不可預測性可言；不讓它影響其他承諾，是為了不給主辦者事後作廢的手段。
 
 ## Expected Outcome
@@ -47,6 +49,7 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 - 同一錢包換 drawId 或換相鄰 round 送兩筆時間重疊的承諾，兩筆都 FAIL。
 - 開獎後補送的承諾無法讓已完成的抽獎變成 FAIL。
 - 驗證邊界文字明說：跨錢包的唯一性不在驗證範圍內。
+- 第三方用帶主辦者 stake 部分的地址送出的承諾，不影響主辦者的抽獎。
 
 ## Followup
 
@@ -55,11 +58,12 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 ## Revocation Triggers
 
 - Koios 或其他可用 indexer 沒有依 stake credential 列舉的端點 → 重議身分子題。
+- 真錢包驗收顯示主流 CIP-30 錢包不替 `required_signers` 裡的 stake key 簽章 → 退回 payment key，並在驗證邊界文字寫明換地址可繞過。
 - 實際主辦者普遍需要同一錢包同時辦多場抽獎 → 評估在 bundle 內宣告互斥群組，仍不放寬到 B。
 
 ## Review Notes
 
-- 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。身分改為「身分 key 列在 `required_signers` 並附 witness」的選項交 Will 重新拍板（階段計畫 PD3 身分子題）；上面身分子題表格的取捨因此不完整。
+- 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。同日 Will 回覆「都照建議走」，身分改為 `required_signers`＋witness（見 Decision）。
 
 ## Related
 

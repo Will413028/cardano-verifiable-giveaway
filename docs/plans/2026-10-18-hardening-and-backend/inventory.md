@@ -8,7 +8,7 @@
 
 | ID | 缺陷 | 位置 | 處置 | 回歸測試或理由 | 步驟 |
 |---|---|---|---|---|---|
-| F1 | 唯一性只比對（地址, drawId），主辦者換 drawId 或地址就能送多筆承諾後挑結果 | `packages/protocol/index.ts:83-89`、`packages/chain/index.ts:65-90` | 修（依 PD3） | 同一錢包、同一 round、不同 drawId 的兩筆承諾，舊實作回 PASS，新實作要標出並判 FAIL | 5 |
+| F1 | 唯一性只比對（地址, drawId），主辦者換 drawId 或地址就能送多筆承諾後挑結果 | `packages/protocol/index.ts:83-89`、`packages/chain/index.ts:65-90` | 修（依 PD3） | 同一錢包、同一 round、不同 drawId 的兩筆承諾，舊實作回 PASS，新實作要標出並判 FAIL；第三方帶主辦者 stake 部分、無身分 key 簽章的承諾不影響主辦者 | 5、7 |
 | F2 | metadata 直接採信 indexer 的 JSON，indexer 可偽造 bundleHash | `packages/chain/index.ts:43-44,77-78` | 修 | indexer 回傳竄改過的 metadata JSON、原始 CBOR 不變時，舊實作 PASS，新實作要 FAIL | 7 |
 | F3 | 鏈上證據失敗時，hash／時間／唯一性改用 proof 自帶的資料計算，可能顯示綠勾 | `packages/protocol/verifier.ts:15,23-28` | 修 | indexer 失敗時，舊實作有 `passed: true` 的相依檢查，新實作要標「未評估」 | 4 |
 | F4 | 「Round has arrived」用本機時鐘，BLS 有效已證明 round 存在，只會因時鐘偏差誤判 | `packages/protocol/verifier.ts:30-31` | 修（刪除） | 本機時鐘落後、beacon 有效時，舊實作 FAIL，新實作 PASS | 4 |
@@ -24,7 +24,7 @@
 | F14 | 交易經 Koios provider 送出，而非錢包 | `apps/web/cardano.ts:30` | 修：改用 CIP-30 `submitTx` | mock 錢包記錄 `submitTx` 被呼叫；改回 provider 送出時測試要失敗 | 9 |
 | F15 | `external-interfaces.md` E5 的 Koios pricing 連結已 404 | `docs/plans/2026-10-01-verifiable-giveaway-mvp/external-interfaces.md:13` | 修：改指 tiers 頁 | 不適用（文件） | 13 |
 | F16 | 只為一筆自轉交易引入 Mesh 與 5 個 polyfill | `package.json`、`tools/build.mjs`、`tools/polyfills.js` | 等決定（PD1） | spike S1 的量測 | 2、6 |
-| F17 | 承諾交易沒有設 validity interval 上限，「在 round 之前收錄」完全採信 indexer 的時間（design-review 2026-10-18） | `apps/web/cardano.ts:19-22`、`packages/protocol/verifier.ts` 的時間檢查 | 等決定（PD5） | 選 A 時：`invalid_hereafter` 晚於 round 的承諾，舊實作 PASS、新實作 FAIL | 7 |
+| F17 | 承諾交易沒有設 validity interval 上限，「在 round 之前收錄」完全採信 indexer 的時間（design-review 2026-10-18） | `apps/web/cardano.ts:19-22`、`packages/protocol/verifier.ts` 的時間檢查 | 修（依 PD5） | `invalid_hereafter` 晚於 round 或缺少的承諾，舊實作 PASS、新實作 FAIL | 7 |
 
 ## 會改變的既有行為
 
