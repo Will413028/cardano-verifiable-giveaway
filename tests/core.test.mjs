@@ -387,6 +387,16 @@ test('Koios reads the transaction CBOR, the historical 15th block and verifies o
   await assert.rejects(chain.readCommitment(a.tx.txHash, ORGANIZER_2.address), /not a transaction input/);
   await assert.rejects(chain.readCommitment('cd'.repeat(32), ORGANIZER.address), p.NotIndexedError);
 });
+test('a transaction the indexer lists without its CBOR is pending evidence, not absent', async () => {
+  // Koios knows the transaction (the row is there) but has not served its bytes: it may already be on chain, so
+  // this must not read as "not indexed", which past invalid_hereafter the page reports as an expired commitment.
+  const a = await target();
+  const chain = chainOf([{ ...a.tx, cbor: null }]);
+  await assert.rejects(
+    chain.readCommitment(a.tx.txHash, ORGANIZER.address),
+    (e) => !(e instanceof p.NotIndexedError) && /has not served/.test(e.message),
+  );
+});
 test('F7: commitments under the CIP-20 message label 674 are not supported', async () => {
   assert.notEqual(p.LABEL, 674);
   const a = await target({ label: 674 });

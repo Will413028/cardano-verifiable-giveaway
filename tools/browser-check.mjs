@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { commitmentValidUntil, encodeBech32, roundTime, transactionHash } from '@giveaway/verifier-cli/library';
 import { cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
+// Same PORT variable as tools/serve.mjs, so a check can run beside another dev server.
+const origin = `http://127.0.0.1:${process.env.PORT ?? 4320}/`;
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({
   executablePath: process.env.GIVEAWAY_CHROME_PATH,
@@ -20,7 +22,7 @@ try {
   const page = await browser.newPage({ acceptDownloads: true });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('http://127.0.0.1:4320/');
+  await page.goto(origin);
   await page.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('No wallet needed'));
   await page
     .locator('#entrants')
@@ -103,7 +105,7 @@ try {
       mock: { name: 'Mock mainnet', icon: '', apiVersion: '1', enable: async () => ({ getNetworkId: async () => 1 }) },
     };
   });
-  await mainnet.goto('http://127.0.0.1:4320/');
+  await mainnet.goto(origin);
   await mainnet.selectOption('#network', 'preprod');
   await mainnet.waitForSelector('#wallet option', { state: 'attached' });
   await mainnet.click('#prepare');
@@ -213,7 +215,7 @@ try {
     await target.exposeFunction('mockSign', witnessSet);
     await routePreprod(target, wallets[wallet], route);
     await target.addInitScript(mockWallet, { utxo: utxoOf(wallets[wallet]), address: wallets[wallet], sign });
-    await target.goto('http://127.0.0.1:4320/');
+    await target.goto(origin);
     await target.selectOption('#network', 'preprod');
     await target.waitForSelector('#wallet option', { state: 'attached' });
     return { target, pageErrors };
@@ -309,6 +311,40 @@ try {
     await target.close();
   }
   passed('expired commitment asks for a later round');
+  // The indexer lists the transaction but serves no CBOR yet: the transaction may be on chain, so even past its
+  // invalid_hereafter the page keeps polling and never advises a resubmission (which would overlap the original).
+  {
+    let polls = 0;
+    const { target, pageErrors } = await preprodPage({
+      wallet: 'base',
+      sign: true,
+      clock: true,
+      txCbor: (route, known) => {
+        polls++;
+        return route.fulfill({ json: known.map((t) => ({ ...t, cbor: null })) });
+      },
+    });
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
+    await target.click('#commit');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Submitted'));
+    const round = Number(await target.locator('#round').inputValue());
+    const validUntil = commitmentValidUntil(round);
+    const seconds = Math.ceil(validUntil - (await target.evaluate(() => Date.now() / 1000)));
+    await target.clock.fastForward((seconds + 31) * 1000);
+    await target.waitForFunction(() => /Next check|expired/.test(document.querySelector('#draw-status').textContent));
+    assert.doesNotMatch(await statusText(target), /expired|later round/);
+    const before = polls;
+    await target.clock.fastForward(31000);
+    await target.waitForTimeout(500);
+    assert.ok(polls > before, 'polling continues past invalid_hereafter');
+    assert.doesNotMatch(await statusText(target), /expired|later round/);
+    assert.match(await statusText(target), /has not served/);
+    assert.equal(await target.locator('#open').isVisible(), false);
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed('indexed transaction without CBOR keeps polling past invalid_hereafter');
   await page.selectOption('#network', 'demo');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

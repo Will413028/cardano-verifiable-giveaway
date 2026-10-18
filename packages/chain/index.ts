@@ -307,6 +307,13 @@ export class NotIndexedError extends Error {
     super('Transaction is not indexed yet');
   }
 }
+// The indexer lists the transaction but has not served its bytes: it may already be on chain, so this is never
+// evidence that the transaction expired; only NotIndexedError (no record at all) is.
+export class CborPendingError extends Error {
+  constructor() {
+    super('The indexer lists the transaction but has not served its CBOR yet');
+  }
+}
 // biome-ignore lint/suspicious/noExplicitAny: Koios rows are untyped JSON; only inclusion, enumeration and inputs are read from them.
 type Row = Record<string, any>;
 export class KoiosChain {
@@ -333,7 +340,8 @@ export class KoiosChain {
     const identity = identityKeyHash(owner);
     const rows = await this.query('tx_cbor', { _tx_hashes: [txHash] });
     const row = rows.find((x) => x.tx_hash === txHash);
-    if (!row || typeof row.cbor !== 'string') throw new NotIndexedError();
+    if (!row) throw new NotIndexedError();
+    if (typeof row.cbor !== 'string') throw new CborPendingError();
     const tx = readCommitmentTransaction(row.cbor, txHash);
     if (!tx.valid) throw new Error('Invalid transaction');
     if (!tx.signers.has(identity))

@@ -175,6 +175,8 @@ function scheduleConfirmation(state: AppState, chains: Chains) {
       if (state.draw !== draw) return;
       status(`${(e as Error).message}. Next check in 30 seconds.`);
       // Past invalid_hereafter the ledger refuses the transaction: if it is not on chain by now it never will be.
+      // Only an indexer with no record of it says so; a listed transaction without CBOR yet (CborPendingError)
+      // may be on chain, so it keeps polling, since a resubmission would overlap the original's interval.
       if (e instanceof NotIndexedError && transaction && now() >= transaction.validUntil)
         status(
           'The commitment transaction expired before it was included (its invalid_hereafter has passed). Choose a later round and commit again.',
