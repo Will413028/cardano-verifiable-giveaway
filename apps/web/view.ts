@@ -1,5 +1,5 @@
 import type { Bundle } from '@giveaway/protocol';
-import type { CheckResult, Verdict } from '@giveaway/verifier';
+import { type CheckResult, UNIQUENESS_CHECK, type Verdict } from '@giveaway/verifier';
 import type { Artifact, Tip } from './services.ts';
 
 // DOM reads and writes only; element ids are the contract with index.html and the browser check.
@@ -161,6 +161,15 @@ export function renderVerdict(verdict: Verdict, bundle: Bundle | undefined) {
     const detail = document.createElement('small');
     detail.textContent = check.detail;
     li.append(detail);
+    if (check.name === UNIQUENESS_CHECK && verdict.conflicts.length) {
+      const list = document.createElement('ul');
+      for (const c of verdict.conflicts) {
+        const item = document.createElement('li');
+        item.textContent = `${c.txHash} · drawId ${c.drawId} · round ${c.round} · included ${localTime(c.blockTime)}`;
+        list.append(item);
+      }
+      li.append(list);
+    }
     el('checks').append(li);
   }
 }

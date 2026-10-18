@@ -46,9 +46,9 @@
 | I2 承諾必須在指定 round 產生之前上鏈並達到確認門檻；verifier 對不符合的抽獎判定失敗 | `chain.getConfirmations`、`protocol.checkTiming`、`beacon.roundAt`、建立抽獎頁的 round 選擇器 |
 | I3 已上鏈的承諾不能修改；協定版本在凍結點之後不能修改，新規則只能以新版本號加入，verifier 永遠能驗已凍結的版本。凍結點：步驟 10 第一場公開抽獎上鏈時（P1：之前沒有任何外部承諾依賴它）；凍結前修改 v1 必須同步更新 test vectors | `protocol.PROTOCOL_VERSION`、`protocol.selectWinners` 的版本分派、`packages/protocol/vectors/`、協定規格文件 |
 | I4 驗證不需要本產品伺服器在線：bundle、公開鏈資料與 drand 公開資料就足夠 | `apps/verifier-cli`、`apps/web` 驗證頁的資料載入、bundle 格式、D6 的保存方式 |
-| I5 verifier 可判定的唯一性：同一主辦者地址、同一 drawId 以最早一筆承諾為準，之後的同 drawId 承諾一律顯示並判為無效。跨地址或換 drawId 的重複只能由參與者在 round 前看到已公開的驗證連結來察覺，verifier 無法判定，這一點寫進 I7 的驗證邊界文字。D3 選 B 時本條改寫為鏈上強制 | commitment metadata 的 `drawId` 欄位、`chain.findCommitments`、`protocol.checkUniqueness`、驗證頁的「承諾已在 round 前公開」顯示；機制依 D3、D7 |
+| I5 verifier 可判定的唯一性：同一主辦者地址、同一 drawId 以最早一筆承諾為準，之後的同 drawId 承諾一律顯示並判為無效。跨地址或換 drawId 的重複只能由參與者在 round 前看到已公開的驗證連結來察覺，verifier 無法判定，這一點寫進 I7 的驗證邊界文字。D3 選 B 時本條改寫為鏈上強制。**修訂（2026-10-19）：由 `docs/plans/2026-10-18-hardening-and-backend.md` PD3 接手（F1）**：同一身分（有 stake 部分用 stake credential，否則 payment credential）的承諾，〔收錄時間, round 時間〕區間重疊就兩筆都 FAIL，不再以（地址, drawId）與最早一筆判定；ADR `docs/adr/2026-10-18-uniqueness-by-interval-overlap.md` | commitment metadata 的 `drawId` 欄位、`chain.findCommitments`、`protocol.checkUniqueness`、驗證頁的「承諾已在 round 前公開」顯示；機制依 D3、D7 |
 | I6 本產品不持有、不接觸主辦者私鑰（依 D4；D4 選 B 或 C 時本條改寫） | `chain.buildCommitmentTx`（只產生未簽交易）、`apps/web` 的 CIP-30 簽署流程 |
-| I7 驗證邊界：任何輸出都不宣稱名單完整、資格或獎品交付，也不宣稱能阻止主辦者以其他地址另開承諾（I5） | `apps/verifier-cli` 輸出文字、驗證頁文案、README |
+| I7 驗證邊界：任何輸出都不宣稱名單完整、資格或獎品交付，也不宣稱能阻止主辦者以其他地址另開承諾（I5）。**修訂（2026-10-19）：由 `docs/plans/2026-10-18-hardening-and-backend.md` PD3 接手**：邊界文字改為「Commitments from another wallet cannot be ruled out」（`BOUNDARY`） | `apps/verifier-cli` 輸出文字、驗證頁文案、README |
 | I9 drand 信任根只來自寫死的 quicknet chain hash 與 group public key（P9），不採用 relay 回傳的 key | `beacon.verifyBeacon`、`beacon.QUICKNET_CHAIN_HASH`、`beacon.QUICKNET_PUBLIC_KEY` |
 | I8 公開 bundle 不含聯絡資料明文 | `protocol.canonicalizeBundle` 的欄位白名單、建立抽獎頁的名單匯入；格式依 D5 |
 
@@ -177,6 +177,7 @@
   - C：A 再加 OpenTimestamps 第二錨點——跨鏈存證；Bitcoin 確認需數小時，流程變慢，增加的保證有限。
   - 對不變量的影響：選 A 或 C 時 I5 照現行寫法（跨地址重複只能察覺）並更新 I7 文字；選 B 時改寫 I5 為鏈上強制，依 SKILL 第 5 節一次處理依賴它的機制。
   - 結論：未決。
+  - 修訂（2026-10-19）：唯一性子題由 `docs/plans/2026-10-18-hardening-and-backend.md` PD3 接手（同一身分的承諾時間區間重疊即衝突，身分取自 `required_signers`＋witness）；ADR `docs/adr/2026-10-18-uniqueness-by-interval-overlap.md`。錨定機制（A metadata）仍為未凍結的開發預設。
 
 - **D4 誰簽署並支付承諾交易**（狀態：已決，2026-10-01，Will；擋住步驟：7；需要的事實：步驟 1 的錢包持有證據、步驟 2 的手續費實測）
   - A：主辦者自己的 CIP-30 錢包簽署並付費——本產品不碰私鑰（I6），信任最少；沒有錢包與 ADA 的主辦者用不了（P11）。（建議作為第一版；P11 成立時觸發延後項）
@@ -210,6 +211,7 @@
   - 重複的參與者標籤：拒絕建立（建議，最不易誤解）／自動去重／當成多次參加（加權，需在規則中公開）。
   - 標籤正規化：Unicode NFC（建議，保留可見字形差異）／NFKC（合併相容字元，可能把不同帳號視為同一人）／不正規化（同字形不同編碼會被當成兩人）。
   - 結論：未決。
+  - 修訂（2026-10-19）：「唯一性規則」子題由 `docs/plans/2026-10-18-hardening-and-backend.md` PD3 接手，不再依 D3；其餘子題不變。
 
 - **D8 名單收集是否在範圍內**（狀態：已決，2026-10-01，Will；擋住步驟：7；需要的事實：步驟 1 的證據（D1 選 A 時））
   - A：只支援主辦者貼上或上傳 CSV——範圍最小，與 D2 A 相容；主辦者要自己整理名單。（建議）

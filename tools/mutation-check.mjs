@@ -106,3 +106,13 @@ await mustFail(
   },
   'independent Python',
 );
+await mustFail(
+  'Uniqueness conflict keyed on (address, drawId) instead of interval overlap',
+  library,
+  (text) =>
+    text.replace(
+      /x\.txHash !== target\.txHash && open\(x\) && x\.blockTime < roundTime\(target\.round\) && target\.blockTime < roundTime\(x\.round\)/,
+      'x.txHash !== target.txHash && x.owner === target.owner && x.drawId === target.drawId',
+    ),
+  'F1 overlap: same wallet',
+);

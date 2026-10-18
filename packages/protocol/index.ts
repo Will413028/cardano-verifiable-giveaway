@@ -14,7 +14,7 @@ export const BUNDLE_BYTE_LIMIT = MAX_ENTRANTS * (MAX_LABEL_UNITS * 3 + 3) + 512;
 export const ARTIFACT_BYTE_LIMIT =
   BUNDLE_BYTE_LIMIT + MAX_ENTRANTS * (MAX_LABEL_UNITS * 3 + 3) + 2 * MAX_ENTRANTS * 8 + 4096;
 export const BOUNDARY =
-  'Verification covers selection from the committed list. It does not establish entrant eligibility, list completeness or prize delivery. Cross-address or different-drawId commitments cannot be ruled out.';
+  'Verification covers selection from the committed list. It does not establish entrant eligibility, list completeness or prize delivery. Commitments from another wallet cannot be ruled out.';
 
 export interface Bundle {
   version: typeof VERSION;
@@ -163,15 +163,29 @@ export function checkTiming(commitment: Confirmed, round: number): boolean {
     commitment.confirmedAt < roundTime(round)
   );
 }
-export function checkUniqueness(commitments: Inclusion[], target: Inclusion): boolean {
-  const candidates = commitments.filter((x) => x.owner === target.owner && x.drawId === target.drawId);
-  candidates.sort((a, b) => a.blockHeight - b.blockHeight || a.txHash.localeCompare(b.txHash));
-  // Same-block ordering is not authoritative; refuse to choose between simultaneous commitments.
-  return (
-    candidates.length > 0 &&
-    candidates[0].txHash === target.txHash &&
-    candidates.filter((x) => x.blockHeight === candidates[0].blockHeight).length === 1
+// A commitment is open from its inclusion until its round; one included at or after its round is invalid
+// itself and blocks nothing, so a commitment sent after a completed draw cannot invalidate it.
+function open(x: Inclusion): boolean {
+  return Number.isSafeInteger(x.blockTime) && x.blockTime < roundTime(x.round);
+}
+export interface Uniqueness {
+  passed: boolean;
+  conflicts: Inclusion[];
+}
+// `commitments` is every commitment the target's identity made, as enumerated by the chain layer. Two open
+// commitments whose [inclusion, round) intervals overlap both fail, whatever their drawId or round; two in the
+// same block always overlap, so intra-block ordering is never needed and simultaneous commitments fail closed.
+// A target missing from the enumeration fails: the history is incomplete.
+export function checkUniqueness(commitments: Inclusion[], target: Inclusion): Uniqueness {
+  const self = commitments.find((x) => x.txHash === target.txHash);
+  const conflicts = commitments.filter(
+    (x) =>
+      x.txHash !== target.txHash &&
+      open(x) &&
+      x.blockTime < roundTime(target.round) &&
+      target.blockTime < roundTime(x.round),
   );
+  return { passed: self !== undefined && conflicts.length === 0, conflicts };
 }
 function network(value: unknown): Network {
   if (value !== 'demo' && value !== 'preprod') throw new Error('Unsupported network');

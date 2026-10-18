@@ -18,12 +18,22 @@ export interface Check {
   result: CheckResult;
   detail: string;
 }
+// A commitment by the same identity whose interval overlaps the verified one.
+export interface Conflict {
+  txHash: string;
+  drawId: string;
+  round: number;
+  blockHeight: number;
+  blockTime: number;
+}
 export interface Verdict {
   status: 'PASS' | 'DEMO PASS' | 'FAIL';
   checks: Check[];
+  conflicts: Conflict[];
   winners: string[];
   boundary: string;
 }
+export const UNIQUENESS_CHECK = 'Unique commitment';
 const result = (passed: boolean): CheckResult => (passed ? 'pass' : 'fail');
 export async function verifyProof(
   input: unknown,
@@ -41,6 +51,7 @@ export async function verifyProof(
     return {
       status: 'FAIL',
       checks: [{ name: 'Bundle format', result: 'fail', detail: (e as Error).message }],
+      conflicts: [],
       winners: [],
       boundary: BOUNDARY,
     };
@@ -50,7 +61,7 @@ export async function verifyProof(
     if (proof.network === 'preprod') {
       const chain = options.chain ?? new KoiosChain();
       commitment = await chain.readCommitment(proof.txHash, proof.owner);
-      candidates = await chain.findCommitments(proof.bundle.drawId, proof.owner);
+      candidates = await chain.findCommitments(proof.owner);
       add('Cardano evidence', 'pass', 'Read from selected preprod indexer; evidence still depends on that indexer');
     } else {
       commitment = await new DemoChain().readCommitment(proof.bundle);
@@ -61,6 +72,7 @@ export async function verifyProof(
     add('Cardano evidence', 'fail', (e as Error).message);
   }
   const unevaluated = 'Not evaluated: chain evidence is unavailable';
+  let conflicts: Conflict[] = [];
   if (commitment && candidates) {
     const hash = await computeCommitment(proof.bundle);
     add(
@@ -79,13 +91,25 @@ export async function verifyProof(
       result(checkTiming(commitment, proof.bundle.drand.round)),
       'Inclusion and the 15th confirmation precede the round',
     );
+    const uniqueness = checkUniqueness(candidates, commitment);
+    conflicts = uniqueness.conflicts.map(({ txHash, drawId, round, blockHeight, blockTime }) => ({
+      txHash,
+      drawId,
+      round,
+      blockHeight,
+      blockTime,
+    }));
     add(
-      'Earliest commitment',
-      result(checkUniqueness(candidates, commitment)),
-      'Earliest same-address, same-drawId commitment; simultaneous-block ambiguity fails closed',
+      UNIQUENESS_CHECK,
+      result(uniqueness.passed),
+      conflicts.length
+        ? `Overlapping commitments by the same organizer: ${conflicts.map((x) => x.txHash).join(', ')}`
+        : uniqueness.passed
+          ? 'No other commitment by the same organizer is open between this inclusion and the round'
+          : 'The referenced commitment is missing from the organizer history; uniqueness cannot be established',
     );
   } else
-    for (const name of ['Commitment hash', 'Timing and confirmations', 'Earliest commitment'])
+    for (const name of ['Commitment hash', 'Timing and confirmations', UNIQUENESS_CHECK])
       add(name, 'unevaluated', unevaluated);
   // A valid signature for the committed round proves the round has been produced; no local clock is consulted.
   const beaconValid = await verifyBeacon(proof.beacon, proof.bundle.drand.round);
@@ -102,6 +126,7 @@ export async function verifyProof(
   return {
     status: checks.every((x) => x.result === 'pass') ? (proof.network === 'demo' ? 'DEMO PASS' : 'PASS') : 'FAIL',
     checks,
+    conflicts,
     winners,
     boundary: BOUNDARY,
   };
