@@ -13,7 +13,7 @@
 - Koios 公開層擋瀏覽器 CORS（真 Chrome 實測，2026-10-18；已確認）。Worker 從伺服器端呼叫不受 CORS 限制，本機開發不需要 API key（推論，步驟 8 驗證）；正式額度需要 Will 申請的 Free key（未確認）。
 - Koios 條款是否允許代理轉發與快取（未確認；2026-10-18 步驟 1 查詢時 koios.rest 整站回 502，官方 repo `cardano-community/koios-artifacts` 的 `html/index.html` 搜尋 terms／proxy／cache／redistribute 無結果；步驟 9 開工時重查，不允許就停）。
 - 真錢包仍延後（MVP 計畫前提 P2）：自動化測試用測試內產生的金鑰與 mock CIP-30，不使用任何個人錢包或助記詞；preprod 上尚無自己的承諾交易（MVP 附件 `spike-a.md`「鏈上樣本 0」），需要真承諾的驗收標為「等真錢包」（已確認）。
-- 工具鏈（預設，可推翻）：Biome 負責 lint 與格式化；後端用 Wrangler 與 Miniflare 在本機執行，測試用 `@cloudflare/vitest-pool-workers`；bundle 存 R2、紀錄存 D1、IP 突發限流用 Rate Limiting binding（計數只在單一機房內、不精確，週期只能 10 或 60 秒，見 [文件](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)，2026-10-18 查核），Koios 全域日預算用單一 Durable Object 計數器，到期清理用 Cron Triggers，讀取時另檢查 `expires_at`。新增套件屬下載，版本鎖在 lockfile。
+- 工具鏈（預設，可推翻）：Biome 負責 lint 與格式化；後端用 Wrangler 與 Miniflare 在本機執行，測試用 `@cloudflare/vitest-plugin`（原名 `@cloudflare/vitest-pool-workers`，0.23.0 標為 deprecated 並改名，步驟 8 於 2026-10-19 查核改用）；bundle 存 R2、紀錄存 D1、IP 突發限流用 Rate Limiting binding（計數只在單一機房內、不精確，週期只能 10 或 60 秒，見 [文件](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)，2026-10-18 查核），Koios 全域日預算用單一 Durable Object 計數器，到期清理用 Cron Triggers，讀取時另檢查 `expires_at`。新增套件屬下載，版本鎖在 lockfile。
 - 開發期 metadata label 改用 [CIP-10 registry](https://github.com/cardano-foundation/CIPs/blob/master/CIP-0010/registry.json) 未登記的數字（預設，可推翻；步驟 4 選定並記錄查詢日期）；CIP-10 註冊留給 v1 凍結（MVP 計畫 D7）。
 - 安全參數：簽章 payload 5 分鐘有效、nonce 一次性（依 [CIP-93](https://cips.cardano.org/cip/CIP-0093) 的建議時間窗）；不用 cookie（[OWASP CSRF Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)）。
 
@@ -74,7 +74,7 @@
     - tsconfig 依執行環境拆開：`tsconfig.base.json` 共用選項；`packages/tsconfig.json`（ES2023＋WebWorker，沒有 DOM）、`apps/web/tsconfig.json`（DOM）、`apps/verifier-cli/tsconfig.json`。
     - Biome 範圍：`packages`、`apps`、`tools`、`tests` 與根目錄 JSON；`tests/*.json` 由 `tools/reference.py` 產生，排除；HTML 不納入（格式化會改 inline 元素間的空白，屬可見行為；原 `tools/lint.mjs` 對 HTML 只查行尾空白，這項檢查不再保留，觸發條件：重寫 `index.html` 時改由產生器或 Biome HTML 處理）；organize imports 關閉。`tools/lint.mjs` 刪除。
     - 網頁：`app.ts`（入口與流程：擁有狀態、接事件，流程函式仍直接改 DOM，模式取自 `#network`）、`state.ts`（`createState()`，每次載入一份）、`view.ts`（DOM 輔助與整塊畫面的 render）、`services.ts`（不碰 DOM：分享連結編碼、代管 bundle、組 proof；`createChains()` 每次載入建立一份 `DemoChain` 與 `KoiosChain`，明確傳給 `verifyProof`）。沒有顯式流程狀態機，交給步驟 12。
-    - build 仍由根目錄 `tools/build.mjs` 一支腳本建網頁與 CLI，網頁以 `absWorkingDir: apps/web` 解析它宣告的 alias；觸發條件：步驟 6 移除 alias 或步驟 8 加入 Wrangler 時，改成各套件自己的 `build` script 由根目錄 `pnpm -r run build` 串起。
+    - build 仍由根目錄 `tools/build.mjs` 一支腳本建網頁與 CLI，網頁以 `absWorkingDir: apps/web` 解析它宣告的 alias；觸發條件：步驟 6 移除 alias，或部署需要先建網頁再 `wrangler deploy` 時，改成各套件自己的 `build` script 由根目錄 `pnpm -r run build` 串起（步驟 8 加入 Wrangler 時判定不需要：`apps/api` 沒有建置產物，見進度表）。
     - 套件邊界的業界替代：會解析路徑的 dependency-cruiser、eslint-plugin-boundaries，或每套件一份 tsconfig 搭配 Project References；觸發條件：任一套件出現第二層子目錄，或依深度寫的 override 漏擋一次。
 
 - [x] **4. verifier 正確性修正與 `development-2`**（被擋於：步驟 3）
@@ -203,7 +203,7 @@
 | 5 唯一性重設計 | 未開始 | | | | |
 | 6 依 PD1、PD6 更換依賴 | 未開始 | | | | |
 | 7 CBOR 驗證 metadata、身分與時間上限 | 未開始 | | | | |
-| 8 後端 walking skeleton | 未開始 | | | | |
+| 8 後端 walking skeleton | 程式完成待驗收 | `pnpm install --frozen-lockfile` exit 0（`allowBuilds` 加 `workerd: false`：與 esbuild 相同，binary 由平台 optionalDependency 提供，postinstall 只做檢查；本機 `wrangler dev` 與 vitest 都在不跑 postinstall 下啟動 workerd）；`make check` exit 0（Biome 37 檔、四份 tsc 含 `apps/api/tsconfig.json`、20 個 Node 測試、`apps/api` 10 個 vitest 測試跑在 workerd、mutation-check、10 組 Python vectors、MVP `check_plan.py` OK）；`make api`（`wrangler dev`，127.0.0.1:8787）＋curl `/tip`：HTTP 200、`Access-Control-Allow-Origin: http://127.0.0.1:4320`、真 Koios preprod tip（block 5307496、epoch 320），停止條件未觸發；`/blocks` 404、`/tip?select=hash` 400、POST 405；瀏覽器（Chrome 155.0.8059.82＋npx 快取 playwright-core，scratchpad 腳本，未進 repo）：`make dev` 頁面切到 preprod 後 `#chain-tip` 顯示「Preprod tip via the backend proxy: block 5307496 · epoch 320 …」，請求只有 `http://127.0.0.1:8787/tip`、直連 koios.rest 0 次；停掉 Wrangler 後顯示「unavailable … (Failed to fetch)」；`browser-check.mjs` 12 項 PASS、exit 0（與步驟 4 相同）；mutation：`packages/protocol` 加 `export { handle } from '@giveaway/api'` → `noUndeclaredDependencies`，`make check` exit 2；改成 `'../../apps/api/src/index.ts'` → `noRestrictedImports`（另有 4 個 `noImportCycles`），exit 2；新 override `apps/*/*/*` 禁止 `../../**`：`apps/api/src` 內引用 `../../../packages/…`、`../../web/…` 被擋，`../proxy.ts` 不擋；拿掉 query 拒收，對應 vitest 測試失敗；`GIVEAWAY_API_URL=` 空字串時 build 失敗（Invalid URL） | CI 未跑（未推送） | `rg -n "apps/api" packages apps/verifier-cli`：0 筆（exit 1）；`rg -n "include\|allowBuilds" tsconfig.base.json packages/tsconfig.json pnpm-workspace.yaml biome.json`：`packages/tsconfig.json` 的 `*/*.ts`（不含 apps）、`biome.json` 四組 includes（新增 `apps/*/*/*`）、`pnpm-workspace.yaml` 的 `allowBuilds`。步驟 3 的 build 觸發條件判定不需執行：`apps/api` 沒有建置產物，`wrangler dev` 與 vitest-plugin 各自打包 `src/index.ts`，`tools/build.mjs` 只多了 `GIVEAWAY_API_URL` 的 define；拆成各套件 `build` script 的觸發條件改為只剩步驟 6 移除 alias，或部署（MVP 步驟 10）需要 `wrangler deploy` 前先建網頁 | `19c26e2`、本列提交 |
 | 9 proxy 完整版 | 未開始 | | | | |
 | 10 bundle 代管與 CLI bundle 模式 | 未開始 | | | | |
 | 11 擁有者簽章操作 | 未開始 | | | | |
