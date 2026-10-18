@@ -1,0 +1,14 @@
+{
+  "name": "@giveaway/verifier-cli",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./library": "./dist/library.mjs"
+  },
+  "dependencies": {
+    "@giveaway/beacon": "workspace:*",
+    "@giveaway/chain": "workspace:*",
+    "@giveaway/protocol": "workspace:*",
+    "@giveaway/verifier": "workspace:*"
+  }
+}

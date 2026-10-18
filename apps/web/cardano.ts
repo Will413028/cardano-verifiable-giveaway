@@ -1,6 +1,6 @@
 import { BrowserWallet, MeshTxBuilder, KoiosProvider, cst } from '@meshsdk/core';
-import { computeCommitment, type Bundle } from '../../packages/protocol/index.ts';
-import { commitmentMetadata, LABEL } from '../../packages/chain/index.ts';
+import { computeCommitment, type Bundle } from '@giveaway/protocol';
+import { commitmentMetadata, LABEL } from '@giveaway/chain';
 
 export function wallets() {
   return BrowserWallet.getInstalledWallets();

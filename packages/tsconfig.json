@@ -1,0 +1,6 @@
+{
+  // Shared packages run in browsers, Node and Workers, so they get no DOM types.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "lib": ["ES2023", "WebWorker"] },
+  "include": ["*/*.ts"]
+}

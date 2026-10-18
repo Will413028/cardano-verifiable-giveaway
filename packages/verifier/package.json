@@ -1,0 +1,11 @@
+{
+  "name": "@giveaway/verifier",
+  "private": true,
+  "type": "module",
+  "exports": "./index.ts",
+  "dependencies": {
+    "@giveaway/beacon": "workspace:*",
+    "@giveaway/chain": "workspace:*",
+    "@giveaway/protocol": "workspace:*"
+  }
+}

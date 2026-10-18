@@ -17,10 +17,10 @@ import {
   type Bundle,
   type Commitment,
   type Proof,
-} from '../../packages/protocol/index.ts';
-import { FIXTURE, fetchBeacon } from '../../packages/beacon/index.ts';
-import { DemoChain, KoiosChain } from '../../packages/chain/index.ts';
-import { verifyProof } from '../../packages/protocol/verifier.ts';
+} from '@giveaway/protocol';
+import { FIXTURE, fetchBeacon } from '@giveaway/beacon';
+import { DemoChain, KoiosChain } from '@giveaway/chain';
+import { verifyProof } from '@giveaway/verifier';
 
 interface Pending {
   format: 'giveaway-pending-1';

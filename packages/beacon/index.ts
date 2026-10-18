@@ -7,7 +7,7 @@ import {
   bls12_381_millerLoop,
   bls12_381_finalVerify,
 } from '@harmoniclabs/crypto';
-import { sha256, unhex, QUICKNET, type Beacon } from '../protocol/index.ts';
+import { sha256, unhex, QUICKNET, type Beacon } from '@giveaway/protocol';
 
 // Pinned from the official quicknet announcement, never from an untrusted relay /info response.
 export const PUBLIC_KEY =

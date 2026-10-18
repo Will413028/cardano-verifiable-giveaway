@@ -5,7 +5,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 await mkdir(`${root}dist`, { recursive: true });
 await build({
   entryPoints: [`${root}apps/web/app.ts`],
-  absWorkingDir: root,
+  // Aliases and the injected shim resolve from the web package, which declares them.
+  absWorkingDir: `${root}apps/web`,
   bundle: true,
   splitting: true,
   format: 'esm',
@@ -25,20 +26,16 @@ await build({
     process: 'process',
   },
   define: { global: 'globalThis' },
-  inject: [`${root}tools/polyfills.js`],
+  inject: [`${root}apps/web/polyfills.js`],
 });
 await build({
-  stdin: {
-    contents:
-      "export * from './packages/protocol/index.ts'; export * from './packages/beacon/index.ts'; export * from './packages/chain/index.ts'; export * from './packages/protocol/verifier.ts';",
-    resolveDir: root,
-  },
-  absWorkingDir: root,
+  entryPoints: [`${root}apps/verifier-cli/library.ts`],
+  absWorkingDir: `${root}apps/verifier-cli`,
   bundle: true,
   format: 'esm',
   platform: 'node',
   target: 'node22',
-  outfile: `${root}dist/library.mjs`,
+  outfile: `${root}apps/verifier-cli/dist/library.mjs`,
 });
 for (const name of ['index.html', 'styles.css']) await copyFile(`${root}apps/web/${name}`, `${root}dist/${name}`);
 console.log('Built static web app and independent Node verifier library');

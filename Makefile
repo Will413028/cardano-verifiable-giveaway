@@ -2,10 +2,11 @@
 build:
 	node tools/build.mjs
 typecheck:
-	pnpm exec tsc --project tsconfig.json
+	pnpm exec tsc --project packages/tsconfig.json
+	pnpm exec tsc --project apps/web/tsconfig.json
+	pnpm exec tsc --project apps/verifier-cli/tsconfig.json
 lint:
 	pnpm exec biome check --error-on-warnings
-	node tools/lint.mjs
 test: build
 	node --test tests/*.test.mjs
 check: lint typecheck test

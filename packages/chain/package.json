@@ -1,0 +1,9 @@
+{
+  "name": "@giveaway/chain",
+  "private": true,
+  "type": "module",
+  "exports": "./index.ts",
+  "dependencies": {
+    "@giveaway/protocol": "workspace:*"
+  }
+}

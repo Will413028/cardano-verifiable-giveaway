@@ -7,7 +7,7 @@ import {
   type Bundle,
   type Commitment,
   sha256,
-} from '../protocol/index.ts';
+} from '@giveaway/protocol';
 
 export const LABEL = 674; // Temporary development label; not a CIP-10 registration.
 export const DEFAULT_INDEXER = 'https://preprod.koios.rest/api/v1';

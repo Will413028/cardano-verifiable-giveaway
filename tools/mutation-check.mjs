@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { VERSION, ALGORITHM, QUICKNET, FIXTURE, DemoChain, selectWinners } from '../dist/library.mjs';
+import { VERSION, ALGORITHM, QUICKNET, FIXTURE, DemoChain, selectWinners } from '@giveaway/verifier-cli/library';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const bundle = {
   version: VERSION,
@@ -52,7 +52,7 @@ for (const [name, mutate] of [
   console.log(`Mutation rejected by CLI: ${name}`);
 }
 // A broken golden fixture must also make the actual test runner fail.
-const library = await readFile(`${root}dist/library.mjs`, 'utf8');
+const library = await readFile(fileURLToPath(import.meta.resolve('@giveaway/verifier-cli/library')), 'utf8');
 const corrupted = library.replace(FIXTURE.signature, `${FIXTURE.signature.slice(0, -2)}00`);
 if (corrupted === library) throw new Error('Signature fixture was not located');
 await writeFile(`${root}dist/mutated-library.mjs`, corrupted);

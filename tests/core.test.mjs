@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-const p = await import(process.env.GIVEAWAY_LIBRARY || '../dist/library.mjs');
+const p = await import(process.env.GIVEAWAY_LIBRARY || '@giveaway/verifier-cli/library');
 const bundle = (entrants = ['alice', 'bob', 'carol', 'dana', 'eli']) => ({
   version: p.VERSION,
   algorithm: p.ALGORITHM,

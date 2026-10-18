@@ -7,5 +7,53 @@
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
   "javascript": { "formatter": { "quoteStyle": "single" } },
   "html": { "linter": { "enabled": false }, "formatter": { "enabled": false } },
-  "assist": { "enabled": false }
+  "assist": { "enabled": false },
+  "linter": {
+    "rules": {
+      "correctness": { "noUndeclaredDependencies": "error" },
+      "suspicious": { "noImportCycles": "error" }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/*/*", "apps/*/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**"],
+                    "message": "Packages are flat directories: import another workspace package by its name and declare it in package.json."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["tools/**", "tests/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../packages/**", "../apps/**", "../spikes/**"],
+                    "message": "Import workspace packages by name; spikes are never imported."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

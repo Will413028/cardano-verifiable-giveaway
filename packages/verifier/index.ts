@@ -7,9 +7,9 @@ import {
   BOUNDARY,
   type Commitment,
   type Proof,
-} from './index.ts';
-import { verifyBeacon } from '../beacon/index.ts';
-import { KoiosChain } from '../chain/index.ts';
+} from '@giveaway/protocol';
+import { verifyBeacon } from '@giveaway/beacon';
+import { KoiosChain } from '@giveaway/chain';
 export interface Check {
   name: string;
   passed: boolean;
@@ -77,7 +77,7 @@ export async function verifyProof(
     await verifyBeacon(proof.beacon, proof.bundle.drand.round),
     'Pinned quicknet public key; signature and randomness verified',
   );
-  const { roundTime } = await import('./index.ts');
+  const { roundTime } = await import('@giveaway/protocol');
   add(
     'Round has arrived',
     (options.now ?? Math.floor(Date.now() / 1000)) >= roundTime(proof.bundle.drand.round),

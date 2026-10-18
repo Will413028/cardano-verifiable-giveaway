@@ -7,10 +7,52 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 2.5.15
+        version: 2.5.15
+      '@giveaway/verifier-cli':
+        specifier: workspace:*
+        version: link:apps/verifier-cli
+      '@meshsdk/core':
+        specifier: 1.9.1
+        version: 1.9.1(@bufbuild/protobuf@1.10.1)(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/crypto@0.2.5)(rxjs@7.8.2)
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  apps/verifier-cli:
     dependencies:
-      '@harmoniclabs/crypto':
-        specifier: 0.2.5
-        version: 0.2.5
+      '@giveaway/beacon':
+        specifier: workspace:*
+        version: link:../../packages/beacon
+      '@giveaway/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@giveaway/verifier':
+        specifier: workspace:*
+        version: link:../../packages/verifier
+
+  apps/web:
+    dependencies:
+      '@giveaway/beacon':
+        specifier: workspace:*
+        version: link:../../packages/beacon
+      '@giveaway/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@giveaway/verifier':
+        specifier: workspace:*
+        version: link:../../packages/verifier
       '@meshsdk/core':
         specifier: 1.9.1
         version: 1.9.1(@bufbuild/protobuf@1.10.1)(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/crypto@0.2.5)(rxjs@7.8.2)
@@ -20,9 +62,6 @@ importers:
       crypto-browserify:
         specifier: 3.12.1
         version: 3.12.1
-      esbuild:
-        specifier: 0.28.2
-        version: 0.28.2
       events:
         specifier: 3.3.0
         version: 3.3.0
@@ -32,13 +71,35 @@ importers:
       stream-browserify:
         specifier: 3.0.0
         version: 3.0.0
-    devDependencies:
-      '@biomejs/biome':
-        specifier: 2.5.15
-        version: 2.5.15
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
+
+  packages/beacon:
+    dependencies:
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@harmoniclabs/crypto':
+        specifier: 0.2.5
+        version: 0.2.5
+
+  packages/chain:
+    dependencies:
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
+  packages/protocol: {}
+
+  packages/verifier:
+    dependencies:
+      '@giveaway/beacon':
+        specifier: workspace:*
+        version: link:../beacon
+      '@giveaway/chain':
+        specifier: workspace:*
+        version: link:../chain
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
 packages:
 

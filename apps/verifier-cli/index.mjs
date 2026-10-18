@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { verifyProof, KoiosChain } from '../../dist/library.mjs';
+import { verifyProof, KoiosChain } from './dist/library.mjs';
 const args = process.argv.slice(2);
 const file = args[0];
 if (!file || file.startsWith('--')) {
