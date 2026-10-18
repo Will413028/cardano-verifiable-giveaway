@@ -82,12 +82,13 @@
   - 驗收：回歸測試四個劇本——同錢包、同 round、不同 drawId；同錢包、相鄰 round（R 與 R+1）；round 後補送一筆；兩場時間區間不重疊的連續抽獎。前兩者新實作判 FAIL（舊實作 PASS），第三者不影響原抽獎，第四者兩場都 PASS；另加第五個：第三方用帶主辦者 stake 部分的地址、但沒有身分 key 簽章，送一筆區間重疊的承諾，主辦者的抽獎仍 PASS；mutation：把衝突判定改回（地址, drawId），前兩個劇本的測試要失敗。
   - 停止條件：Koios 沒有能依 PD3 身分列舉交易的端點——停下，PD3 的身分子題改用新事實。
 
-- [ ] **6. 依 PD1、PD6 更換依賴**（被擋於：PD1、PD6；步驟 4）
-  - 範圍：PD1 選維持 Mesh 時本步標「不做」並寫明依據。否則把 `apps/web/cardano.ts` 的 Mesh 用法換成 PD1 選定的 SDK、`packages/chain` 的 CBOR 用法換成 PD6 選定的依賴，移除不再需要的 polyfill 與 alias（F16）。
+- [ ] **6. 依 PD1、PD6 更換依賴**（被擋於：步驟 4）
+  - 範圍：依 ADR `docs/adr/2026-10-18-sdk-and-trust-path-dependencies.md`：把 `apps/web/cardano.ts` 的 Mesh 換成 Evolution SDK（鎖精確版本、只在建立頁延遲載入）；`packages/chain` 的 CBOR 用法換成自寫讀取器加 `@noble/hashes`、`@noble/curves`（自 `spikes/s1-sdk/options/minimal.mjs` 移入並改寫為 TypeScript）；`tools/lint.mjs` 禁止 `packages/` 引用任何 Cardano SDK；網頁組完交易後以讀取器重讀未簽 CBOR，欄位不符就不呼叫 `signTx`；移除不再需要的 polyfill 與 alias（F16），`@harmoniclabs/crypto` 是否仍需 Buffer 在本步確認。
   - 消費端：`rg -n "@meshsdk|cst\.|polyfills|crypto-browserify|stream-browserify" apps packages tools package.json`
   - 不能動：交易內容（輸出、metadata、找零規則）；mainnet 拒絕與 preprod UTxO 核對。
   - 驗收：`make check` 與瀏覽器 E2E 全綠；同一組輸入在換 SDK 前後產生的未簽交易，解碼後比對語意欄位：輸入、輸出地址與金額、metadata 解碼後相等、找零地址、fee 在即時參數估計值的 2 倍以內；bundle 大小記錄在進度表。
   - 停止條件：新 SDK 產生的交易無法通過既有的 mock preprod 檢查。
+  - mutation 補充：拿掉組完重讀的任一欄位核對，或讓 `packages/` 引用 `@evolution-sdk/evolution`，測試或 lint 要失敗。
 
 - [ ] **7. 以交易 CBOR 驗證 metadata、身分與時間上限**（被擋於：步驟 5、6）
   - 範圍：verifier 向 indexer 取原始交易 CBOR，自行確認 tx hash 與 auxiliary data hash，再從 CBOR 解出 metadata（F2）。身分依 PD3：從 body 讀出 `required_signers`，驗對應 vkey witness 對 tx hash 的簽章，不回溯 input 的前一筆交易；沒有身分 key 簽章的交易不算任何身分的承諾（F1 的第三方劇本）。依 PD5，從 body 讀出 `invalid_hereafter`，以釘死的網路參數換算成時間，必須早於 round 時間（F17）；網頁 `prepareTransaction` 同步加上 `required_signers` 與 `invalid_hereafter`。CBOR 自驗只做承諾交易本身與唯一性列舉中 metadata label 符合的交易——indexer 能漏列交易，對其他交易自驗擋不住任何新攻擊，只會放大 Koios 用量。剩下的信任面（漏列交易、謊報收錄區塊與時間、謊報 input 地址；後者與漏列等價）寫進 inventory F13 的處置與 `docs/protocol-development.md`（F13）。CLI 與瀏覽器共用同一實作；`tools/reference.py` 以同一份 fixture CBOR 重算 tx hash 與 auxiliary data hash，維持雙實作交叉核對。
@@ -117,7 +118,7 @@
   - 驗收：後端測試涵蓋 hash 不符、`validateBundle` 失敗、超過大小、承諾不存在、他人以相同 bundleHash 另送承諾並搶先上傳後刪除（正主仍能上傳且連結有效）、營運下架後重傳被拒、超過 owner 額度、到期後讀取被拒與 Cron 清理（時間注入）；E2E 以新連結格式在 demo 模式完成 DEMO PASS；Node 測試以注入的假 chain 跑 CLI 的 bundle 模式，後端未啟動時結果 PASS；mutation：略過 `validateBundle`、營運下架 tombstone 或參照計數，各自的測試要失敗。真鏈的 CLI 交叉驗收等真錢包（MVP 計畫步驟 8）。
   - 停止條件：最壞情況的 CPU 時間超過付費方案上限——停下，代表要改成分段處理，交 Will 決定。
 
-- [ ] **11. 擁有者簽章操作**（被擋於：步驟 10；PD6）
+- [ ] **11. 擁有者簽章操作**（被擋於：步驟 10）
   - 範圍：BR-09、BR-13、BR-17：nonce 端點、CIP-30 `signData` payload（網域、操作、bundleHash、network、nonce，5 分鐘有效），依 PD4 的驗證形式送出；後端驗章並確認 key 屬於 owner 地址；刪除與延長（延長上限依 PD4）；刪除後介面提醒保留下載副本。
   - 消費端：無（新端點）；網頁呼叫端：`rg -n "signData" apps`
   - 不能動：B2、B3；owner 取自承諾交易，不取錢包目前的 change address。
@@ -140,19 +141,10 @@
 
 ## 決定
 
-- **PD1 網頁組交易用的 SDK**（狀態：未決；擋住步驟：6；需要的事實：步驟 2）
-  - 只有 `apps/web` 組交易需要完整 SDK；verifier 與後端的依賴另見 PD6（design-review 2026-10-18 拆題）。
-  - A：維持 Mesh——不用改；代價是 5 個 polyfill 與較大的 bundle。
-  - B：Evolution SDK——純 TypeScript、無 WASM（MVP 計畫 `external-interfaces.md` E7）；成熟度待 S1 確認。
-  - C：Blaze——成熟度待 S1 確認。
-  - 建議：在「能組出帶 metadata、`required_signers`（PD3 身分 key）與 validity interval 上限（PD5）的交易」的選項中選瀏覽器 bundle 最小者；都能做時不偏好維持現狀。
-  - S1 事實（附件 `spike-s1.md`）：三者在 Node 與 Chrome 都組得出含三項欄位的交易。組交易＋錢包入口 gzip：Evolution 295,246（0 shim、9 個套件）、Blaze 492,656（1 shim、2 個空模組、2 個 globals，86 個套件）、Mesh 1,519,596（2 shim、2 個 globals，125 個套件）。Evolution 是 0.6.0、近 90 天 8 版、週下載 1,162，有效期只能以 Unix 時間給再經 slotConfig 換成 slot。錢包是否替 stake key 簽章三者都未驗證。依建議規則 → B。
-- **PD6 verifier 與後端的 CBOR、雜湊、簽章依賴**（狀態：未決；擋住步驟：7、11；需要的事實：步驟 2）
-  - verifier 在信任路徑上，tx hash 必須對 body 的原始 bytes 算 blake2b-256，重新編碼可能得到不同 bytes。
-  - A：沿用 PD1 選定的 SDK——依賴最少種類；代價是信任路徑帶著組交易用的大型依賴，且要確認它保留原始 bytes。
-  - B：最小依賴——能保留原始 byte 範圍的 CBOR decoder、`@noble/hashes`（blake2b）、`@noble/curves`（ed25519），COSE_Sign1 自行依 CIP-8 驗或用專用函式庫——信任路徑小、瀏覽器、CLI、Workers 共用；代價是 COSE 與 CBOR 細節要自己測。
-  - 建議：B，除非步驟 2 量到 B 無法在三個執行環境以原始 bytes 算出已知 tx hash。
-  - S1 事實（附件 `spike-s1.md`）：B 在 Node、Chrome、workerd 對 4 筆交易（2 筆 preprod、2 筆非 canonical aux 合成）的 tx hash 與 aux hash 全對、29 個 COSE 向量全對，verify bundle 17,022 bytes gzip、2 個套件、0 shim；代價是自寫 112 行 CBOR 與 COSE 程式要自己測。A 只有沿用 Evolution 時成立：三個執行環境全過，但直覺 API `TransactionBody.toHash`、`AuxiliaryData.toHash` 會重新編碼而算錯，要改用 format tree 與 `CBOR.decodeItemWithOffset`；Mesh 與 Blaze 的 ed25519 走 libsodium，在 workerd 不能用（Mesh 引入即讓 Worker 起不來）；Mesh `checkSignature` 另缺 alg、尾隨 bytes 與 `hashed` 檢查。建議維持 B。
+- **PD1 網頁組交易用的 SDK**（狀態：已決 2026-10-18，Will：B Evolution SDK；擋住步驟：無；需要的事實：無。ADR：`docs/adr/2026-10-18-sdk-and-trust-path-dependencies.md`）
+  - 選項 A Mesh、B Evolution、C Blaze 的量測與取捨見 ADR 與附件 `spike-s1.md`；Blaze 為備援。
+- **PD6 verifier 與後端的 CBOR、雜湊、簽章依賴**（狀態：已決 2026-10-18，Will：B 最小依賴；擋住步驟：無；需要的事實：無。ADR 同上）
+  - 自寫只讀 CBOR 讀取器加 `@noble/hashes`、`@noble/curves`，瀏覽器、CLI、Workers 共用；信任路徑禁止引用 Cardano SDK。
 - **PD2 Workers 方案**（狀態：未決；擋住步驟：10 的 CPU 驗收；需要的事實：步驟 10 的 CPU 量測）
   - A：Free——零成本；每請求 CPU 10 ms。
   - B：付費方案——每月固定費用；CPU 預設 30 秒。
@@ -179,7 +171,7 @@
   - 草稿身分：簽章錢包的身分（與 PD3 身分子題同一規則）；草稿在上鏈前就存在，無法取自承諾交易。
   - 額度與上限（數字為建議預設）：每個身分最多 5 份伺服器草稿、每份不超過協定的 bundle 上限；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
 
-拍板順序：PD3、PD4、PD5 已決；PD1、PD6 等步驟 2；PD2 等步驟 10 的量測。
+拍板順序：PD1、PD3、PD4、PD5、PD6 已決；PD2 等步驟 10 的量測。
 
 ## 進度
 
