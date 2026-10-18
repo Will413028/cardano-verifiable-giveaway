@@ -1,6 +1,8 @@
 // Read-only CBOR reader for the trust path (PD6, ADR 2026-10-18-sdk-and-trust-path-dependencies). It keeps the raw
 // byte range of every array and map element, so hashes are taken over the bytes as submitted and never over a
-// re-encoding. Moved from the S1 spike (spikes/s1-sdk/options/minimal.mjs); hashing is @noble/hashes.
+// re-encoding. Moved from the S1 spike (spikes/s1-sdk/options/minimal.mjs); hashing is @noble/hashes and
+// witness signatures are @noble/curves.
+import { ed25519 } from '@noble/curves/ed25519.js';
 import { blake2b } from '@noble/hashes/blake2.js';
 import { hex, unhex } from '@giveaway/protocol';
 
@@ -189,6 +191,61 @@ export function auxiliaryDataHash(txHex: string): { computed: string | null; dec
     computed: auxiliary ? blake2b256(auxiliary) : null,
     declared: declared instanceof Uint8Array ? hex(declared) : null,
   };
+}
+// A CBOR set: Conway wraps the array in tag 258, earlier eras (and Mesh-built transactions) use a plain array.
+export function setItems(value: CborValue): CborArray | null {
+  const inner = isCborTag(value) && value.tag === 258 ? value.value : value;
+  return isCborArray(inner) ? inner : null;
+}
+// Phase-2 validity: the Alonzo+ is_valid flag; pre-Alonzo transactions have none and are always valid.
+export function isValidTransaction(parts: TransactionParts): boolean {
+  if (parts.transaction.length === 3) return true;
+  const flag = parts.transaction[2];
+  if (typeof flag !== 'boolean') throw new Error('Transaction is_valid flag is not a boolean');
+  return flag;
+}
+// Body field 3 (invalid_hereafter): the first slot in which the ledger no longer accepts the transaction.
+export function invalidHereafter(body: CborMap): bigint | null {
+  const slot = body.get(3);
+  if (slot === undefined) return null;
+  if (typeof slot !== 'bigint' || slot < 0n) throw new Error('Transaction invalid_hereafter is not a slot');
+  return slot;
+}
+// Body field 14 (required_signers) as hex key hashes; empty when absent.
+export function requiredSigners(body: CborMap): string[] {
+  if (!body.has(14)) return [];
+  const items = setItems(body.get(14));
+  if (!items || items.some((k) => !(k instanceof Uint8Array) || k.length !== 28))
+    throw new Error('Transaction required_signers is malformed');
+  return items.map((k) => hex(k as Uint8Array));
+}
+// Key hashes that are listed in required_signers AND have a vkey witness whose Ed25519 signature over the
+// transaction id verifies (RFC 8032 strict decoding; the ledger rejects any transaction with an invalid witness).
+export function verifiedSigners(parts: TransactionParts): Set<string> {
+  const required = new Set(requiredSigners(parts.body));
+  const signed = new Set<string>();
+  const witnesses = parts.transaction[1];
+  if (!isCborMap(witnesses)) throw new Error('Transaction witness set is not a map');
+  if (!witnesses.has(0)) return signed;
+  const vkeys = setItems(witnesses.get(0));
+  if (!vkeys) throw new Error('Transaction vkey witnesses are malformed');
+  const message = blake2b(parts.bodyBytes, { dkLen: 32 });
+  for (const witness of vkeys) {
+    if (!isCborArray(witness) || witness.length !== 2) throw new Error('Transaction vkey witness is malformed');
+    const [vkey, signature] = witness;
+    if (!(vkey instanceof Uint8Array) || vkey.length !== 32 || !(signature instanceof Uint8Array))
+      throw new Error('Transaction vkey witness is malformed');
+    const keyHash = hex(blake2b(vkey, { dkLen: 28 }));
+    if (required.has(keyHash) && ed25519Verify(signature, message, vkey)) signed.add(keyHash);
+  }
+  return signed;
+}
+function ed25519Verify(signature: Uint8Array, message: Uint8Array, key: Uint8Array): boolean {
+  try {
+    return ed25519.verify(signature, message, key, { zip215: false });
+  } catch {
+    return false;
+  }
 }
 // The metadata map inside auxiliary data: Shelley (a bare map), Shelley-MA ([map, scripts]) or Alonzo+ (tag 259).
 export function auxiliaryMetadata(auxiliary: Uint8Array): CborMap | null {

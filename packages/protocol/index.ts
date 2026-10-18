@@ -43,8 +43,12 @@ export interface Inclusion extends CommitmentRef {
   blockHeight: number;
   blockTime: number;
 }
+// The referenced commitment, read with its confirmation evidence and the transaction's validity upper bound:
+// `validUntil` is the Unix time of its invalid_hereafter slot (null when the transaction sets none), after which
+// the ledger no longer accepts it.
 export interface Confirmed extends Inclusion {
   confirmedAt: number;
+  validUntil: number | null;
 }
 export interface Proof extends CommitmentRef {
   format: 'giveaway-proof-2';
@@ -154,8 +158,21 @@ export async function selectWinners(bundle: Bundle, randomness: string): Promise
   ranked.sort((a, b) => (a.score < b.score ? -1 : a.score > b.score ? 1 : a.index - b.index));
   return ranked.slice(0, bundle.rules.winners).map((x) => x.label);
 }
+// The validity upper bound must precede the round, so the ledger itself rules out inclusion at or after the
+// round (PD5); a missing bound fails. An indexer-reported inclusion time at or after the bound contradicts the
+// ledger and fails too.
+export function checkValidityBound(commitment: Confirmed, round: number): boolean {
+  const { validUntil } = commitment;
+  return (
+    validUntil !== null &&
+    Number.isSafeInteger(validUntil) &&
+    validUntil < roundTime(round) &&
+    commitment.blockTime < validUntil
+  );
+}
 export function checkTiming(commitment: Confirmed, round: number): boolean {
   return (
+    checkValidityBound(commitment, round) &&
     Number.isSafeInteger(commitment.blockTime) &&
     Number.isSafeInteger(commitment.confirmedAt) &&
     commitment.blockTime < roundTime(round) &&

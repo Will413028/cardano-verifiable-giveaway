@@ -15,11 +15,15 @@ import {
   auxiliaryDataHash,
   auxiliaryMetadata,
   type CborValue,
+  invalidHereafter,
   isCborArray,
   isCborMap,
-  isCborTag,
+  isValidTransaction,
+  requiredSigners,
+  setItems,
   transactionHash,
   transactionParts,
+  verifiedSigners,
 } from './cbor.ts';
 export * from './cbor.ts';
 
@@ -32,6 +36,28 @@ export function commitmentMetadata(bundle: Bundle, bundleHash: string) {
 }
 // The commitment transaction moves this much from the organizer's address back to itself; the rest returns as change.
 export const COMMITMENT_TRANSFER = 2_000_000n;
+// The preprod slot clock, pinned rather than read from an indexer (PD5). Koios /genesis reports system start
+// 1654041600 and Shelley slot length 1 s (read 2026-10-19); Byron ran 4 epochs of 21,600 slots of 20 s, so slot
+// 86,400 began at 1655769600 and every later slot lasts one second. Checked against Koios tx_cbor for preprod
+// transaction 3883c2a9 (absolute_slot 136605785, tx_timestamp 1792288985). Mainnet is not supported.
+export const PREPROD_SLOTS = { zeroSlot: 86_400, zeroTime: 1_655_769_600, slotLength: 1 } as const;
+export function preprodSlotTime(slot: bigint): number {
+  if (slot < BigInt(PREPROD_SLOTS.zeroSlot) || slot > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new Error('Slot is outside the pinned preprod slot clock');
+  return PREPROD_SLOTS.zeroTime + (Number(slot) - PREPROD_SLOTS.zeroSlot) * PREPROD_SLOTS.slotLength;
+}
+export function preprodSlotAt(time: number): bigint {
+  if (!Number.isSafeInteger(time) || time < PREPROD_SLOTS.zeroTime)
+    throw new Error('Time is outside the pinned preprod slot clock');
+  return BigInt(PREPROD_SLOTS.zeroSlot + Math.floor((time - PREPROD_SLOTS.zeroTime) / PREPROD_SLOTS.slotLength));
+}
+// Preprod's expected block interval: slot length 1 s over active slot coefficient 0.05 (Koios /genesis).
+const EXPECTED_BLOCK_SECONDS = 20;
+// The validity upper bound the page sets: early enough that the 15 confirmations the verifier requires can be
+// expected before the round. The protocol itself only requires the bound to precede the round.
+export function commitmentValidUntil(round: number): number {
+  return roundTime(round) - CONFIRMATIONS * EXPECTED_BLOCK_SECONDS;
+}
 // What the page asked the transaction SDK to build. The unsigned CBOR is re-read with the trust-path reader and
 // compared against this before the wallet is asked to sign, so an SDK that builds something else is never signed.
 export interface CommitmentPlan {
@@ -39,9 +65,14 @@ export interface CommitmentPlan {
   // Hex bytes of the organizer address: it receives both the transfer and the change.
   address: string;
   metadata: ReturnType<typeof commitmentMetadata>;
+  // The organizer identity key hash (hex) that must be the only required signer (PD3).
+  signer: string;
+  // The invalid_hereafter slot, whose time precedes the round (PD5).
+  invalidHereafter: bigint;
 }
-// inputs, outputs, fee, auxiliary data hash: anything else (mint, withdrawals, certificates, collateral...) is refused.
-const COMMITMENT_BODY_FIELDS = new Set<unknown>([0, 1, 2, 7]);
+// inputs, outputs, fee, invalid_hereafter, auxiliary data hash, required_signers: anything else (mint, withdrawals,
+// certificates, collateral, validity start...) is refused.
+const COMMITMENT_BODY_FIELDS = new Set<unknown>([0, 1, 2, 3, 7, 14]);
 function adaOutput(output: CborValue): { address: string; lovelace: bigint } {
   const [address, amount, extra] = isCborMap(output)
     ? [output.get(0), output.get(1), [...output.keys()].some((k) => k !== 0 && k !== 1)]
@@ -68,9 +99,8 @@ export function checkCommitmentTransaction(txHex: string, plan: CommitmentPlan):
   for (const key of body.keys())
     if (!COMMITMENT_BODY_FIELDS.has(key))
       throw new Error(`Unsigned transaction has unexpected body field ${String(key)}`);
-  const inputSet = body.get(0);
-  const inputs = isCborTag(inputSet) && inputSet.tag === 258 ? inputSet.value : inputSet;
-  const input = isCborArray(inputs) && inputs.length === 1 ? inputs[0] : undefined;
+  const inputs = setItems(body.get(0));
+  const input = inputs?.length === 1 ? inputs[0] : undefined;
   if (
     !isCborArray(input) ||
     !(input[0] instanceof Uint8Array) ||
@@ -95,6 +125,11 @@ export function checkCommitmentTransaction(txHex: string, plan: CommitmentPlan):
   const metadata = auxiliary ? auxiliaryMetadata(auxiliary) : null;
   if (metadata?.size !== 1 || !sameMetadatum(metadata.get(LABEL), plan.metadata))
     throw new Error('Unsigned transaction metadata differs from the commitment');
+  const signers = requiredSigners(body);
+  if (signers.length !== 1 || signers[0] !== plan.signer.toLowerCase())
+    throw new Error('Unsigned transaction required signers differ from the organizer identity');
+  if (invalidHereafter(body) !== plan.invalidHereafter)
+    throw new Error('Unsigned transaction validity upper bound differs from the commitment');
   return { fee, txHash: transactionHash(txHex) };
 }
 export const DEMO_OWNER = 'demo-organizer';
@@ -123,14 +158,20 @@ export class DemoChain {
   confirm(ref: CommitmentRef, late = false): Confirmed {
     const inclusion = this.included.get(ref.txHash);
     if (!inclusion) throw new Error('Unknown demo commitment');
-    return { ...inclusion, confirmedAt: roundTime(inclusion.round) + (late ? 1 : -300) };
+    return {
+      ...inclusion,
+      confirmedAt: roundTime(inclusion.round) + (late ? 1 : -300),
+      validUntil: demoValidUntil(inclusion),
+    };
   }
   // The verifier's view of a demo draw: always confirmed on time, because there is no chain to ask.
   async readCommitment(bundle: Bundle): Promise<Confirmed> {
     const inclusion = await demoInclusion(bundle);
-    return { ...inclusion, confirmedAt: roundTime(inclusion.round) - 300 };
+    return { ...inclusion, confirmedAt: roundTime(inclusion.round) - 300, validUntil: demoValidUntil(inclusion) };
   }
 }
+// A simulated validity upper bound, as the page sets it on preprod.
+const demoValidUntil = (inclusion: Inclusion) => commitmentValidUntil(inclusion.round);
 const BECH32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
 function polymod(values: number[]): number {
   const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -193,7 +234,80 @@ export function identityOf(owner: string): Identity {
   if (type === 6 && bytes.length === 29) return { kind: 'payment', key: hex(bytes.slice(1)) };
   throw new Error('Organizer address must be a key-hash base or enterprise address');
 }
-// biome-ignore lint/suspicious/noExplicitAny: Koios rows are untyped JSON; step 7 replaces these reads with CBOR checks.
+// The key hash (hex) of the organizer identity: the stake key of a base address, else the payment key (PD3).
+export function identityKeyHash(owner: string): string {
+  const identity = identityOf(owner);
+  const { bytes } = decodeBech32(owner);
+  return identity.kind === 'stake' ? hex(bytes.slice(29)) : hex(bytes.slice(1));
+}
+export interface CommitmentMetadata {
+  bundleHash: string;
+  drawId: string;
+  round: number;
+}
+// What one raw transaction says about a commitment, every field read from CBOR whose hash was checked here.
+export interface CommitmentTransaction {
+  // The development commitment under LABEL; null when the label is absent or carries another protocol version.
+  metadata: CommitmentMetadata | null;
+  // The label carries this protocol version in a shape that is not a commitment. Kept apart from `metadata` so a
+  // malformed entry in someone else's transaction cannot fail the organizer's history before signers are checked.
+  malformed: boolean;
+  // Required signers whose vkey witness verifies over the transaction id.
+  signers: Set<string>;
+  // False for a phase-2 failed transaction (is_valid = false), which the ledger records but does not apply.
+  valid: boolean;
+  // The invalid_hereafter slot, or null when the transaction sets none.
+  invalidHereafter: bigint | null;
+}
+// The LABEL entry as a commitment: null when absent or another protocol version, 'malformed' when it claims
+// this version without valid commitment fields (the same field rules the indexer JSON was held to before).
+function commitmentEntry(auxiliary: Uint8Array | null): CommitmentMetadata | null | 'malformed' {
+  let entry: CborValue;
+  try {
+    entry = auxiliary ? auxiliaryMetadata(auxiliary)?.get(LABEL) : undefined;
+  } catch {
+    return null;
+  }
+  if (!isCborMap(entry) || entry.get('protocol') !== VERSION) return null;
+  const [drawId, bundleHash, chainHash, round] = ['drawId', 'bundleHash', 'chainHash', 'round'].map((k) =>
+    entry.get(k),
+  );
+  if (
+    chainHash !== QUICKNET ||
+    typeof bundleHash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(bundleHash) ||
+    typeof drawId !== 'string' ||
+    typeof round !== 'bigint' ||
+    round < 0n ||
+    round > BigInt(Number.MAX_SAFE_INTEGER)
+  )
+    return 'malformed';
+  return { bundleHash, drawId, round: Number(round) };
+}
+// Reads a commitment from the indexer's raw transaction bytes (F2): the body must hash to the transaction id
+// and the auxiliary data to the body's declared hash, so the indexer can neither substitute the body nor the
+// metadata. The block it reports the transaction in is not covered and remains indexer evidence.
+export function readCommitmentTransaction(txHex: string, txHash: string): CommitmentTransaction {
+  const parts = transactionParts(txHex);
+  if (transactionHash(txHex) !== txHash) throw new Error('Transaction CBOR does not match its hash');
+  const auxHash = auxiliaryDataHash(txHex);
+  if (auxHash.computed !== auxHash.declared) throw new Error('Transaction auxiliary data hash mismatch');
+  const entry = commitmentEntry(parts.auxiliary);
+  return {
+    metadata: entry === 'malformed' ? null : entry,
+    malformed: entry === 'malformed',
+    signers: verifiedSigners(parts),
+    valid: isValidTransaction(parts),
+    invalidHereafter: invalidHereafter(parts.body),
+  };
+}
+// The indexer has no such transaction: before its invalid_hereafter it may still be included, after it never.
+export class NotIndexedError extends Error {
+  constructor() {
+    super('Transaction is not indexed yet');
+  }
+}
+// biome-ignore lint/suspicious/noExplicitAny: Koios rows are untyped JSON; only inclusion, enumeration and inputs are read from them.
 type Row = Record<string, any>;
 export class KoiosChain {
   constructor(readonly base = DEFAULT_INDEXER) {
@@ -216,34 +330,34 @@ export class KoiosChain {
   async readCommitment(txHash: string, owner: string): Promise<Confirmed> {
     if (!/^[a-f0-9]{64}$/.test(txHash) || !/^addr_test1[a-z0-9]+$/.test(owner))
       throw new Error('Invalid preprod commitment reference');
-    const rows = await this.query('tx_info', { _tx_hashes: [txHash], _inputs: true, _metadata: true });
-    const tx = rows.find((x) => x.tx_hash === txHash);
-    // Metadata is separately queried so the result does not depend on a provider's default flags.
-    const metaRows = await this.query('tx_metadata', { _tx_hashes: [txHash] });
-    const m = metaRows.find((x) => x.tx_hash === txHash)?.metadata?.[LABEL];
-    const inclusion = this.inclusionFrom(txHash, owner, tx, m);
+    const identity = identityKeyHash(owner);
+    const rows = await this.query('tx_cbor', { _tx_hashes: [txHash] });
+    const row = rows.find((x) => x.tx_hash === txHash);
+    if (!row || typeof row.cbor !== 'string') throw new NotIndexedError();
+    const tx = readCommitmentTransaction(row.cbor, txHash);
+    if (!tx.valid) throw new Error('Invalid transaction');
+    if (!tx.signers.has(identity))
+      throw new Error(
+        'Organizer identity key did not sign the commitment (required signer witness missing or invalid)',
+      );
+    // The CBOR holds only input references; which address an input spends from is the indexer's report.
+    const info = await this.query('tx_info', { _tx_hashes: [txHash], _inputs: true });
+    if (!info.find((x) => x.tx_hash === txHash)?.inputs?.some((x: Row) => x.payment_addr?.bech32 === owner))
+      throw new Error('Organizer address is not a transaction input');
+    const inclusion = this.inclusionFrom(txHash, owner, row, tx);
     const height = inclusion.blockHeight + CONFIRMATIONS - 1;
     const blocks = await this.query(`blocks?block_height=eq.${height}&limit=1`);
     const block = blocks.find((x) => x.block_height === height);
     if (!block) throw new Error(`Waiting for ${CONFIRMATIONS} confirmations`);
     if (!Number.isSafeInteger(block.block_time)) throw new Error('Invalid confirmation block time');
-    return { ...inclusion, confirmedAt: block.block_time };
+    const slot = tx.invalidHereafter;
+    return { ...inclusion, confirmedAt: block.block_time, validUntil: slot === null ? null : preprodSlotTime(slot) };
   }
-  private inclusionFrom(txHash: string, owner: string, tx: Row | undefined, m: Row | undefined): Inclusion {
-    if (!tx) throw new Error('Transaction is not indexed yet');
-    if (tx.valid_contract === false) throw new Error('Invalid transaction');
-    if (!tx.inputs?.some((x: Row) => x.payment_addr?.bech32 === owner))
-      throw new Error('Organizer address is not a transaction input');
-    if (
-      !m ||
-      m.protocol !== VERSION ||
-      m.chainHash !== QUICKNET ||
-      !/^[a-f0-9]{64}$/.test(m.bundleHash) ||
-      typeof m.drawId !== 'string' ||
-      !Number.isSafeInteger(m.round)
-    )
-      throw new Error('Unsupported commitment metadata');
-    if (!Number.isSafeInteger(tx.block_height) || !Number.isSafeInteger(tx.tx_timestamp))
+  // `row` is the indexer's tx_cbor row: its block height and time are indexer evidence; `tx` was read from CBOR.
+  private inclusionFrom(txHash: string, owner: string, row: Row, tx: CommitmentTransaction): Inclusion {
+    const m = tx.metadata;
+    if (!m) throw new Error('Unsupported commitment metadata');
+    if (!Number.isSafeInteger(row.block_height) || !Number.isSafeInteger(row.tx_timestamp))
       throw new Error('Invalid inclusion block');
     return {
       txHash,
@@ -251,14 +365,15 @@ export class KoiosChain {
       bundleHash: m.bundleHash,
       drawId: m.drawId,
       round: m.round,
-      blockHeight: tx.block_height,
-      blockTime: tx.tx_timestamp,
+      blockHeight: row.block_height,
+      blockTime: row.tx_timestamp,
     };
   }
   // Every commitment of the owner's identity, whatever its drawId or round; uniqueness compares their intervals.
   async findCommitments(owner: string): Promise<Inclusion[]> {
     if (!/^addr_test1[a-z0-9]+$/.test(owner)) throw new Error('Invalid organizer address');
     const identity = identityOf(owner);
+    const signer = identityKeyHash(owner);
     const hashes: string[] = [];
     const pageSize = 1000;
     // Ordered by height then hash so pages do not shift between requests within one block.
@@ -281,23 +396,24 @@ export class KoiosChain {
     // preprod 2026-10-19), so batches of 50 hashes leave room.
     const batch = 50;
     for (let i = 0; i < hashes.length; i += batch) {
+      // The indexer's metadata JSON only selects which transactions to read as CBOR: hiding a commitment here is
+      // no different from leaving it out of the enumeration, and everything counted is read from checked CBOR.
       const rows = await this.query('tx_metadata', { _tx_hashes: hashes.slice(i, i + batch) });
-      const matching = rows.filter((row) => row.metadata?.[LABEL]?.protocol === VERSION);
+      const matching = rows.filter((row) => row.metadata?.[LABEL]?.protocol === VERSION).map((row) => row.tx_hash);
       if (!matching.length) continue;
-      // Koios leaves `inputs` empty unless `_inputs` is requested (measured on preprod, 2026-10-19).
-      const transactions = await this.query('tx_info', {
-        _tx_hashes: matching.map((row) => row.tx_hash),
-        _inputs: true,
-      });
-      for (const row of matching) {
-        const m = row.metadata?.[LABEL];
-        const tx = transactions.find((x) => x.tx_hash === row.tx_hash);
-        if (!tx || !Array.isArray(tx.inputs)) throw new Error('Organizer history transaction evidence is incomplete');
-        // Until step 7 checks the identity key's witness, a transaction counts only when it spends from the owner
-        // address itself: the ledger then requires the owner's payment key signature, so neither an incoming
-        // transfer nor a third party using the owner's stake part in its own address can create a commitment.
-        if (tx.valid_contract === false || !tx.inputs.some((x: Row) => x.payment_addr?.bech32 === owner)) continue;
-        found.push(this.inclusionFrom(row.tx_hash, owner, tx, m));
+      const transactions = await this.query('tx_cbor', { _tx_hashes: matching });
+      for (const txHash of matching) {
+        const row = transactions.find((x) => x.tx_hash === txHash);
+        if (!row || typeof row.cbor !== 'string')
+          throw new Error('Organizer history transaction evidence is incomplete');
+        const tx = readCommitmentTransaction(row.cbor, txHash);
+        // Only the identity key's verified signature makes a transaction this identity's commitment (PD3): a
+        // third party can put the organizer's stake part in its own address but cannot sign with its key.
+        // Which address the inputs spend from is not consulted, so the same wallet committing from another
+        // payment address is still counted.
+        // A malformed entry in the identity's own signed transaction still fails the history (inclusionFrom).
+        if (!tx.valid || !tx.signers.has(signer) || (!tx.metadata && !tx.malformed)) continue;
+        found.push(this.inclusionFrom(txHash, owner, row, tx));
       }
     }
     return found;

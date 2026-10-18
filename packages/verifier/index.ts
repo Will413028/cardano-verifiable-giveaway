@@ -4,6 +4,7 @@ import {
   selectWinners,
   checkTiming,
   checkUniqueness,
+  checkValidityBound,
   BOUNDARY,
   type Confirmed,
   type Inclusion,
@@ -89,7 +90,9 @@ export async function verifyProof(
     add(
       'Timing and confirmations',
       result(checkTiming(commitment, proof.bundle.drand.round)),
-      'Inclusion and the 15th confirmation precede the round',
+      checkValidityBound(commitment, proof.bundle.drand.round)
+        ? 'The transaction validity upper bound (invalid_hereafter), inclusion and the 15th confirmation precede the round'
+        : 'The transaction has no validity upper bound (invalid_hereafter) before the round, so the ledger does not rule out inclusion after it; the organizer must commit again with a later round',
     );
     const uniqueness = checkUniqueness(candidates, commitment);
     conflicts = uniqueness.conflicts.map(({ txHash, drawId, round, blockHeight, blockTime }) => ({

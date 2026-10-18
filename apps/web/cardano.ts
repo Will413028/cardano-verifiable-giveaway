@@ -1,6 +1,7 @@
 // Loaded only by the creation flow (dynamic import in app.ts): verifiers never download the transaction SDK.
 import * as Address from '@evolution-sdk/evolution/Address';
 import * as Assets from '@evolution-sdk/evolution/Assets';
+import * as KeyHash from '@evolution-sdk/evolution/KeyHash';
 import * as Transaction from '@evolution-sdk/evolution/Transaction';
 import * as TransactionHash from '@evolution-sdk/evolution/TransactionHash';
 import * as TransactionInput from '@evolution-sdk/evolution/TransactionInput';
@@ -12,12 +13,16 @@ import { computeCommitment, hex, unhex, type Bundle } from '@giveaway/protocol';
 import {
   checkCommitmentTransaction,
   commitmentMetadata,
+  commitmentValidUntil,
   COMMITMENT_TRANSFER,
   decodeCborAll,
   DEFAULT_INDEXER,
+  identityKeyHash,
   isCborArray,
   isCborMap,
   LABEL,
+  preprodSlotAt,
+  readCommitmentTransaction,
   transactionHash,
   transactionParts,
 } from '@giveaway/chain';
@@ -88,10 +93,17 @@ export async function prepareTransaction(bundle: Bundle, id: string) {
     throw new Error('Wallet UTxO is not on preprod');
   const changeAddress = await wallet.getChangeAddress();
   const address = Address.fromHex(changeAddress);
+  const owner = Address.toBech32(verified.address);
+  // PD3: the organizer identity key (stake key of a base address, else the payment key) is the required signer.
+  const signer = identityKeyHash(owner);
+  // PD5: the ledger refuses the transaction from this time on, which precedes the round.
+  const validUntil = commitmentValidUntil(bundle.drand.round);
   const metadata = commitmentMetadata(bundle, await computeCommitment(bundle));
   const built = await makeTxBuilder({ chain: preprod })
     .payToAddress({ address, assets: Assets.fromLovelace(COMMITMENT_TRANSFER) })
     .attachMetadata({ label: BigInt(LABEL), metadata: metadatum(metadata) })
+    .addSigner({ keyHash: KeyHash.fromHex(signer) })
+    .setValidity({ to: BigInt(validUntil) * 1000n })
     .build({ fullProtocolParameters: params, availableUtxos: [verified], changeAddress: address });
   const unsigned = Transaction.toCBORHex(await built.toTransaction());
   // Re-read the SDK's output with the trust-path reader; a mismatch stops here, before the wallet sees it.
@@ -99,15 +111,24 @@ export async function prepareTransaction(bundle: Bundle, id: string) {
     input: { txHash: candidate.txHash, index: Number(candidate.index), lovelace: candidate.lovelace },
     address: changeAddress,
     metadata,
+    signer,
+    invalidHereafter: preprodSlotAt(validUntil),
   });
   return {
-    owner: Address.toBech32(verified.address),
+    owner,
+    validUntil,
     bytes: unsigned.length / 2,
     fee: Number(checked.fee) / 1000000,
     async signAndSubmit(): Promise<string> {
       if ((await wallet.getNetworkId()) !== 0) throw new Error('Mainnet is disabled');
       const signed = Transaction.addVKeyWitnessesHex(unsigned, await wallet.signTx(unsigned, false));
       if (transactionHash(signed) !== checked.txHash) throw new Error('Signing changed the transaction body');
+      // The verifier counts the commitment only with the identity key's witness; a wallet that leaves it out
+      // would spend the fee on a commitment that can never pass.
+      if (!readCommitmentTransaction(signed, checked.txHash).signers.has(signer))
+        throw new Error(
+          'The wallet did not sign with the organizer identity key (the stake key of a base address, otherwise the payment key). This wallet cannot commit a draw.',
+        );
       const fee = transactionParts(signed).body.get(2);
       if (
         typeof fee !== 'bigint' ||

@@ -131,6 +131,16 @@ for (const [field, message, testName] of [
   ],
   ['balance', 'Unsigned transaction does not balance its input', 'unsigned commitment re-read: balance'],
   ['metadata', 'Unsigned transaction metadata differs from the commitment', 'unsigned commitment re-read: metadata'],
+  [
+    'required signers',
+    'Unsigned transaction required signers differ from the organizer identity',
+    'unsigned commitment re-read: required signers',
+  ],
+  [
+    'validity upper bound',
+    'Unsigned transaction validity upper bound differs from the commitment',
+    'unsigned commitment re-read: validity upper bound',
+  ],
 ])
   await mustFail(
     `Skipping the unsigned ${field} comparison`,
@@ -138,3 +148,26 @@ for (const [field, message, testName] of [
     (text) => text.replace(`throw new Error("${message}")`, 'void 0'),
     testName,
   );
+// Step 7: the verifier reads commitments from the transaction CBOR; skipping any of its three checks must fail a test.
+await mustFail(
+  'Skipping the auxiliary data hash comparison',
+  library,
+  (text) =>
+    text.replace(
+      'if (auxHash.computed !== auxHash.declared) throw new Error("Transaction auxiliary data hash mismatch");',
+      '',
+    ),
+  'F2: auxiliary data replaced',
+);
+await mustFail(
+  'Skipping the vkey witness signature verification',
+  library,
+  (text) => text.replace('required.has(keyHash) && ed25519Verify(signature, message, vkey)', 'required.has(keyHash)'),
+  'PD3 witness',
+);
+await mustFail(
+  'Skipping the validity upper bound check',
+  library,
+  (text) => text.replace('return checkValidityBound(commitment, round) && ', 'return '),
+  'F17: invalid_hereafter',
+);

@@ -5,6 +5,7 @@
   "exports": "./index.ts",
   "dependencies": {
     "@giveaway/protocol": "workspace:*",
+    "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0"
   }
 }

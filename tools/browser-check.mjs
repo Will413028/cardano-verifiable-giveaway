@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { encodeBech32, LABEL, QUICKNET, VERSION } from '@giveaway/verifier-cli/library';
+import { commitmentValidUntil, encodeBech32, roundTime, transactionHash } from '@giveaway/verifier-cli/library';
+import { cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({
@@ -112,48 +113,80 @@ try {
   assert.equal(await mainnet.locator('#commit').isVisible(), false);
   await mainnet.close();
   passed('mock mainnet wallet cannot build or submit');
-  const preprod = await browser.newPage();
   const params = JSON.parse(await readFile(`${root}tests/epoch-params.json`, 'utf8'));
-  const addressHex = `60${'00'.repeat(28)}`;
-  const address = encodeBech32(
-    'addr_test',
-    Uint8Array.from(addressHex.match(/../g), (b) => parseInt(b, 16)),
-  );
-  // CIP-30 UTxO CBOR: [[tx id, index], [address, 10 ADA]].
-  const utxo = `82825820${'00'.repeat(32)}0082581d${addressHex}1a00989680`;
-  const submitted = 'ab'.repeat(32);
-  // Koios mock shared by the preprod pages; `txInfo` answers lookups of the submitted commitment.
-  const routePreprod = (target, txInfo) =>
-    target.route('https://preprod.koios.rest/api/v1/**', async (route) => {
+  // Two wallets: an enterprise address that never signs, and a base address whose test keys (tests/cardano.mjs,
+  // seeds 1 and 2) sign in Node through an exposed function, so the page gets real vkey witnesses.
+  const payment = testKey(1);
+  const stake = testKey(2);
+  const wallets = {
+    enterprise: `60${'00'.repeat(28)}`,
+    base: `00${payment.hash}${stake.hash}`,
+  };
+  const bech32 = (hex) => encodeBech32('addr_test', unhex(hex));
+  // CIP-30 UTxO CBOR: [[tx id, index 0], [address, 10 ADA]].
+  const utxoOf = (addressHex) =>
+    `82825820${'00'.repeat(32)}0082${addressHex.length === 58 ? '581d' : '5839'}${addressHex}1a00989680`;
+  // The witness set a CIP-30 wallet returns from signTx: both keys sign the transaction id.
+  const witnessSet = (unsigned) => {
+    const txId = unhex(transactionHash(unsigned));
+    return hex(
+      cbor(
+        new Map([
+          [
+            0,
+            new Tag(
+              258,
+              [payment, stake].map((k) => [k.publicKey, sign(k, txId)]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  };
+  // Koios mock shared by the preprod pages. A submitted transaction is kept and served back from tx_cbor (through
+  // `txCbor`, which may hold or withhold it) and tx_info; `utxoIndex` lets the indexer report another output.
+  const routePreprod = (target, addressHex, { txCbor, utxoIndex = 0 } = {}) => {
+    const submitted = new Map();
+    return target.route('https://preprod.koios.rest/api/v1/**', async (route) => {
       const path = new URL(route.request().url()).pathname.split('/').at(-1);
-      if (path === 'submittx') return route.fulfill({ status: 202, json: submitted });
-      if (txInfo && path === 'tx_info' && route.request().postData()?.includes(submitted)) return txInfo(route);
+      if (path === 'submittx') {
+        const body = hex(route.request().postDataBuffer());
+        submitted.set(transactionHash(body), body);
+        return route.fulfill({ status: 202, json: transactionHash(body) });
+      }
+      const asked = route.request().postDataJSON?.()?._tx_hashes ?? [];
+      const known = asked.filter((h) => submitted.has(h)).map((h) => ({ tx_hash: h, cbor: submitted.get(h) }));
+      if (path === 'tx_cbor' && txCbor) return txCbor(route, known);
       const data =
         path === 'tip'
           ? [{ epoch_no: params[0].epoch_no }]
           : path === 'epoch_params'
             ? params
-            : path === 'tx_metadata'
+            : path === 'tx_cbor' || path === 'tx_metadata'
               ? []
-              : path === 'utxo_info'
-                ? [
-                    {
-                      tx_hash: '00'.repeat(32),
-                      tx_index: 0,
-                      address,
-                      value: '10000000',
-                      asset_list: [],
-                      datum_hash: null,
-                      inline_datum: null,
-                      reference_script: null,
-                    },
-                  ]
-                : undefined;
+              : path === 'tx_info'
+                ? known.map((t) => ({ tx_hash: t.tx_hash, inputs: [{ payment_addr: { bech32: bech32(addressHex) } }] }))
+                : path === 'utxo_info'
+                  ? [
+                      {
+                        tx_hash: '00'.repeat(32),
+                        tx_index: utxoIndex,
+                        address: bech32(addressHex),
+                        value: '10000000',
+                        asset_list: [],
+                        datum_hash: null,
+                        inline_datum: null,
+                        reference_script: null,
+                      },
+                    ]
+                  : undefined;
       if (!data) throw new Error(`Unexpected mock preprod request: ${path}`);
       await route.fulfill({ json: data });
     });
-  // A CIP-30 mock; with `sign` it approves by returning an empty witness set (`a0`), so no key exists anywhere in the check.
-  const mockWallet = ({ utxo, sign }) => {
+  };
+  // A CIP-30 mock. With `sign` it approves through the exposed `mockSign`; every signTx call is counted.
+  const mockWallet = ({ utxo, address, sign }) => {
+    window.signCalls = 0;
     window.cardano = {
       mock: {
         name: 'Mock preprod',
@@ -161,34 +194,54 @@ try {
         apiVersion: '1',
         enable: async () => ({
           getNetworkId: async () => 0,
-          getChangeAddress: async () => `60${'00'.repeat(28)}`,
+          getChangeAddress: async () => address,
           getUtxos: async () => [utxo],
-          signTx: async () => {
-            if (sign) return 'a0';
+          signTx: async (tx) => {
+            window.signCalls++;
+            if (sign) return window.mockSign(tx);
             throw new Error('No signing allowed in automated browser checks');
           },
         }),
       },
     };
   };
-  await routePreprod(preprod);
-  await preprod.addInitScript(mockWallet, { utxo, sign: false });
-  await preprod.goto('http://127.0.0.1:4320/');
-  await preprod.selectOption('#network', 'preprod');
-  await preprod.waitForSelector('#wallet option', { state: 'attached' });
-  await preprod.click('#prepare');
-  await preprod.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
-  assert.match(await preprod.locator('#draw-status').textContent(), /Estimated fee/);
-  assert.equal(await preprod.locator('#commit').textContent(), 'Sign and submit to preprod');
-  await preprod.close();
+  const preprodPage = async ({ wallet = 'enterprise', sign = false, clock = false, ...route } = {}) => {
+    const target = await browser.newPage();
+    const pageErrors = [];
+    target.on('pageerror', (e) => pageErrors.push(e.message));
+    if (clock) await target.clock.install();
+    await target.exposeFunction('mockSign', witnessSet);
+    await routePreprod(target, wallets[wallet], route);
+    await target.addInitScript(mockWallet, { utxo: utxoOf(wallets[wallet]), address: wallets[wallet], sign });
+    await target.goto('http://127.0.0.1:4320/');
+    await target.selectOption('#network', 'preprod');
+    await target.waitForSelector('#wallet option', { state: 'attached' });
+    return { target, pageErrors };
+  };
+  const statusText = (target) => target.locator('#draw-status').textContent();
+  {
+    const { target } = await preprodPage();
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
+    assert.match(await statusText(target), /Estimated fee/);
+    assert.equal(await target.locator('#commit').textContent(), 'Sign and submit to preprod');
+    await target.close();
+  }
   passed('mock preprod wallet builds unsigned commitment and displays fee');
+  // The indexer reports the wallet's UTxO under another output index; the SDK builds a transaction spending that
+  // output, and the re-read of the unsigned CBOR must stop it before the wallet is asked to sign.
+  {
+    const { target } = await preprodPage({ utxoIndex: 1 });
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('unexpected input'));
+    assert.equal(await target.locator('#commit').isVisible(), false);
+    assert.equal(await target.evaluate(() => window.signCalls), 0);
+    await target.close();
+  }
+  passed('unsigned transaction that differs from the plan is never signed');
   // The confirmation poll waits on Koios while the draw is reset; the late answer must not reach the page.
   // `indexed` covers the success path (the commitment is found and confirmed) and the error path (not yet indexed).
   for (const indexed of [false, true]) {
-    const stale = await browser.newPage();
-    const staleErrors = [];
-    stale.on('pageerror', (e) => staleErrors.push(e.message));
-    await stale.clock.install();
     let release, polled;
     const held = new Promise((resolve) => {
       release = resolve;
@@ -197,69 +250,65 @@ try {
       polled = resolve;
     });
     const included = Math.floor(Date.now() / 1000);
-    await routePreprod(stale, async (route) => {
-      polled();
-      await held;
-      await route.fulfill({
-        json: indexed
-          ? [
-              {
-                tx_hash: submitted,
-                inputs: [{ payment_addr: { bech32: address } }],
-                block_height: 100,
-                tx_timestamp: included,
-              },
-            ]
-          : [],
-      });
+    const { target: stale, pageErrors: staleErrors } = await preprodPage({
+      wallet: 'base',
+      sign: true,
+      clock: true,
+      txCbor: async (route, known) => {
+        polled();
+        await held;
+        await route.fulfill({
+          json: indexed ? known.map((t) => ({ ...t, block_height: 100, tx_timestamp: included })) : [],
+        });
+      },
     });
-    // Registered after the shared mock, so these take precedence for the poll's later reads.
+    // Registered after the shared mock, so it takes precedence for the poll's confirmation read.
     await stale.route('https://preprod.koios.rest/api/v1/blocks**', (route) =>
       route.fulfill({ json: [{ block_height: 114, block_time: included + 60 }] }),
     );
-    await stale.route('https://preprod.koios.rest/api/v1/tx_metadata', (route) =>
-      route.fulfill({
-        json: indexed
-          ? [
-              {
-                tx_hash: submitted,
-                metadata: {
-                  [LABEL]: {
-                    protocol: VERSION,
-                    drawId: 'stale',
-                    bundleHash: 'cd'.repeat(32),
-                    chainHash: QUICKNET,
-                    round: 1,
-                  },
-                },
-              },
-            ]
-          : [],
-      }),
-    );
-    await stale.addInitScript(mockWallet, { utxo, sign: true });
-    await stale.goto('http://127.0.0.1:4320/');
-    await stale.selectOption('#network', 'preprod');
-    await stale.waitForSelector('#wallet option', { state: 'attached' });
     await stale.click('#prepare');
     await stale.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
     await stale.click('#commit');
     await stale.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Submitted'));
+    assert.equal(await stale.evaluate(() => window.signCalls), 1);
     await stale.clock.fastForward(31000);
     await pollSeen;
     await stale.selectOption('#network', 'demo');
-    const statusAfterReset = await stale.locator('#draw-status').textContent();
-    // The last request of each path: the confirmation block when indexed, the metadata read otherwise.
-    const lastRead = stale.waitForResponse((r) => r.url().includes(indexed ? '/blocks' : '/tx_metadata'));
+    const statusAfterReset = await statusText(stale);
+    // The last request of each path: the confirmation block when indexed, the CBOR read otherwise.
+    const lastRead = stale.waitForResponse((r) => r.url().includes(indexed ? '/blocks' : '/tx_cbor'));
     release();
     await lastRead;
     await stale.waitForTimeout(500);
-    assert.equal(await stale.locator('#draw-status').textContent(), statusAfterReset);
+    assert.equal(await statusText(stale), statusAfterReset);
     assert.equal(await stale.locator('#open').isVisible(), false);
     assert.deepEqual(staleErrors, []);
     await stale.close();
   }
   passed('confirmation response after a reset is discarded');
+  // A signed commitment the indexer never sees: once its invalid_hereafter has passed, the page says it expired
+  // and asks for a later round instead of waiting for the round.
+  {
+    const { target, pageErrors } = await preprodPage({ wallet: 'base', sign: true, clock: true });
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
+    await target.click('#commit');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Submitted'));
+    const round = Number(await target.locator('#round').inputValue());
+    const validUntil = commitmentValidUntil(round);
+    assert.ok(validUntil < roundTime(round));
+    // The first poll before the bound keeps waiting; the first one after it reports the expiry.
+    await target.clock.fastForward(31000);
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Next check'));
+    const seconds = Math.ceil(validUntil - (await target.evaluate(() => Date.now() / 1000)));
+    await target.clock.fastForward((seconds + 31) * 1000);
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('expired'));
+    assert.match(await statusText(target), /later round/);
+    assert.equal(await target.locator('#open').isVisible(), false);
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed('expired commitment asks for a later round');
   await page.selectOption('#network', 'demo');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

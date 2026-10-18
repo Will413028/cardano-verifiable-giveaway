@@ -5,6 +5,7 @@ import {
   BOUNDARY,
   CONFIRMATIONS,
   checkTiming,
+  checkValidityBound,
   computeCommitment,
   normalizeLabel,
   parseEntrants,
@@ -15,6 +16,7 @@ import {
   validateBundle,
   validateProof,
 } from '@giveaway/protocol';
+import { NotIndexedError } from '@giveaway/chain';
 import { verifyProof } from '@giveaway/verifier';
 import {
   announcement,
@@ -164,7 +166,7 @@ function scheduleConfirmation(state: AppState, chains: Chains) {
   clearTimeout(state.poll);
   state.poll = setTimeout(async () => {
     const draw = state.draw;
-    const { bundle } = draw;
+    const { bundle, transaction } = draw;
     if (!bundle || !draw.committed || isDemo()) return;
     try {
       await confirm(state, chains);
@@ -172,7 +174,13 @@ function scheduleConfirmation(state: AppState, chains: Chains) {
       // A reset or new preview while the indexer answered: the response belongs to a draw that is gone.
       if (state.draw !== draw) return;
       status(`${(e as Error).message}. Next check in 30 seconds.`);
-      if (now() < roundTime(bundle.drand.round)) scheduleConfirmation(state, chains);
+      // Past invalid_hereafter the ledger refuses the transaction: if it is not on chain by now it never will be.
+      if (e instanceof NotIndexedError && transaction && now() >= transaction.validUntil)
+        status(
+          'The commitment transaction expired before it was included (its invalid_hereafter has passed). Choose a later round and commit again.',
+          true,
+        );
+      else if (now() < roundTime(bundle.drand.round)) scheduleConfirmation(state, chains);
       else status('Round has arrived without verified confirmations. This draw is invalid; create a new drawId.', true);
     }
   }, 30000);
@@ -191,6 +199,10 @@ async function confirm(state: AppState, chains: Chains, late = false) {
   if (!checkTiming(confirmed, bundle.drand.round)) {
     show(['open', 'confirm', 'late'], false);
     clearTimeout(state.poll);
+    if (!checkValidityBound(confirmed, bundle.drand.round))
+      throw new Error(
+        'The commitment has no validity upper bound (invalid_hereafter) before the round. This draw is invalid; choose a later round and commit again.',
+      );
     throw new Error('Confirmation arrived too late. This draw is invalid; create a new drawId.');
   }
   clearTimeout(state.poll);
