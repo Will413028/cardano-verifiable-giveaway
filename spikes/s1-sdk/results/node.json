@@ -1,0 +1,184 @@
+{
+ "runtime": "node v26.10.0",
+ "results": [
+  {
+   "option": "minimal",
+   "init": "none",
+   "txs": [
+    {
+     "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    }
+   ],
+   "cose": {
+    "agree": 29,
+    "wrong": []
+   },
+   "ok": true
+  },
+  {
+   "option": "evolution",
+   "init": "none",
+   "txs": [
+    {
+     "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "naiveHash": false,
+     "naiveAux": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "naiveHash": true,
+     "naiveAux": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "naiveHash": true,
+     "naiveAux": false,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "naiveHash": true,
+     "naiveAux": false,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    }
+   ],
+   "cose": {
+    "agree": 29,
+    "wrong": []
+   },
+   "ok": true
+  },
+  {
+   "option": "mesh",
+   "init": "none",
+   "txs": [
+    {
+     "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    }
+   ],
+   "cose": {
+    "agree": 26,
+    "wrong": [
+     "noble alg ES256 (-7) in protected header: true",
+     "noble trailing byte after COSE_Sign1: true",
+     "noble unflagged blake2b-224 payload: true"
+    ]
+   },
+   "coseUnwrapped": {
+    "agree": 23,
+    "wrong": [
+     "noble header address differs from checked address: true",
+     "evolution header address differs from checked address: true",
+     "mesh header address differs from checked address: true",
+     "noble alg ES256 (-7) in protected header: true",
+     "noble trailing byte after COSE_Sign1: true",
+     "noble unflagged blake2b-224 payload: true"
+    ]
+   },
+   "ok": false
+  },
+  {
+   "option": "blaze",
+   "init": true,
+   "txs": [
+    {
+     "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    },
+    {
+     "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+     "hash": true,
+     "mutatedBodyDiffers": true,
+     "aux": true,
+     "mutatedAuxDiffers": true
+    }
+   ],
+   "cose": {
+    "agree": 29,
+    "wrong": []
+   },
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "probe/blaze-steps.mjs hashAll": "[true,true,true,true]",
+ "probe/blaze-steps.mjs aux": "[true,true,true,true]",
+ "probe/blaze-steps.mjs wasm": "{\"wasmError\":\"CompileError: WebAssembly.compile(): Wasm code generation disallowed by embedder\"}",
+ "probe/blaze-steps.mjs edraw": "{\"error\":\"TypeError: libsodium_wrappers_default.crypto_sign_verify_detached is not a function\"}",
+ "probe/blaze-steps.mjs verify": "{\"id\":\"noble base/payment valid\",\"got\":false}",
+ "probe/blaze-steps.mjs init": "Error: The Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response. Refer to: https://developers.cloudflare.com/workers/observability/errors/\n    at async Object.fetch (./node_modules/.pnpm/miniflare@4.20260730.0/node_modules/miniflare/di",
+ "probe/mesh-hash-only.mjs hash": "[true,true,true,true]",
+ "probe/mesh-option.mjs hash": "FATAL The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration. Runtime stderr: service core:user:: Uncaught Error: No secure random number generator found",
+ "probe/mesh-option.mjs aux": "FATAL The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration. Runtime stderr: service core:user:: Uncaught Error: No secure random number generator found",
+ "probe/mesh-option.mjs cose": "FATAL The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration. Runtime stderr: service core:user:: Uncaught Error: No secure random number generator found"
+}

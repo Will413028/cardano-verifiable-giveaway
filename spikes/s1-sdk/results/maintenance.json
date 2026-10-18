@@ -1,0 +1,135 @@
+{
+ "queried": "2026-10-18T03:44:34.822Z",
+ "since": "2026-07-20T03:44:34.814Z",
+ "npm": {
+  "@meshsdk/core": {
+   "created": "2022-12-05T13:34:04.293Z",
+   "distTags": {
+    "latest": "1.9.1"
+   },
+   "versions": 237,
+   "versionsSince": 0,
+   "latestPublished": "2026-06-19T08:19:23.415Z",
+   "weeklyDownloads": 4691,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  },
+  "@evolution-sdk/evolution": {
+   "created": "2025-07-30T17:45:25.494Z",
+   "distTags": {
+    "latest": "0.6.0"
+   },
+   "versions": 60,
+   "versionsSince": 8,
+   "latestPublished": "2026-10-07T19:17:30.046Z",
+   "weeklyDownloads": 1162,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  },
+  "@blaze-cardano/sdk": {
+   "created": "2024-05-03T17:37:37.632Z",
+   "distTags": {
+    "dev": "0.0.0-20250225060054",
+    "catalyst": "1.0.0",
+    "latest": "0.3.3"
+   },
+   "versions": 139,
+   "versionsSince": 4,
+   "latestPublished": "2026-10-14T13:17:12.987Z",
+   "weeklyDownloads": 10831,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  },
+  "@blaze-cardano/core": {
+   "created": "2024-05-03T17:37:37.549Z",
+   "distTags": {
+    "dev": "0.0.0-20250221173908",
+    "latest": "0.10.1"
+   },
+   "versions": 39,
+   "versionsSince": 3,
+   "latestPublished": "2026-10-14T13:17:12.562Z",
+   "weeklyDownloads": 7613,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  },
+  "@noble/hashes": {
+   "created": "2021-11-07T20:54:18.069Z",
+   "distTags": {
+    "latest": "2.4.0"
+   },
+   "versions": 46,
+   "versionsSince": 2,
+   "latestPublished": "2026-08-27T13:02:42.588Z",
+   "weeklyDownloads": 58784962,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  },
+  "@noble/curves": {
+   "created": "2022-12-04T17:21:00.681Z",
+   "distTags": {
+    "latest": "2.4.0"
+   },
+   "versions": 54,
+   "versionsSince": 2,
+   "latestPublished": "2026-08-27T14:28:07.012Z",
+   "weeklyDownloads": 20479869,
+   "downloadWindow": [
+    "2026-10-10",
+    "2026-10-16"
+   ]
+  }
+ },
+ "github": {
+  "MeshJS/mesh": {
+   "stars": 273,
+   "openIssuesAndPrs": 85,
+   "pushedAt": "2026-10-16T10:25:04Z",
+   "archived": false,
+   "license": "Apache-2.0",
+   "commitAuthorsSince": 7
+  },
+  "IntersectMBO/evolution-sdk": {
+   "stars": 22,
+   "openIssuesAndPrs": 95,
+   "pushedAt": "2026-10-16T19:22:49Z",
+   "archived": false,
+   "license": "MIT",
+   "commitAuthorsSince": 8
+  },
+  "butaneprotocol/blaze-cardano": {
+   "stars": 64,
+   "openIssuesAndPrs": 14,
+   "pushedAt": "2026-10-16T03:57:24Z",
+   "archived": false,
+   "license": "Apache-2.0",
+   "commitAuthorsSince": 5
+  },
+  "paulmillr/noble-hashes": {
+   "stars": 931,
+   "openIssuesAndPrs": 4,
+   "pushedAt": "2026-09-08T11:59:13Z",
+   "archived": false,
+   "license": "MIT",
+   "commitAuthorsSince": 1
+  },
+  "paulmillr/noble-curves": {
+   "stars": 963,
+   "openIssuesAndPrs": 3,
+   "pushedAt": "2026-09-08T12:06:03Z",
+   "archived": false,
+   "license": "MIT",
+   "commitAuthorsSince": 1
+  }
+ }
+}

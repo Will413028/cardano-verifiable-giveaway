@@ -4,7 +4,7 @@
 
 **上層：** `docs/plans/2026-10-01-verifiable-giveaway-mvp.md`（MVP 計畫）。本檔沿用它的「全域約束與完成定義」，不重複；主清單見本機個人脈絡檔。
 
-**附件：** `docs/plans/2026-10-18-hardening-and-backend/`：`inventory.md`（既有缺陷與會改變的行為，含處置與去向）、`requirements.md`（後端需求、非功能需求、外部介面）、`check_plan.py`（本計畫的一次性機械檢查）。快照 commit `32d289c`。
+**附件：** `docs/plans/2026-10-18-hardening-and-backend/`：`inventory.md`（既有缺陷與會改變的行為，含處置與去向）、`requirements.md`（後端需求、非功能需求、外部介面）、`check_plan.py`（本計畫的一次性機械檢查）、`spike-s1.md`（步驟 2 的量測結果）。快照 commit `32d289c`。
 
 ## 前提（開工時核對過，2026-10-18）
 
@@ -53,7 +53,7 @@
   - 驗收：進度表貼兩個工具的實際輸出；design-review 的發現逐條有處置。
   - 停止條件：任一工具在快照上就失敗——把失敗列進基線，不在本步修。
 
-- [ ] **2. Spike S1：Cardano SDK 與 verifier 依賴比較**（被擋於：無）
+- [x] **2. Spike S1：Cardano SDK 與 verifier 依賴比較**（被擋於：無）
   - 範圍：拋棄式程式放 `spikes/s1-sdk/`，不被產品引用。比較 Mesh（現用）、Evolution SDK、Blaze：瀏覽器 bundle 大小、需要的 polyfill 數、能否在瀏覽器與 Workers 解析交易 CBOR 並重算 tx hash 與 auxiliary data hash、能否驗證 CIP-8 COSE_Sign1 簽章、能否組出帶 metadata、`required_signers`（stake key hash）與 `invalid_hereafter` 的自轉交易、套件維護狀態；另外對 PD6-B 的最小依賴組合量同樣的 CBOR、hash 與 COSE 項目。產出附件 `spike-s1.md`。
   - 消費端：無（spike 不被引用）。
   - 不能動：產品程式碼；不連主網。
@@ -146,11 +146,13 @@
   - B：Evolution SDK——純 TypeScript、無 WASM（MVP 計畫 `external-interfaces.md` E7）；成熟度待 S1 確認。
   - C：Blaze——成熟度待 S1 確認。
   - 建議：在「能組出帶 metadata、`required_signers`（PD3 身分 key）與 validity interval 上限（PD5）的交易」的選項中選瀏覽器 bundle 最小者；都能做時不偏好維持現狀。
+  - S1 事實（附件 `spike-s1.md`）：三者在 Node 與 Chrome 都組得出含三項欄位的交易。組交易＋錢包入口 gzip：Evolution 295,246（0 shim、9 個套件）、Blaze 492,656（1 shim、2 個空模組、2 個 globals，86 個套件）、Mesh 1,519,596（2 shim、2 個 globals，125 個套件）。Evolution 是 0.6.0、近 90 天 8 版、週下載 1,162，有效期只能以 Unix 時間給再經 slotConfig 換成 slot。錢包是否替 stake key 簽章三者都未驗證。依建議規則 → B。
 - **PD6 verifier 與後端的 CBOR、雜湊、簽章依賴**（狀態：未決；擋住步驟：7、11；需要的事實：步驟 2）
   - verifier 在信任路徑上，tx hash 必須對 body 的原始 bytes 算 blake2b-256，重新編碼可能得到不同 bytes。
   - A：沿用 PD1 選定的 SDK——依賴最少種類；代價是信任路徑帶著組交易用的大型依賴，且要確認它保留原始 bytes。
   - B：最小依賴——能保留原始 byte 範圍的 CBOR decoder、`@noble/hashes`（blake2b）、`@noble/curves`（ed25519），COSE_Sign1 自行依 CIP-8 驗或用專用函式庫——信任路徑小、瀏覽器、CLI、Workers 共用；代價是 COSE 與 CBOR 細節要自己測。
   - 建議：B，除非步驟 2 量到 B 無法在三個執行環境以原始 bytes 算出已知 tx hash。
+  - S1 事實（附件 `spike-s1.md`）：B 在 Node、Chrome、workerd 對 4 筆交易（2 筆 preprod、2 筆非 canonical aux 合成）的 tx hash 與 aux hash 全對、29 個 COSE 向量全對，verify bundle 17,022 bytes gzip、2 個套件、0 shim；代價是自寫 112 行 CBOR 與 COSE 程式要自己測。A 只有沿用 Evolution 時成立：三個執行環境全過，但直覺 API `TransactionBody.toHash`、`AuxiliaryData.toHash` 會重新編碼而算錯，要改用 format tree 與 `CBOR.decodeItemWithOffset`；Mesh 與 Blaze 的 ed25519 走 libsodium，在 workerd 不能用（Mesh 引入即讓 Worker 起不來）；Mesh `checkSignature` 另缺 alg、尾隨 bytes 與 `hashed` 檢查。建議維持 B。
 - **PD2 Workers 方案**（狀態：未決；擋住步驟：10 的 CPU 驗收；需要的事實：步驟 10 的 CPU 量測）
   - A：Free——零成本；每請求 CPU 10 ms。
   - B：付費方案——每月固定費用；CPU 預設 30 秒。
@@ -186,7 +188,7 @@
 | 步驟 | 狀態 | 已跑的驗收 | 未跑的驗收與原因 | 消費端搜尋結果 | commit |
 |---|---|---|---|---|---|
 | 1 開工基線與設計審查 | 完成 | 在 `1d0b4b5` 上：`browser-check.mjs` 11 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core）；`mutation-check.mjs` 5 項（3 個 CLI 竄改、2 個測試竄改）全被擋下、exit 0；design-review 10 個發現：改 8（F-2、F-3、F-4、F-5、F-6、F-8、F-9、F-10）、提 2（F-1→PD3 身分子題重議、F-7→PD5）、駁回 0；指令檔對帳改 1 處（`AGENTS.md` 補後端邊界） | 無 | 無（不改程式） | 見本列提交 |
-| 2 Spike S1：SDK 比較 | 未開始 | | | | |
+| 2 Spike S1：SDK 比較 | 完成 | `spikes/s1-sdk/` 的 `run-node.mjs`、`run-build-node.mjs`、`bundle.mjs`、`runtime.mjs`（Chrome 155.0.8059.82、miniflare 4.20260730.0）、`probe/run.mjs`，原始輸出在 `results/`；fixture `515d0ea3…`、`3883c2a9…`（preprod）＋2 筆合成；四個選項 × 每個量測項都有數字或「不支援」；每個選項的 tx hash 等於 txHash、翻一個 bit 後不同（Mesh 在 workerd 只能以只引 `resolveTxHash` 的入口量）；停止條件未觸發；`make check` exit 0 | 真錢包對 stake key 的 `signData`／`signTx`（等真錢包）；部署後的 Workers（只跑本機 workerd） | 無（spike 不被引用） | 見本列提交 |
 | 3 工程基線 | 未開始 | | | | |
 | 4 verifier 正確性與 development-2 | 未開始 | | | | |
 | 5 唯一性重設計 | 未開始 | | | | |

@@ -1,0 +1,574 @@
+{
+ "chrome": "155.0.8059.82",
+ "workerd": "miniflare 4.20260730.0, compatibilityDate 2026-07-01",
+ "options": {
+  "minimal": {
+   "chrome": [
+    {
+     "variant": "bare",
+     "raw": 80090,
+     "gzip": 21776,
+     "passed": true,
+     "result": {
+      "verify": {
+       "option": "minimal",
+       "init": "none",
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 29,
+        "wrong": []
+       },
+       "ok": true
+      },
+      "build": null
+     }
+    }
+   ],
+   "workerd": [
+    {
+     "variant": "bare",
+     "raw": 80150,
+     "gzip": 21808,
+     "passed": true,
+     "result": {
+      "verify": {
+       "option": "minimal",
+       "init": "none",
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 29,
+        "wrong": []
+       },
+       "ok": true
+      },
+      "build": null
+     }
+    }
+   ]
+  },
+  "evolution": {
+   "chrome": [
+    {
+     "variant": "bare",
+     "raw": 958991,
+     "gzip": 277726,
+     "passed": true,
+     "result": {
+      "verify": {
+       "option": "evolution",
+       "init": "none",
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": false,
+         "naiveAux": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": false,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": false,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 29,
+        "wrong": []
+       },
+       "ok": true
+      },
+      "build": {
+       "option": "evolution",
+       "bytes": 472,
+       "fee": "185257",
+       "cbor": "84a600d9010281825820c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c000018282583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a001e848082583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a00773e57021a0002d3a9031a0825e06007582015b8ec5b1e7a2d33e18e9c6fec67ffe9cf125afb7337cc42f7f931a6023933890ed9010281581c8380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738ea0f5d90103a100a11902a2a56870726f746f636f6c6d646576656c6f706d656e742d3266647261774964687370696b652d73316a62756e646c654861736878406162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616269636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a0001e240",
+       "ttl": true,
+       "requiredSigners": true,
+       "metadata": true,
+       "auxHashMatches": true,
+       "txHash": "df70a53dc24cb83eb5cfa8dd9c65fe1ac5b2daa42d2bc0b1ff6878729ac6f65f",
+       "ok": true
+      }
+     }
+    }
+   ],
+   "workerd": [
+    {
+     "variant": "bare",
+     "raw": 822259,
+     "gzip": 240805,
+     "passed": true,
+     "result": {
+      "verify": {
+       "option": "evolution",
+       "init": "none",
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": false,
+         "naiveAux": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": false,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "naiveHash": true,
+         "naiveAux": false,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 29,
+        "wrong": []
+       },
+       "ok": true
+      },
+      "build": null
+     }
+    }
+   ]
+  },
+  "mesh": {
+   "chrome": [
+    {
+     "variant": "bare",
+     "build": {
+      "variant": "bare",
+      "ok": false,
+      "unresolved": [
+       "crypto",
+       "stream"
+      ],
+      "errors": [
+       "Could not resolve \"crypto\"",
+       "Could not resolve \"crypto\"",
+       "Could not resolve \"crypto\""
+      ]
+     }
+    },
+    {
+     "variant": "alias",
+     "raw": 6041318,
+     "gzip": 1549402,
+     "shims": [
+      "crypto",
+      "stream"
+     ],
+     "empties": [],
+     "passed": false,
+     "result": {
+      "fatal": "no result; page errors: process is not defined"
+     }
+    },
+    {
+     "variant": "alias-globals",
+     "raw": 6049735,
+     "gzip": 1551288,
+     "shims": [
+      "crypto",
+      "stream"
+     ],
+     "empties": [],
+     "globals": [
+      "Buffer",
+      "process"
+     ],
+     "passed": false,
+     "result": {
+      "verify": {
+       "option": "mesh",
+       "init": "none",
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 26,
+        "wrong": [
+         "noble alg ES256 (-7) in protected header: true",
+         "noble trailing byte after COSE_Sign1: true",
+         "noble unflagged blake2b-224 payload: true"
+        ]
+       },
+       "coseUnwrapped": {
+        "agree": 23,
+        "wrong": [
+         "noble header address differs from checked address: true",
+         "evolution header address differs from checked address: true",
+         "mesh header address differs from checked address: true",
+         "noble alg ES256 (-7) in protected header: true",
+         "noble trailing byte after COSE_Sign1: true",
+         "noble unflagged blake2b-224 payload: true"
+        ]
+       },
+       "ok": false
+      },
+      "build": {
+       "option": "mesh",
+       "bytes": 467,
+       "fee": "185037",
+       "cbor": "84a600d9010281825820c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c000018282583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a001e848082583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a00773f33021a0002d2cd031a0825e060075820a4617e825d7655f0420d80809051de60e429feafd47df2d01af71ca161a9921c0ed9010281581c8380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738ea0f5a11902a2a56870726f746f636f6c6d646576656c6f706d656e742d3266647261774964687370696b652d73316a62756e646c654861736878406162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616269636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a0001e240",
+       "ttl": true,
+       "requiredSigners": true,
+       "metadata": true,
+       "auxHashMatches": true,
+       "txHash": "4227c8166521fb5907cf78a44ef75f335480c34d43245234eee1a5456b93abee",
+       "ok": true
+      }
+     }
+    }
+   ],
+   "workerd": [
+    {
+     "variant": "bare",
+     "build": {
+      "variant": "bare",
+      "ok": false,
+      "unresolved": [
+       "crypto",
+       "stream"
+      ],
+      "errors": [
+       "Could not resolve \"crypto\"",
+       "Could not resolve \"crypto\"",
+       "Could not resolve \"crypto\""
+      ]
+     }
+    },
+    {
+     "variant": "alias",
+     "raw": 5961120,
+     "gzip": 1529128,
+     "shims": [
+      "crypto",
+      "stream"
+     ],
+     "empties": [],
+     "passed": false,
+     "result": {
+      "fatal": "The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration.\nRuntime stderr:\nservice core:user:: Uncaught Error: No secure random number generator found"
+     }
+    },
+    {
+     "variant": "alias-globals",
+     "raw": 5969440,
+     "gzip": 1530910,
+     "shims": [
+      "crypto",
+      "stream"
+     ],
+     "empties": [],
+     "globals": [
+      "Buffer",
+      "process"
+     ],
+     "passed": false,
+     "result": {
+      "fatal": "The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration.\nRuntime stderr:\nservice core:user:: Uncaught Error: No secure random number generator found"
+     }
+    },
+    {
+     "variant": "nodejs_compat",
+     "raw": 5620167,
+     "gzip": 1425769,
+     "passed": false,
+     "result": {
+      "fatal": "The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration.\nRuntime stderr:\nservice core:user:: Uncaught Error: No secure random number generator found"
+     }
+    }
+   ]
+  },
+  "blaze": {
+   "chrome": [
+    {
+     "variant": "bare",
+     "build": {
+      "variant": "bare",
+      "ok": false,
+      "unresolved": [
+       "path",
+       "fs",
+       "stream"
+      ],
+      "errors": [
+       "Could not resolve \"path\"",
+       "Could not resolve \"fs\"",
+       "Could not resolve \"stream\""
+      ]
+     }
+    },
+    {
+     "variant": "alias",
+     "raw": 1736282,
+     "gzip": 499915,
+     "shims": [
+      "stream"
+     ],
+     "empties": [
+      "path",
+      "fs"
+     ],
+     "passed": false,
+     "result": {
+      "fatal": "no result; page errors: process is not defined"
+     }
+    },
+    {
+     "variant": "alias-globals",
+     "raw": 1740874,
+     "gzip": 501702,
+     "shims": [
+      "stream"
+     ],
+     "empties": [
+      "path",
+      "fs"
+     ],
+     "globals": [
+      "Buffer",
+      "process"
+     ],
+     "passed": true,
+     "result": {
+      "verify": {
+       "option": "blaze",
+       "init": true,
+       "txs": [
+        {
+         "txHash": "515d0ea3fe8c2c38b0825bc5cfc386f962845f3c733e29828cf43d7dad3e0207",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3883c2a93818bc9502844a8f512ddd3a89a25ed2487d80235ad613d43cb93d12",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "c667f9af2505c725f5b685dcdb612b177f9a456fddcee94d444996eac8827053",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        },
+        {
+         "txHash": "3f4c1293d225b2ac06b8fcd03c42fdbdde4c4281572898d35aa7beaddea7d9ba",
+         "hash": true,
+         "mutatedBodyDiffers": true,
+         "aux": true,
+         "mutatedAuxDiffers": true
+        }
+       ],
+       "cose": {
+        "agree": 29,
+        "wrong": []
+       },
+       "ok": true
+      },
+      "build": {
+       "option": "blaze",
+       "bytes": 467,
+       "fee": "185037",
+       "cbor": "84a600d9010281825820c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c000018282583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a001e848082583900b581eca821fc2510e156d3375721ec2d71d6a5e0e6d0dd768355ae608380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738e1a00773f33021a0002d2cd031a0825e060075820a4617e825d7655f0420d80809051de60e429feafd47df2d01af71ca161a9921c0ed9010281581c8380811eebac4731b0ed38b3efd6bbb84906aa1293e88df4c2d8738ea0f5a11902a2a56870726f746f636f6c6d646576656c6f706d656e742d3266647261774964687370696b652d73316a62756e646c654861736878406162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616269636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a0001e240",
+       "ttl": true,
+       "requiredSigners": true,
+       "metadata": true,
+       "auxHashMatches": true,
+       "txHash": "4227c8166521fb5907cf78a44ef75f335480c34d43245234eee1a5456b93abee",
+       "ok": true
+      }
+     }
+    }
+   ],
+   "workerd": [
+    {
+     "variant": "bare",
+     "build": {
+      "variant": "bare",
+      "ok": false,
+      "unresolved": [
+       "stream"
+      ],
+      "errors": [
+       "Could not resolve \"stream\""
+      ]
+     }
+    },
+    {
+     "variant": "alias",
+     "raw": 1029866,
+     "gzip": 290978,
+     "shims": [
+      "stream"
+     ],
+     "empties": [],
+     "passed": false,
+     "result": {
+      "fatal": "The Workers runtime failed to start. There was likely a problem with the workerd binary or your configuration.\nRuntime stderr:\nservice core:user:: Uncaught ReferenceError: Buffer is not defined\n  at dist/rt/blaze/workerd/alias/worker-main.js:6:39017"
+     }
+    },
+    {
+     "variant": "alias-globals",
+     "raw": 1061599,
+     "gzip": 299289,
+     "shims": [
+      "stream"
+     ],
+     "empties": [],
+     "globals": [
+      "Buffer",
+      "process"
+     ],
+     "passed": false,
+     "result": {
+      "fatal": "Error: Promise will never complete.\n    at async Object.fetch (./node_modules/.pnpm/miniflare@4.20260730.0/node_modules/miniflare/dist/src/workers/core/entry.worker.js:4765:22)"
+     }
+    },
+    {
+     "variant": "nodejs_compat",
+     "raw": 1030171,
+     "gzip": 291116,
+     "passed": false,
+     "result": {
+      "fatal": "Error: Promise will never complete.\n    at async Object.fetch (./node_modules/.pnpm/miniflare@4.20260730.0/node_modules/miniflare/dist/src/workers/core/entry.worker.js:4765:22)"
+     }
+    }
+   ]
+  }
+ }
+}
