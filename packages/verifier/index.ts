@@ -5,14 +5,17 @@ import {
   checkTiming,
   checkUniqueness,
   BOUNDARY,
-  type Commitment,
+  type Confirmed,
+  type Inclusion,
   type Proof,
 } from '@giveaway/protocol';
 import { verifyBeacon } from '@giveaway/beacon';
-import { KoiosChain } from '@giveaway/chain';
+import { DemoChain, KoiosChain } from '@giveaway/chain';
+// A check whose evidence could not be obtained is not evaluated, never passed on the artifact's own word.
+export type CheckResult = 'pass' | 'fail' | 'unevaluated';
 export interface Check {
   name: string;
-  passed: boolean;
+  result: CheckResult;
   detail: string;
 }
 export interface Verdict {
@@ -21,78 +24,83 @@ export interface Verdict {
   winners: string[];
   boundary: string;
 }
+const result = (passed: boolean): CheckResult => (passed ? 'pass' : 'fail');
 export async function verifyProof(
   input: unknown,
   options: {
-    now?: number;
     chain?: Pick<KoiosChain, 'readCommitment' | 'findCommitments'>;
   } = {},
 ): Promise<Verdict> {
   const checks: Check[] = [];
-  const add = (name: string, passed: boolean, detail: string) => checks.push({ name, passed, detail });
+  const add = (name: string, outcome: CheckResult, detail: string) => checks.push({ name, result: outcome, detail });
   let proof: Proof;
   try {
     proof = validateProof(input);
-    add('Bundle format', true, 'Development protocol; not frozen v1');
+    add('Bundle format', 'pass', 'Development protocol; not frozen v1');
   } catch (e) {
     return {
       status: 'FAIL',
-      checks: [{ name: 'Bundle format', passed: false, detail: (e as Error).message }],
+      checks: [{ name: 'Bundle format', result: 'fail', detail: (e as Error).message }],
       winners: [],
       boundary: BOUNDARY,
     };
   }
-  let commitment = proof.commitment,
-    candidates: Commitment[] = [commitment];
+  let commitment: Confirmed | undefined, candidates: Inclusion[] | undefined;
   try {
     if (proof.network === 'preprod') {
       const chain = options.chain ?? new KoiosChain();
-      commitment = await chain.readCommitment(proof.commitment.txHash, proof.commitment.owner);
-      candidates = await chain.findCommitments(proof.bundle.drawId, proof.commitment.owner);
-      add('Cardano evidence', true, 'Read from selected preprod indexer; evidence still depends on that indexer');
-    } else add('Demo evidence', true, 'Chain evidence is simulated. This is not proof of an on-chain commitment.');
+      commitment = await chain.readCommitment(proof.txHash, proof.owner);
+      candidates = await chain.findCommitments(proof.bundle.drawId, proof.owner);
+      add('Cardano evidence', 'pass', 'Read from selected preprod indexer; evidence still depends on that indexer');
+    } else {
+      commitment = await new DemoChain().readCommitment(proof.bundle);
+      candidates = [commitment];
+      add('Demo evidence', 'pass', 'Chain evidence is simulated. This is not proof of an on-chain commitment.');
+    }
   } catch (e) {
-    add('Cardano evidence', false, (e as Error).message);
+    add('Cardano evidence', 'fail', (e as Error).message);
   }
-  const hash = await computeCommitment(proof.bundle);
-  add(
-    'Commitment hash',
-    hash === commitment.bundleHash &&
-      proof.bundle.drawId === commitment.drawId &&
-      proof.bundle.drand.round === commitment.round,
-    'Bundle, drawId and drand round must match commitment',
-  );
-  add(
-    'Timing and confirmations',
-    checkTiming(commitment, proof.bundle.drand.round),
-    'Inclusion and the 15th confirmation precede the round',
-  );
-  add(
-    'Earliest commitment',
-    checkUniqueness(candidates, commitment),
-    'Earliest same-address, same-drawId commitment; simultaneous-block ambiguity fails closed',
-  );
-  add(
-    'drand BLS signature',
-    await verifyBeacon(proof.beacon, proof.bundle.drand.round),
-    'Pinned quicknet public key; signature and randomness verified',
-  );
-  const { roundTime } = await import('@giveaway/protocol');
-  add(
-    'Round has arrived',
-    (options.now ?? Math.floor(Date.now() / 1000)) >= roundTime(proof.bundle.drand.round),
-    'Cannot open a future round',
-  );
+  const unevaluated = 'Not evaluated: chain evidence is unavailable';
+  if (commitment && candidates) {
+    const hash = await computeCommitment(proof.bundle);
+    add(
+      'Commitment hash',
+      result(
+        commitment.txHash === proof.txHash &&
+          commitment.owner === proof.owner &&
+          hash === commitment.bundleHash &&
+          proof.bundle.drawId === commitment.drawId &&
+          proof.bundle.drand.round === commitment.round,
+      ),
+      'Bundle, drawId and drand round must match the referenced commitment',
+    );
+    add(
+      'Timing and confirmations',
+      result(checkTiming(commitment, proof.bundle.drand.round)),
+      'Inclusion and the 15th confirmation precede the round',
+    );
+    add(
+      'Earliest commitment',
+      result(checkUniqueness(candidates, commitment)),
+      'Earliest same-address, same-drawId commitment; simultaneous-block ambiguity fails closed',
+    );
+  } else
+    for (const name of ['Commitment hash', 'Timing and confirmations', 'Earliest commitment'])
+      add(name, 'unevaluated', unevaluated);
+  // A valid signature for the committed round proves the round has been produced; no local clock is consulted.
+  const beaconValid = await verifyBeacon(proof.beacon, proof.bundle.drand.round);
+  add('drand BLS signature', result(beaconValid), 'Pinned quicknet public key; signature and randomness verified');
   let winners: string[] = [];
-  if (checks.find((x) => x.name === 'drand BLS signature')?.passed)
+  if (beaconValid) {
     winners = await selectWinners(proof.bundle, proof.beacon.randomness);
-  add(
-    'Winner recomputation',
-    JSON.stringify(winners) === JSON.stringify(proof.winners) && winners.length > 0,
-    'Recomputed from signature-derived randomness and the committed bundle',
-  );
+    add(
+      'Winner recomputation',
+      result(JSON.stringify(winners) === JSON.stringify(proof.winners) && winners.length > 0),
+      'Recomputed from signature-derived randomness and the committed bundle',
+    );
+  } else add('Winner recomputation', 'unevaluated', 'Not evaluated: no verified randomness');
   return {
-    status: checks.every((x) => x.passed) ? (proof.network === 'demo' ? 'DEMO PASS' : 'PASS') : 'FAIL',
+    status: checks.every((x) => x.result === 'pass') ? (proof.network === 'demo' ? 'DEMO PASS' : 'PASS') : 'FAIL',
     checks,
     winners,
     boundary: BOUNDARY,

@@ -327,6 +327,9 @@ dd {
   padding: 9px 0;
   border-bottom: 1px solid var(--line);
 }
+#checks li.unevaluated {
+  color: var(--muted);
+}
 #checks small {
   display: block;
   color: var(--muted);

@@ -11,18 +11,23 @@ const bundle = {
   rules: { winners: 1 },
   drand: { chainHash: QUICKNET, round: FIXTURE.round },
 };
-const chain = new DemoChain();
-const commitment = await chain.commit(bundle);
-chain.confirm(commitment);
+const ref = await new DemoChain().commit(bundle);
 const proof = {
-  format: 'giveaway-proof-1',
+  format: 'giveaway-proof-2',
   network: 'demo',
   bundle,
-  commitment,
+  txHash: ref.txHash,
+  owner: ref.owner,
   beacon: FIXTURE,
   winners: await selectWinners(bundle, FIXTURE.randomness),
 };
 const file = `${root}dist/mutation-proof.json`;
+const cli = () => spawnSync(process.execPath, [`${root}apps/verifier-cli/index.mjs`, file], { encoding: 'utf8' });
+// The unmutated proof must pass, or every mutation below would be "rejected" for the wrong reason.
+await writeFile(file, JSON.stringify(proof));
+const baseline = cli();
+if (baseline.status !== 0 || JSON.parse(baseline.stdout).status !== 'DEMO PASS')
+  throw new Error(`Unmutated proof does not pass: ${baseline.stdout}${baseline.stderr}`);
 for (const [name, mutate] of [
   [
     'signature byte',
@@ -42,45 +47,62 @@ for (const [name, mutate] of [
       x.winners = ['mallory'];
     },
   ],
+  [
+    'embedded commitment',
+    (x) => {
+      x.commitment = { txHash: x.txHash, owner: x.owner };
+    },
+  ],
 ]) {
   const changed = structuredClone(proof);
   mutate(changed);
   await writeFile(file, JSON.stringify(changed));
-  const result = spawnSync(process.execPath, [`${root}apps/verifier-cli/index.mjs`, file], { encoding: 'utf8' });
+  const result = cli();
   if (result.status !== 1 || JSON.parse(result.stdout).status !== 'FAIL')
     throw new Error(`Mutation not rejected: ${name}`);
   console.log(`Mutation rejected by CLI: ${name}`);
 }
-// A broken golden fixture must also make the actual test runner fail.
-const library = await readFile(fileURLToPath(import.meta.resolve('@giveaway/verifier-cli/library')), 'utf8');
-const corrupted = library.replace(FIXTURE.signature, `${FIXTURE.signature.slice(0, -2)}00`);
-if (corrupted === library) throw new Error('Signature fixture was not located');
-await writeFile(`${root}dist/mutated-library.mjs`, corrupted);
-const signatureTest = spawnSync(
-  process.execPath,
-  ['--test', '--test-name-pattern=real quicknet BLS', `${root}tests/core.test.mjs`],
-  {
-    encoding: 'utf8',
-    env: { ...process.env, GIVEAWAY_LIBRARY: `${root}dist/mutated-library.mjs` },
-  },
-);
-if (signatureTest.status !== 1 || !signatureTest.stdout.includes('real quicknet BLS'))
-  throw new Error('Signature mutation did not fail tests');
-console.log('Signature byte mutation causes test failure');
-const vectorPath = `${root}tests/vectors.json`,
-  original = await readFile(vectorPath, 'utf8');
-try {
-  const vectors = JSON.parse(original);
-  vectors[0].bundle.entrants[0] = 'mallory';
-  await writeFile(vectorPath, JSON.stringify(vectors));
-  const result = spawnSync(
-    process.execPath,
-    ['--test', '--test-name-pattern=independent Python', `${root}tests/core.test.mjs`],
-    { encoding: 'utf8' },
-  );
-  if (result.status !== 1 || !result.stdout.includes('independent Python'))
-    throw new Error('Golden mutation did not fail the test runner');
-  console.log('Golden entrant mutation causes test failure');
-} finally {
-  await writeFile(vectorPath, original);
+// Each mutation rewrites a file the test runner reads, runs the named test, and restores the file.
+async function mustFail(name, path, mutate, testName) {
+  const original = await readFile(path, 'utf8');
+  const changed = mutate(original);
+  if (changed === original) throw new Error(`${name}: mutation target was not located`);
+  try {
+    await writeFile(path, changed);
+    const result = spawnSync(
+      process.execPath,
+      ['--test', `--test-name-pattern=${testName}`, `${root}tests/core.test.mjs`],
+      {
+        encoding: 'utf8',
+      },
+    );
+    if (result.status !== 1 || !result.stdout.includes(testName)) throw new Error(`${name} did not fail the tests`);
+    console.log(`${name} causes test failure`);
+  } finally {
+    await writeFile(path, original);
+  }
 }
+const library = fileURLToPath(import.meta.resolve('@giveaway/verifier-cli/library'));
+await mustFail(
+  'Signature fixture mutation',
+  library,
+  (text) => text.replace(FIXTURE.signature, `${FIXTURE.signature.slice(0, -2)}00`),
+  'real quicknet BLS',
+);
+await mustFail(
+  'Removing the prime-order subgroup check',
+  library,
+  (text) =>
+    text.replace(/if \(!this\.isTorsionFree\(\)\)\s*throw new Error\("bad point: not in prime-order subgroup"\);/, ''),
+  'F6: fixture signature plus a G1 torsion point',
+);
+await mustFail(
+  'Golden entrant mutation',
+  `${root}tests/vectors.json`,
+  (text) => {
+    const vectors = JSON.parse(text);
+    vectors[0].bundle.entrants[0] = 'mallory';
+    return JSON.stringify(vectors);
+  },
+  'independent Python',
+);

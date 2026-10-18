@@ -1,6 +1,7 @@
 import { FIXTURE, fetchBeacon } from '@giveaway/beacon';
 import {
   ALGORITHM,
+  ARTIFACT_BYTE_LIMIT,
   BOUNDARY,
   CONFIRMATIONS,
   checkTiming,
@@ -10,14 +11,13 @@ import {
   QUICKNET,
   roundAt,
   roundTime,
-  type Bundle,
-  type Commitment,
   VERSION,
   validateBundle,
   validateProof,
 } from '@giveaway/protocol';
 import { verifyProof } from '@giveaway/verifier';
 import {
+  announcement,
   type Artifact,
   type Chains,
   createChains,
@@ -129,22 +129,12 @@ async function prepare(state: AppState) {
 async function commit(state: AppState, chains: Chains) {
   const { bundle, transaction } = state.draw;
   if (!bundle) throw new Error('Preview a draw first');
-  if (isDemo()) state.draw.commitment = await chains.demo.commit(bundle);
+  if (isDemo()) state.draw.committed = await chains.demo.commit(bundle);
   else {
     if (!transaction) throw new Error('Build a transaction first');
-    const txHash = await transaction.signAndSubmit();
-    state.draw.commitment = {
-      txHash,
-      owner: transaction.owner,
-      bundleHash: await computeCommitment(bundle),
-      drawId: bundle.drawId,
-      round: bundle.drand.round,
-      blockHeight: 0,
-      blockTime: 0,
-      confirmedAt: 0,
-    };
+    state.draw.committed = { txHash: await transaction.signAndSubmit(), owner: transaction.owner };
   }
-  const commitment = state.draw.commitment;
+  const committed = state.draw.committed;
   el('commit').hidden = true;
   el('confirm').hidden = false;
   el('late').hidden = !isDemo();
@@ -152,37 +142,41 @@ async function commit(state: AppState, chains: Chains) {
   status(
     isDemo()
       ? 'Demo commitment created. Simulate confirmations to continue.'
-      : `Submitted ${commitment.txHash}. Publish the commitment link before the round. Waiting for ${CONFIRMATIONS} confirmations.`,
+      : `Submitted ${committed.txHash}. Publish the commitment link before the round. Waiting for ${CONFIRMATIONS} confirmations.`,
   );
   // A pre-round link is available immediately. It identifies the committed bundle and reference.
-  share(state, { format: 'giveaway-pending-1', network: isDemo() ? 'demo' : 'preprod', bundle, commitment });
+  share(state, announcement(isDemo() ? 'demo' : 'preprod', bundle, committed));
   if (!isDemo()) scheduleConfirmation(state, chains);
 }
 
 function scheduleConfirmation(state: AppState, chains: Chains) {
   clearTimeout(state.poll);
   state.poll = setTimeout(async () => {
-    if (!state.draw.bundle || !state.draw.commitment || isDemo()) return;
+    const draw = state.draw;
+    const { bundle } = draw;
+    if (!bundle || !draw.committed || isDemo()) return;
     try {
       await confirm(state, chains);
     } catch (e) {
+      // A reset or new preview while the indexer answered: the response belongs to a draw that is gone.
+      if (state.draw !== draw) return;
       status(`${(e as Error).message}. Next check in 30 seconds.`);
-      // Read after the await, as before the split: a reset during the check leaves no bundle.
-      if (now() < roundTime((state.draw.bundle as Bundle).drand.round)) scheduleConfirmation(state, chains);
+      if (now() < roundTime(bundle.drand.round)) scheduleConfirmation(state, chains);
       else status('Round has arrived without verified confirmations. This draw is invalid; create a new drawId.', true);
     }
   }, 30000);
 }
 
 async function confirm(state: AppState, chains: Chains, late = false) {
-  const { commitment } = state.draw;
-  if (!state.draw.bundle || !commitment) throw new Error('Commit a draw first');
+  const draw = state.draw;
+  const { bundle, committed } = draw;
+  if (!bundle || !committed) throw new Error('Commit a draw first');
   const confirmed = isDemo()
-    ? chains.demo.confirm(commitment, late)
-    : await chains.koios.readCommitment(commitment.txHash, commitment.owner);
-  state.draw.commitment = confirmed;
-  // Read after the await, as before the split: a reset or new preview may have replaced the draw.
-  const bundle = state.draw.bundle as Bundle;
+    ? chains.demo.confirm(committed, late)
+    : await chains.koios.readCommitment(committed.txHash, committed.owner);
+  // Discard a response that arrives after the draw was reset or replaced.
+  if (state.draw !== draw) return;
+  draw.confirmed = confirmed;
   if (!checkTiming(confirmed, bundle.drand.round)) {
     show(['open', 'confirm', 'late'], false);
     clearTimeout(state.poll);
@@ -200,24 +194,21 @@ async function confirm(state: AppState, chains: Chains, late = false) {
 }
 
 async function reveal(state: AppState, chains: Chains) {
-  const { bundle, commitment } = state.draw;
-  if (!bundle || !commitment || !checkTiming(commitment, bundle.drand.round))
+  const draw = state.draw;
+  const { bundle, committed, confirmed } = draw;
+  if (!bundle || !committed || !confirmed || !checkTiming(confirmed, bundle.drand.round))
     throw new Error('Need valid confirmation timing');
   if (!isDemo() && now() < roundTime(bundle.drand.round))
     throw new Error(`Round is not available yet. Starts at ${localTime(roundTime(bundle.drand.round))}.`);
   const beacon = isDemo() ? FIXTURE : await fetchBeacon(bundle.drand.round);
-  // Read after the beacon await, as before the split: a confirmation poll may have refreshed the commitment.
-  const proof = await assembleProof(
-    isDemo() ? 'demo' : 'preprod',
-    state.draw.bundle as Bundle,
-    state.draw.commitment as Commitment,
-    beacon,
-  );
+  if (state.draw !== draw) return;
+  const proof = await assembleProof(isDemo() ? 'demo' : 'preprod', bundle, committed, beacon);
   const verdict = await verifyProof(proof, { chain: chains.koios });
+  if (state.draw !== draw) return;
   if (verdict.status === 'FAIL')
     throw new Error(
       verdict.checks
-        .filter((c) => !c.passed)
+        .filter((c) => c.result !== 'pass')
         .map((c) => c.detail)
         .join('; '),
     );
@@ -270,7 +261,7 @@ async function load(state: AppState, chains: Chains, read: () => Promise<unknown
   renderVerificationPending();
   state.verifiedBundle = undefined;
   try {
-    const loaded = await resolveArtifact(await read(), now(), chains.koios);
+    const loaded = await resolveArtifact(await read(), now());
     if (loaded.kind === 'demo-commitment')
       renderVerificationNote('DEMO COMMITMENT — simulated evidence. Open the draw to share a complete result bundle.');
     else if (loaded.kind === 'awaiting-round')
@@ -285,7 +276,8 @@ async function load(state: AppState, chains: Chains, read: () => Promise<unknown
 
 async function readProofFile() {
   const file = input('proof-file').files?.[0];
-  if (!file || file.size > 8_000_000) throw new Error('Choose a JSON bundle smaller than 8 MB');
+  if (!file || file.size > ARTIFACT_BYTE_LIMIT)
+    throw new Error(`Choose a JSON bundle no larger than ${ARTIFACT_BYTE_LIMIT} bytes`);
   return JSON.parse(await file.text());
 }
 

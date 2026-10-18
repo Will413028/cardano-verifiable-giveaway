@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { verifyProof, KoiosChain } from './dist/library.mjs';
+import { ARTIFACT_BYTE_LIMIT, verifyProof, KoiosChain } from './dist/library.mjs';
 const args = process.argv.slice(2);
 const file = args[0];
 if (!file || file.startsWith('--')) {
@@ -11,7 +11,7 @@ try {
   const index = args.indexOf('--indexer');
   if (index >= 0 && !args[index + 1]) throw new Error('Missing indexer URL');
   const body = await readFile(file, 'utf8');
-  if (Buffer.byteLength(body) > 8_000_000) throw new Error('Bundle exceeds 8 MB');
+  if (Buffer.byteLength(body) > ARTIFACT_BYTE_LIMIT) throw new Error(`Bundle exceeds ${ARTIFACT_BYTE_LIMIT} bytes`);
   const verdict = await verifyProof(JSON.parse(body), index >= 0 ? { chain: new KoiosChain(args[index + 1]) } : {});
   console.log(JSON.stringify(verdict, null, 2));
   process.exitCode = verdict.status === 'FAIL' ? 1 : 0;

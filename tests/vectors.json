@@ -1,7 +1,7 @@
 [
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-0",
       "entrants": [
@@ -17,17 +17,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-0\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "38fc60a8a7dac2740c1041a45f02edab8982508d4de1aa381c24012e06291ebb",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-0\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "d11d1d308e8f7613439c4eb5a5fd311a8ec2a8b37b4b3d03387dfd6e615ad356",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "alice",
-      "carol"
+      "carol",
+      "alice"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-1",
       "entrants": [
@@ -43,17 +43,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-1\",\"entrants\":[\"甲\",\"乙\",\"丙\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "f990d03482045a56edaff339223822ee15ce082bc0f8ee0017e94ff6e00541de",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-1\",\"entrants\":[\"甲\",\"乙\",\"丙\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "723b87ac0cfa03f5e3827ca1ba2af4476932c9576534c25888d9731402dd08d5",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "甲",
+      "乙",
       "丙"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-2",
       "entrants": [
@@ -69,17 +69,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-2\",\"entrants\":[\"é\",\"Å\",\"ü\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "f0a1df1ac168245e0848ad6950fc403eefe26b40159a9808c42e73d4a06b06af",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-2\",\"entrants\":[\"é\",\"Å\",\"ü\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "e32ea71a13ecc82eb3f2b0bc34ffbc0c29f238a791cdddf583c15ba7828e83fe",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "Å",
-      "ü"
+      "ü",
+      "Å"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-3",
       "entrants": [
@@ -95,17 +95,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-3\",\"entrants\":[\"🎉\",\"🦉\",\"🐈\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "08c2757a28a0ddfc5d352f2bcd44358f442ea2b39bd3c163204b77e2789f8a05",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-3\",\"entrants\":[\"🎉\",\"🦉\",\"🐈\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "d2b921f279e6ad6dc5dbbc278c3ff8e8ac52be9b0ca8e9b29890c77bf5d1d76e",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "🦉",
-      "🐈"
+      "🎉",
+      "🦉"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-4",
       "entrants": [
@@ -121,17 +121,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-4\",\"entrants\":[\"Alice, A\",\"Bo\\\"b\",\"Carol\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "67ce9d034f56fffb4142e5d69ab4f7a37100c5ed7d2ff6c94396910aece60e73",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-4\",\"entrants\":[\"Alice, A\",\"Bo\\\"b\",\"Carol\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "d53425f86ae25870e7254e0e34bee8b0715a82df0fac6578ab1fc3f4d4334aec",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "Alice, A",
-      "Carol"
+      "Carol",
+      "Bo\"b"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-5",
       "entrants": [
@@ -147,17 +147,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-5\",\"entrants\":[\"a\",\"A\",\"á\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "954c67dc0b5bf3516f56a7a0f966ca664b22d66cfe4d7da66b974972bf9ad1c3",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-5\",\"entrants\":[\"a\",\"A\",\"á\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "418ae1e7325641e39e6c9e652b393b294c23166a11bcdf56972c19582ed3fb02",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "A",
+      "á",
       "a"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-6",
       "entrants": [
@@ -171,8 +171,8 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-6\",\"entrants\":[\"one\"],\"rules\":{\"winners\":1},\"version\":\"development-1\"}",
-    "hash": "bca0475bf940414b1aa9e0672a2f3cec8ff3314f62d85b69554b8e6b8b767134",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-6\",\"entrants\":[\"one\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
+    "hash": "a63d9f95cba6ddef81b2ecbb20b136971f4b8664fdb32c091cc24a0c7acbd83c",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
       "one"
@@ -180,7 +180,7 @@
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-7",
       "entrants": [
@@ -196,17 +196,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-7\",\"entrants\":[\"hello world\",\"with/slash\",\"with\\\\slash\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "436ee19ceb61137574586955062feef6b28ee03156f2c063e617302414b816cb",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-7\",\"entrants\":[\"hello world\",\"with/slash\",\"with\\\\slash\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "6dfbcba2543030cebedee54f0b03b0342ab9a4fdc152d0297e55753d8a12e4fb",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "with/slash",
-      "hello world"
+      "with\\slash",
+      "with/slash"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-8",
       "entrants": [
@@ -222,17 +222,17 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-8\",\"entrants\":[\"日本語\",\"한국어\",\"中文\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "13de5f2c0ea30feddf66af5e7528bd5d079a6f92be99b2049ef984a34d8e2b1e",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-8\",\"entrants\":[\"日本語\",\"한국어\",\"中文\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "2fc966a90578832bcdea5b9e2b41fd516eea804bfc6212f192ed8ddc0b563457",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "中文",
-      "한국어"
+      "한국어",
+      "中文"
     ]
   },
   {
     "bundle": {
-      "version": "development-1",
+      "version": "development-2",
       "algorithm": "sha256-ranking-1",
       "drawId": "vector-9",
       "entrants": [
@@ -249,12 +249,12 @@
         "round": 1000000
       }
     },
-    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-9\",\"entrants\":[\"z\",\"y\",\"x\",\"w\"],\"rules\":{\"winners\":2},\"version\":\"development-1\"}",
-    "hash": "01f11ec235706c83144c0c82f9bcaed93eccc86fbc98e2d8e6d2eea5500a0d49",
+    "canonical": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"vector-9\",\"entrants\":[\"z\",\"y\",\"x\",\"w\"],\"rules\":{\"winners\":2},\"version\":\"development-2\"}",
+    "hash": "eb421d2d5af9becfdd9b0a2c0b6181ba3fb2847142f31ecf894f91ce053a48ba",
     "randomness": "b22aad4794f7451896f7a371aa46106fd84d919f3f569acd5b2fddf1d1440af3",
     "winners": [
-      "x",
-      "w"
+      "w",
+      "x"
     ]
   }
 ]

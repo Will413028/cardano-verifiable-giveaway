@@ -1,5 +1,5 @@
 import type { Bundle } from '@giveaway/protocol';
-import type { Verdict } from '@giveaway/verifier';
+import type { CheckResult, Verdict } from '@giveaway/verifier';
 import type { Artifact } from './services.ts';
 
 // DOM reads and writes only; element ids are the contract with index.html and the browser check.
@@ -88,7 +88,7 @@ export function renderShare(artifact: Artifact, link: string, downloadUrl: strin
   input('share-link').hidden = false;
   el('share').hidden = false;
   // Also expose pre-round sharing before the winner result is visible.
-  if (artifact.format === 'giveaway-pending-1') {
+  if (artifact.format === 'giveaway-pending-2') {
     el('result').hidden = false;
     text(
       'result-note',
@@ -100,7 +100,7 @@ export function renderShare(artifact: Artifact, link: string, downloadUrl: strin
   download.hidden = false;
   download.download = `draw-${artifact.bundle.drawId}.json`;
   download.textContent =
-    artifact.format === 'giveaway-pending-1' ? '↓ Download commitment announcement' : '↓ Download verification bundle';
+    artifact.format === 'giveaway-pending-2' ? '↓ Download commitment announcement' : '↓ Download verification bundle';
   if (!input('share-link').value) {
     input('share-link').placeholder =
       'Bundle too large for an inline link. Download, host publicly, then load its URL below.';
@@ -129,6 +129,8 @@ export function renderLookup(bundle: Bundle | undefined) {
   );
 }
 
+const CHECK_MARK: Record<CheckResult, string> = { pass: '✓', fail: '×', unevaluated: '–' };
+
 export function renderVerdict(verdict: Verdict, bundle: Bundle | undefined) {
   el('verified-result').hidden = !bundle;
   el('verified-winners').replaceChildren();
@@ -144,8 +146,9 @@ export function renderVerdict(verdict: Verdict, bundle: Bundle | undefined) {
   el('checks').replaceChildren();
   for (const check of verdict.checks) {
     const li = document.createElement('li');
-    li.classList.toggle('error', !check.passed);
-    li.textContent = `${check.passed ? '✓' : '×'} ${check.name}`;
+    li.classList.toggle('error', check.result === 'fail');
+    li.classList.toggle('unevaluated', check.result === 'unevaluated');
+    li.textContent = `${CHECK_MARK[check.result]} ${check.name}`;
     const detail = document.createElement('small');
     detail.textContent = check.detail;
     li.append(detail);

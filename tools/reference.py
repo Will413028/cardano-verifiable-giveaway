@@ -34,7 +34,7 @@ def main():
               ['a', 'A', 'á'], ['one'], ['hello world', 'with/slash', 'with\\slash'], ['日本語', '한국어', '中文'], ['z', 'y', 'x', 'w']]
     result = []
     for i, entrants in enumerate(labels):
-        b = dict(version='development-1', algorithm='sha256-ranking-1', drawId=f'vector-{i}', entrants=entrants,
+        b = dict(version='development-2', algorithm='sha256-ranking-1', drawId=f'vector-{i}', entrants=entrants,
                  rules=dict(winners=min(2, len(entrants))), drand=dict(chainHash='52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971', round=1000000))
         result.append(vector(b))
     path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')

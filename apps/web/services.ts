@@ -1,14 +1,17 @@
 import { fetchBeacon } from '@giveaway/beacon';
 import { DemoChain, KoiosChain } from '@giveaway/chain';
 import {
+  ARTIFACT_BYTE_LIMIT,
   type Beacon,
   type Bundle,
-  type Commitment,
+  type CommitmentRef,
+  type Network,
+  type Pending,
   type Proof,
   roundTime,
   selectWinners,
   sha256,
-  validateBundle,
+  validatePending,
   validateProof,
 } from '@giveaway/protocol';
 
@@ -21,17 +24,10 @@ export interface Chains {
 }
 export const createChains = (): Chains => ({ demo: new DemoChain(), koios: new KoiosChain() });
 
-export interface Pending {
-  format: 'giveaway-pending-1';
-  network: string;
-  bundle: Bundle;
-  commitment: Commitment;
-}
 export type Artifact = Proof | Pending;
 
 const INLINE_LINK_LIMIT = 12000;
 const INLINE_READ_LIMIT = 16000;
-const BUNDLE_LIMIT = 8_000_000;
 
 export function encodeInline(artifact: Artifact): string {
   const bytes = new TextEncoder().encode(JSON.stringify(artifact));
@@ -64,7 +60,8 @@ export async function fetchHostedBundle(
   const response = await fetch(parsed, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Bundle host: HTTP ${response.status}`);
   const body = await response.text();
-  if (new TextEncoder().encode(body).length > BUNDLE_LIMIT) throw new Error('Bundle exceeds 8 MB');
+  if (new TextEncoder().encode(body).length > ARTIFACT_BYTE_LIMIT)
+    throw new Error(`Bundle exceeds ${ARTIFACT_BYTE_LIMIT} bytes`);
   const hash = await sha256(body);
   if (expectedHash && hash !== expectedHash) throw new Error('Hosted bundle hash does not match the verification link');
   return { url: parsed, body, hash };
@@ -77,17 +74,22 @@ export function hostedShareLink(pageHref: string, bundleUrl: URL, hash: string):
   return share.toString();
 }
 
+export function announcement(network: Network, bundle: Bundle, ref: CommitmentRef): Pending {
+  return { format: 'giveaway-pending-2', network, bundle, txHash: ref.txHash, owner: ref.owner };
+}
+
 export async function assembleProof(
-  network: Proof['network'],
+  network: Network,
   bundle: Bundle,
-  commitment: Commitment,
+  ref: CommitmentRef,
   beacon: Beacon,
 ): Promise<Proof> {
   return {
-    format: 'giveaway-proof-1',
+    format: 'giveaway-proof-2',
     network,
     bundle,
-    commitment,
+    txHash: ref.txHash,
+    owner: ref.owner,
     beacon,
     winners: await selectWinners(bundle, beacon.randomness),
   };
@@ -98,17 +100,17 @@ export type Loaded =
   | { kind: 'awaiting-round'; round: number }
   | { kind: 'proof'; value: unknown };
 
-// A pending announcement becomes a checkable proof once its round has arrived on preprod.
-export async function resolveArtifact(value: unknown, now: number, koios: KoiosChain): Promise<Loaded> {
-  if ((value as { format?: unknown } | null)?.format !== 'giveaway-pending-1') {
+// A pending announcement becomes a checkable proof once its round has arrived on preprod; the verifier
+// then reads the referenced commitment from the chain.
+export async function resolveArtifact(value: unknown, now: number): Promise<Loaded> {
+  if ((value as { format?: unknown } | null)?.format !== 'giveaway-pending-2') {
     validateProof(value);
     return { kind: 'proof', value };
   }
-  const pending = value as Pending;
-  const bundle = validateBundle(pending.bundle);
+  const pending = validatePending(value);
+  const { bundle } = pending;
   if (pending.network !== 'preprod') return { kind: 'demo-commitment' };
   if (now < roundTime(bundle.drand.round)) return { kind: 'awaiting-round', round: bundle.drand.round };
-  const commitment = await koios.readCommitment(pending.commitment.txHash, pending.commitment.owner);
   const beacon = await fetchBeacon(bundle.drand.round);
-  return { kind: 'proof', value: await assembleProof('preprod', bundle, commitment, beacon) };
+  return { kind: 'proof', value: await assembleProof('preprod', bundle, pending, beacon) };
 }

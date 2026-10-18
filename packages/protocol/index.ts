@@ -1,9 +1,18 @@
-export const VERSION = 'development-1';
+export const VERSION = 'development-2';
 export const ALGORITHM = 'sha256-ranking-1';
 export const QUICKNET = '52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971';
 export const GENESIS = 1692803367;
 export const PERIOD = 3;
 export const CONFIRMATIONS = 15;
+export const MAX_ENTRANTS = 10000;
+export const MAX_LABEL_UNITS = 200;
+// Worst case per label: every UTF-16 unit is a BMP character taking 3 UTF-8 bytes, plus two quotes and a comma.
+// The rest of the bundle is at most 512 bytes (64-character drawId, safe-integer round and winner count).
+export const BUNDLE_BYTE_LIMIT = MAX_ENTRANTS * (MAX_LABEL_UNITS * 3 + 3) + 512;
+// A downloaded proof wraps one bundle and may repeat every label as a winner; pretty-printing adds at most
+// 8 bytes of indentation per array element, and the reference and beacon fields fit in 4 KiB.
+export const ARTIFACT_BYTE_LIMIT =
+  BUNDLE_BYTE_LIMIT + MAX_ENTRANTS * (MAX_LABEL_UNITS * 3 + 3) + 2 * MAX_ENTRANTS * 8 + 4096;
 export const BOUNDARY =
   'Verification covers selection from the committed list. It does not establish entrant eligibility, list completeness or prize delivery. Cross-address or different-drawId commitments cannot be ruled out.';
 
@@ -20,23 +29,35 @@ export interface Beacon {
   signature: string;
   randomness: string;
 }
-export interface Commitment {
+export type Network = 'demo' | 'preprod';
+// What an artifact carries about its commitment; everything else is read back from the chain.
+export interface CommitmentRef {
   txHash: string;
   owner: string;
+}
+// A commitment the chain has included; enumerated history needs no confirmation evidence.
+export interface Inclusion extends CommitmentRef {
   bundleHash: string;
   drawId: string;
   round: number;
   blockHeight: number;
   blockTime: number;
+}
+export interface Confirmed extends Inclusion {
   confirmedAt: number;
 }
-export interface Proof {
-  format: 'giveaway-proof-1';
-  network: 'demo' | 'preprod';
+export interface Proof extends CommitmentRef {
+  format: 'giveaway-proof-2';
+  network: Network;
   bundle: Bundle;
-  commitment: Commitment;
   beacon: Beacon;
   winners: string[];
+}
+// Published before the round: identifies the committed bundle and transaction, nothing more.
+export interface Pending extends CommitmentRef {
+  format: 'giveaway-pending-2';
+  network: Network;
+  bundle: Bundle;
 }
 export function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -60,8 +81,9 @@ function object(value: unknown, keys: string[]): asserts value is Record<string,
 }
 export function normalizeLabel(value: string): string {
   const label = value.trim().normalize('NFC');
+  if (label.length > MAX_LABEL_UNITS) throw new Error('Invalid participant label');
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are rejected on purpose.
-  if (!label || label.length > 200 || /[\u0000-\u001f\u007f-\u009f]/.test(label) || /[\ud800-\udfff]/u.test(label))
+  if (!label || /[\u0000-\u001f\u007f-\u009f]/.test(label) || /[\ud800-\udfff]/u.test(label))
     throw new Error('Invalid participant label');
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(label) || /^\+?[\d\s()-]{7,}$/.test(label))
     throw new Error('Use a public participant label, not an email or phone number');
@@ -73,7 +95,7 @@ export function validateBundle(value: unknown): Bundle {
     throw new Error('Unsupported development protocol or algorithm');
   if (typeof value.drawId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(value.drawId))
     throw new Error('Invalid drawId');
-  if (!Array.isArray(value.entrants) || value.entrants.length < 1 || value.entrants.length > 10000)
+  if (!Array.isArray(value.entrants) || value.entrants.length < 1 || value.entrants.length > MAX_ENTRANTS)
     throw new Error('Use 1–10,000 participants');
   const entrants = value.entrants.map((x) => {
     if (typeof x !== 'string') throw new Error('Participant labels must be strings');
@@ -132,7 +154,7 @@ export async function selectWinners(bundle: Bundle, randomness: string): Promise
   ranked.sort((a, b) => (a.score < b.score ? -1 : a.score > b.score ? 1 : a.index - b.index));
   return ranked.slice(0, bundle.rules.winners).map((x) => x.label);
 }
-export function checkTiming(commitment: Commitment, round: number): boolean {
+export function checkTiming(commitment: Confirmed, round: number): boolean {
   return (
     Number.isSafeInteger(commitment.blockTime) &&
     Number.isSafeInteger(commitment.confirmedAt) &&
@@ -141,7 +163,7 @@ export function checkTiming(commitment: Commitment, round: number): boolean {
     commitment.confirmedAt < roundTime(round)
   );
 }
-export function checkUniqueness(commitments: Commitment[], target: Commitment): boolean {
+export function checkUniqueness(commitments: Inclusion[], target: Inclusion): boolean {
   const candidates = commitments.filter((x) => x.owner === target.owner && x.drawId === target.drawId);
   candidates.sort((a, b) => a.blockHeight - b.blockHeight || a.txHash.localeCompare(b.txHash));
   // Same-block ordering is not authoritative; refuse to choose between simultaneous commitments.
@@ -151,45 +173,40 @@ export function checkUniqueness(commitments: Commitment[], target: Commitment): 
     candidates.filter((x) => x.blockHeight === candidates[0].blockHeight).length === 1
   );
 }
-export function validateProof(value: unknown): Proof {
-  object(value, ['format', 'network', 'bundle', 'commitment', 'beacon', 'winners']);
+function network(value: unknown): Network {
+  if (value !== 'demo' && value !== 'preprod') throw new Error('Unsupported network');
+  return value;
+}
+function reference(value: Record<string, unknown>) {
   if (
-    value.format !== 'giveaway-proof-1' ||
-    typeof value.network !== 'string' ||
-    !['demo', 'preprod'].includes(value.network)
-  )
-    throw new Error('Unsupported proof format or network');
-  validateBundle(value.bundle);
-  object(value.commitment, [
-    'txHash',
-    'owner',
-    'bundleHash',
-    'drawId',
-    'round',
-    'blockHeight',
-    'blockTime',
-    'confirmedAt',
-  ]);
-  object(value.beacon, ['round', 'signature', 'randomness']);
-  const c = value.commitment,
-    b = value.beacon;
-  if (
-    typeof c.txHash !== 'string' ||
-    !/^[a-f0-9]{64}$/.test(c.txHash) ||
-    typeof c.bundleHash !== 'string' ||
-    !/^[a-f0-9]{64}$/.test(c.bundleHash) ||
-    typeof c.owner !== 'string' ||
-    !c.owner ||
-    typeof c.drawId !== 'string'
+    typeof value.txHash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value.txHash) ||
+    typeof value.owner !== 'string' ||
+    !value.owner
   )
     throw new Error('Invalid commitment reference');
-  for (const key of ['round', 'blockHeight', 'blockTime', 'confirmedAt'])
-    if (!Number.isSafeInteger(c[key]) || Number(c[key]) < 0) throw new Error('Invalid commitment timing');
+}
+export function validateProof(value: unknown): Proof {
+  object(value, ['format', 'network', 'bundle', 'txHash', 'owner', 'beacon', 'winners']);
+  if (value.format !== 'giveaway-proof-2') throw new Error('Unsupported proof format');
+  network(value.network);
+  validateBundle(value.bundle);
+  reference(value);
+  object(value.beacon, ['round', 'signature', 'randomness']);
+  const b = value.beacon;
   if (!Number.isSafeInteger(b.round) || typeof b.signature !== 'string' || typeof b.randomness !== 'string')
     throw new Error('Invalid beacon');
   if (!Array.isArray(value.winners) || value.winners.some((x) => typeof x !== 'string'))
     throw new Error('Invalid winners');
   return value as unknown as Proof;
+}
+export function validatePending(value: unknown): Pending {
+  object(value, ['format', 'network', 'bundle', 'txHash', 'owner']);
+  if (value.format !== 'giveaway-pending-2') throw new Error('Unsupported announcement format');
+  network(value.network);
+  validateBundle(value.bundle);
+  reference(value);
+  return value as unknown as Pending;
 }
 export function parseEntrants(text: string): string[] {
   // CSV supports quoted fields and escaped quotes. Only the label column is imported.

@@ -10,6 +10,7 @@ lint:
 test: build
 	node --test tests/*.test.mjs
 check: lint typecheck test
+	node tools/mutation-check.mjs
 	python3 tools/reference.py --check
 	python3 docs/plans/2026-10-01-verifiable-giveaway-mvp/check_plan.py
 dev: build
