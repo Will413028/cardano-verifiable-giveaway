@@ -16,7 +16,7 @@
 <form id="draw-form">
 <label for="network">Mode</label><select id="network"><option value="demo">Demo — no wallet needed</option><option value="preprod">Cardano preprod — test ADA</option></select>
 <p id="mode-note" class="note">Demo uses a recorded, cryptographically verified drand beacon and simulated chain timing. It is not an on-chain giveaway.</p>
-<div id="wallet-area" hidden><label for="wallet">Your wallet</label><div class="inline"><select id="wallet"></select><button type="button" id="refresh-wallets" class="secondary">Refresh</button></div><p class="note">Use a preprod wallet. Mainnet is disabled. Development support requires one ADA-only UTxO with at least 5 test ADA.</p></div>
+<div id="wallet-area" hidden><p id="chain-tip" class="note" role="status">Reading the preprod tip…</p><label for="wallet">Your wallet</label><div class="inline"><select id="wallet"></select><button type="button" id="refresh-wallets" class="secondary">Refresh</button></div><p class="note">Use a preprod wallet. Mainnet is disabled. Development support requires one ADA-only UTxO with at least 5 test ADA.</p></div>
 <label for="entrants">Public participant labels</label><textarea id="entrants" rows="7" spellcheck="false" placeholder="One label per line, or CSV with a label header">alice
 bob
 carol

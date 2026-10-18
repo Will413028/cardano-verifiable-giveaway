@@ -36,6 +36,26 @@
       }
     },
     {
+      "includes": ["apps/*/*/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**"],
+                    "message": "Files in an app subdirectory (apps/api/src, apps/api/test) stay inside the app: import other workspace packages by name."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["tools/**", "tests/**"],
       "linter": {
         "rules": {

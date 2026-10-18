@@ -8,3 +8,5 @@ spikes/a-commit-tx/dist/
 spikes/a-commit-tx/local-results/
 spikes/s1-sdk/dist/
 spikes/s1-sdk/probe/out.js
+.wrangler/
+.dev.vars*

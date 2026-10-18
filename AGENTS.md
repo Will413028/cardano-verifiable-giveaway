@@ -6,7 +6,7 @@ Help community organizers run free giveaways whose committed entrant list, rules
 
 - Read README.md for the planned experience and verification boundaries.
 - The product is exploratory. Use TypeScript, the static web application and the independent Node verifier; development protocol defaults remain unfrozen until preprod acceptance.
-- A TypeScript convenience backend (indexer proxy, bundle hosting, drafts) is decided but not yet built. It never signs or submits transactions, generates randomness or decides PASS/FAIL, and the verifier never depends on it (`docs/adr/2026-10-18-typescript-convenience-backend.md`).
+- A TypeScript convenience backend (indexer proxy, bundle hosting, drafts) is decided; `apps/api/` holds only a local walking skeleton that proxies Koios `/tip`, and it is not deployed. It never signs or submits transactions, generates randomness or decides PASS/FAIL, and the verifier never depends on it (`docs/adr/2026-10-18-typescript-convenience-backend.md`).
 - Do not present planned functionality as implemented, deployed or validated by users.
 - Keep payments, revenue splitting, bookings, token issuance, NFTs, betting and cryptocurrency prizes outside the product core.
 - Distinguish blockchain commitments and validator checks from claims about external facts.

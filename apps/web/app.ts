@@ -25,6 +25,7 @@ import {
   assembleProof,
   encodeInline,
   fetchHostedBundle,
+  fetchTip,
   hostedShareLink,
   inlineShareLink,
   resolveArtifact,
@@ -41,6 +42,7 @@ import {
   renderLookup,
   renderMode,
   renderShare,
+  renderTip,
   renderVerdict,
   renderVerificationNote,
   renderVerificationPending,
@@ -79,6 +81,15 @@ function reset(state: AppState) {
 function updateMode(state: AppState) {
   reset(state);
   renderMode(isDemo() ? FIXTURE.round : roundAt(now() + 1860));
+}
+
+// Outside run(): the tip is informational and must not lock the controls or replace the draw status.
+async function refreshTip() {
+  try {
+    renderTip(await fetchTip());
+  } catch (e) {
+    renderTip(e as Error);
+  }
 }
 
 async function refreshWallets() {
@@ -292,7 +303,10 @@ function start() {
   const chains = createChains();
   input('network').onchange = () => {
     updateMode(state);
-    if (!isDemo()) void run(state, refreshWallets);
+    if (!isDemo()) {
+      void refreshTip();
+      void run(state, refreshWallets);
+    }
   };
   el('refresh-wallets').onclick = () => void run(state, refreshWallets);
   input('entrants').oninput = () => {

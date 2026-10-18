@@ -42,7 +42,9 @@ node apps/verifier-cli/index.mjs draw-example.json
 
 The CLI returns exit code 0 for PASS / DEMO PASS and 1 for FAIL. Preprod verification queries a Koios-compatible indexer and may use `--indexer https://host/api/v1`. Browser access to organizer-hosted bundles requires CORS; share links pin the hosted file hash.
 
-`make check` runs Biome lint and formatting checks, TypeScript checking, Node tests, ten independent Python golden vectors and plan consistency checks. The optional browser end-to-end check uses an existing Playwright installation and Chrome, without downloading browsers or using personal profiles:
+The convenience backend in `apps/api/` is a local walking skeleton: `make api` starts it with Wrangler on `http://127.0.0.1:8787`, where it forwards the read-only Koios `/tip` and nothing else. In preprod mode the page shows that tip. The page reads the backend address from `GIVEAWAY_API_URL` at build time (default `http://127.0.0.1:8787`). Verification does not use the backend, and the CLI still queries the indexer directly. The backend is not deployed.
+
+`make check` runs Biome lint and formatting checks, TypeScript checking, Node tests, the backend tests inside the local Workers runtime, ten independent Python golden vectors and plan consistency checks. The optional browser end-to-end check uses an existing Playwright installation and Chrome, without downloading browsers or using personal profiles:
 
 ```sh
 GIVEAWAY_PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \

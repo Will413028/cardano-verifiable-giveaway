@@ -1,0 +1,15 @@
+{
+  // Local development only (`pnpm --filter @giveaway/api dev`); deployment belongs to MVP plan step 10.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "giveaway-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "send_metrics": false,
+  // The page is built against http://127.0.0.1:8787 (GIVEAWAY_API_URL default).
+  "dev": { "ip": "127.0.0.1", "port": 8787 },
+  "vars": {
+    // The only browser origin allowed to read proxy responses: the local `make dev` server.
+    "ALLOWED_ORIGIN": "http://127.0.0.1:4320"
+  }
+}

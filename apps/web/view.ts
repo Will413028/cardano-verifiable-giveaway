@@ -1,6 +1,6 @@
 import type { Bundle } from '@giveaway/protocol';
 import type { CheckResult, Verdict } from '@giveaway/verifier';
-import type { Artifact } from './services.ts';
+import type { Artifact, Tip } from './services.ts';
 
 // DOM reads and writes only; element ids are the contract with index.html and the browser check.
 
@@ -55,6 +55,15 @@ export function renderMode(round: number) {
     isDemo()
       ? 'No wallet needed. Preview your demo draw to begin.'
       : 'Preprod integration is implemented but real-wallet acceptance is deferred.',
+  );
+}
+
+export function renderTip(tip: Tip | Error) {
+  text(
+    'chain-tip',
+    tip instanceof Error
+      ? `Preprod tip unavailable through the backend proxy (${tip.message}).`
+      : `Preprod tip via the backend proxy: block ${tip.blockHeight} · epoch ${tip.epoch} · slot ${tip.slot} · ${localTime(tip.blockTime)}`,
   );
 }
 
