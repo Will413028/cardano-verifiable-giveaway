@@ -116,3 +116,25 @@ await mustFail(
     ),
   'F1 overlap: same wallet',
 );
+// Step 6: the page re-reads the SDK's unsigned transaction before signTx; dropping any field comparison must fail a test.
+for (const [field, message, testName] of [
+  ['input', 'Unsigned transaction spends an unexpected input', 'unsigned commitment re-read: input'],
+  [
+    'transfer output',
+    'Unsigned transaction transfer output differs from the commitment',
+    'unsigned commitment re-read: transfer output',
+  ],
+  [
+    'change address',
+    'Unsigned transaction sends change to another address',
+    'unsigned commitment re-read: change address',
+  ],
+  ['balance', 'Unsigned transaction does not balance its input', 'unsigned commitment re-read: balance'],
+  ['metadata', 'Unsigned transaction metadata differs from the commitment', 'unsigned commitment re-read: metadata'],
+])
+  await mustFail(
+    `Skipping the unsigned ${field} comparison`,
+    library,
+    (text) => text.replace(`throw new Error("${message}")`, 'void 0'),
+    testName,
+  );

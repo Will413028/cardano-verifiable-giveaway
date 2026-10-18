@@ -16,7 +16,43 @@
   },
   "overrides": [
     {
-      "includes": ["packages/*/*", "apps/*/*"],
+      "includes": ["packages/*/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**"],
+                    "message": "Packages are flat directories: import another workspace package by its name and declare it in package.json."
+                  },
+                  {
+                    "group": [
+                      "@evolution-sdk/**",
+                      "@meshsdk/**",
+                      "@blaze-cardano/**",
+                      "@cardano-sdk/**",
+                      "@lucid-evolution/**",
+                      "lucid-cardano",
+                      "@emurgo/**",
+                      "@dcspark/**",
+                      "@harmoniclabs/cardano-ledger-ts",
+                      "@harmoniclabs/plu-ts",
+                      "@harmoniclabs/buildooor"
+                    ],
+                    "message": "Trust path (PD6): packages read transactions with the CBOR reader in @giveaway/chain and @noble; Cardano SDKs belong only to apps/web transaction building."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/*/*"],
       "linter": {
         "rules": {
           "style": {

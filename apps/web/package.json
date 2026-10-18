@@ -3,15 +3,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@evolution-sdk/evolution": "0.6.0",
     "@giveaway/beacon": "workspace:*",
     "@giveaway/chain": "workspace:*",
     "@giveaway/protocol": "workspace:*",
-    "@giveaway/verifier": "workspace:*",
-    "@meshsdk/core": "1.9.1",
-    "buffer": "6.0.3",
-    "crypto-browserify": "3.12.1",
-    "events": "3.3.0",
-    "process": "0.11.10",
-    "stream-browserify": "3.0.0"
+    "@giveaway/verifier": "workspace:*"
   }
 }

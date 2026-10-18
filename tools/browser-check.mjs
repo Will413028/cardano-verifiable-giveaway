@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { cst } from '@meshsdk/core';
-import { LABEL, QUICKNET, VERSION } from '@giveaway/verifier-cli/library';
+import { encodeBech32, LABEL, QUICKNET, VERSION } from '@giveaway/verifier-cli/library';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({
@@ -115,11 +114,13 @@ try {
   passed('mock mainnet wallet cannot build or submit');
   const preprod = await browser.newPage();
   const params = JSON.parse(await readFile(`${root}tests/epoch-params.json`, 'utf8'));
-  const address = cst.Address.fromBytes(`60${'00'.repeat(28)}`).toBech32();
-  const utxo = cst.TransactionUnspentOutput.fromCore([
-    { txId: '00'.repeat(32), index: 0 },
-    { address, value: { coins: 10000000n } },
-  ]).toCbor();
+  const addressHex = `60${'00'.repeat(28)}`;
+  const address = encodeBech32(
+    'addr_test',
+    Uint8Array.from(addressHex.match(/../g), (b) => parseInt(b, 16)),
+  );
+  // CIP-30 UTxO CBOR: [[tx id, index], [address, 10 ADA]].
+  const utxo = `82825820${'00'.repeat(32)}0082581d${addressHex}1a00989680`;
   const submitted = 'ab'.repeat(32);
   // Koios mock shared by the preprod pages; `txInfo` answers lookups of the submitted commitment.
   const routePreprod = (target, txInfo) =>
@@ -134,29 +135,24 @@ try {
             ? params
             : path === 'tx_metadata'
               ? []
-              : path === 'tx_info'
+              : path === 'utxo_info'
                 ? [
                     {
                       tx_hash: '00'.repeat(32),
-                      outputs: [
-                        {
-                          tx_hash: '00'.repeat(32),
-                          tx_index: 0,
-                          payment_addr: { bech32: address },
-                          value: '10000000',
-                          asset_list: [],
-                          datum_hash: null,
-                          inline_datum: null,
-                          reference_script: null,
-                        },
-                      ],
+                      tx_index: 0,
+                      address,
+                      value: '10000000',
+                      asset_list: [],
+                      datum_hash: null,
+                      inline_datum: null,
+                      reference_script: null,
                     },
                   ]
                 : undefined;
       if (!data) throw new Error(`Unexpected mock preprod request: ${path}`);
       await route.fulfill({ json: data });
     });
-  // A CIP-30 mock; with `sign` it approves by returning no witnesses, so no key exists anywhere in the check.
+  // A CIP-30 mock; with `sign` it approves by returning an empty witness set (`a0`), so no key exists anywhere in the check.
   const mockWallet = ({ utxo, sign }) => {
     window.cardano = {
       mock: {
@@ -168,7 +164,7 @@ try {
           getChangeAddress: async () => `60${'00'.repeat(28)}`,
           getUtxos: async () => [utxo],
           signTx: async () => {
-            if (sign) return '';
+            if (sign) return 'a0';
             throw new Error('No signing allowed in automated browser checks');
           },
         }),

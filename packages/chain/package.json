@@ -4,6 +4,7 @@
   "type": "module",
   "exports": "./index.ts",
   "dependencies": {
-    "@giveaway/protocol": "workspace:*"
+    "@giveaway/protocol": "workspace:*",
+    "@noble/hashes": "2.4.0"
   }
 }

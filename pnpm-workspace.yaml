@@ -2,7 +2,6 @@ packages:
   - packages/*
   - apps/*
 allowBuilds:
-  chacha-native: false
   esbuild: false
   # Like esbuild, workerd ships its binary as a platform optionalDependency; the postinstall only re-checks it.
   workerd: false

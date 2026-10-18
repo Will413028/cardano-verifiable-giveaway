@@ -16,8 +16,6 @@ if (
 await mkdir(`${root}dist`, { recursive: true });
 await build({
   entryPoints: [`${root}apps/web/app.ts`],
-  // Aliases and the injected shim resolve from the web package, which declares them.
-  absWorkingDir: `${root}apps/web`,
   bundle: true,
   splitting: true,
   format: 'esm',
@@ -28,16 +26,8 @@ await build({
   chunkNames: 'chunks/[name]-[hash]',
   minify: true,
   sourcemap: false,
-  // Mesh's dynamically loaded browser integration needs the same standard shims measured in Spike A.
-  alias: {
-    crypto: 'crypto-browserify',
-    stream: 'stream-browserify',
-    events: 'events',
-    buffer: 'buffer',
-    process: 'process',
-  },
-  define: { global: 'globalThis', GIVEAWAY_API_URL: JSON.stringify(apiUrl.href.replace(/\/$/, '')) },
-  inject: [`${root}apps/web/polyfills.js`],
+  // No Node shims: the page's dependencies (Evolution SDK, noble, @harmoniclabs/crypto) run on browser globals alone.
+  define: { GIVEAWAY_API_URL: JSON.stringify(apiUrl.href.replace(/\/$/, '')) },
 });
 await build({
   entryPoints: [`${root}apps/verifier-cli/library.ts`],

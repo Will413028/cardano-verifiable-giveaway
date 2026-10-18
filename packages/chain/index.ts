@@ -11,6 +11,17 @@ import {
   hex,
   sha256,
 } from '@giveaway/protocol';
+import {
+  auxiliaryDataHash,
+  auxiliaryMetadata,
+  type CborValue,
+  isCborArray,
+  isCborMap,
+  isCborTag,
+  transactionHash,
+  transactionParts,
+} from './cbor.ts';
+export * from './cbor.ts';
 
 // Private development label, absent from the CIP-10 registry (checked 2026-10-18 at CIPs commit befcdb7);
 // registration is left to the v1 freeze.
@@ -18,6 +29,73 @@ export const LABEL = 20261018;
 export const DEFAULT_INDEXER = 'https://preprod.koios.rest/api/v1';
 export function commitmentMetadata(bundle: Bundle, bundleHash: string) {
   return { protocol: VERSION, drawId: bundle.drawId, bundleHash, chainHash: QUICKNET, round: bundle.drand.round };
+}
+// The commitment transaction moves this much from the organizer's address back to itself; the rest returns as change.
+export const COMMITMENT_TRANSFER = 2_000_000n;
+// What the page asked the transaction SDK to build. The unsigned CBOR is re-read with the trust-path reader and
+// compared against this before the wallet is asked to sign, so an SDK that builds something else is never signed.
+export interface CommitmentPlan {
+  input: { txHash: string; index: number; lovelace: bigint };
+  // Hex bytes of the organizer address: it receives both the transfer and the change.
+  address: string;
+  metadata: ReturnType<typeof commitmentMetadata>;
+}
+// inputs, outputs, fee, auxiliary data hash: anything else (mint, withdrawals, certificates, collateral...) is refused.
+const COMMITMENT_BODY_FIELDS = new Set<unknown>([0, 1, 2, 7]);
+function adaOutput(output: CborValue): { address: string; lovelace: bigint } {
+  const [address, amount, extra] = isCborMap(output)
+    ? [output.get(0), output.get(1), [...output.keys()].some((k) => k !== 0 && k !== 1)]
+    : isCborArray(output)
+      ? [output[0], output[1], output.length !== 2]
+      : [undefined, undefined, true];
+  if (!(address instanceof Uint8Array) || typeof amount !== 'bigint' || extra)
+    throw new Error('Unsigned transaction has an output that is not plain ADA');
+  return { address: hex(address), lovelace: amount };
+}
+function sameMetadatum(value: CborValue, expected: unknown): boolean {
+  if (typeof expected === 'string') return value === expected;
+  if (typeof expected === 'number') return typeof value === 'bigint' && value === BigInt(expected);
+  if (typeof expected !== 'object' || expected === null || !isCborMap(value)) return false;
+  const entries = Object.entries(expected);
+  return value.size === entries.length && entries.every(([k, v]) => value.has(k) && sameMetadatum(value.get(k), v));
+}
+export function checkCommitmentTransaction(txHex: string, plan: CommitmentPlan): { fee: bigint; txHash: string } {
+  const { transaction, body, auxiliary } = transactionParts(txHex);
+  if (transaction.length !== 4 || transaction[2] !== true)
+    throw new Error('Unsigned transaction is not a Conway transaction');
+  const witnesses = transaction[1];
+  if (!isCborMap(witnesses) || witnesses.size) throw new Error('Unsigned transaction already carries witnesses');
+  for (const key of body.keys())
+    if (!COMMITMENT_BODY_FIELDS.has(key))
+      throw new Error(`Unsigned transaction has unexpected body field ${String(key)}`);
+  const inputSet = body.get(0);
+  const inputs = isCborTag(inputSet) && inputSet.tag === 258 ? inputSet.value : inputSet;
+  const input = isCborArray(inputs) && inputs.length === 1 ? inputs[0] : undefined;
+  if (
+    !isCborArray(input) ||
+    !(input[0] instanceof Uint8Array) ||
+    hex(input[0]) !== plan.input.txHash ||
+    input[1] !== BigInt(plan.input.index)
+  )
+    throw new Error('Unsigned transaction spends an unexpected input');
+  const outputs = body.get(1);
+  if (!isCborArray(outputs) || outputs.length !== 2)
+    throw new Error('Unsigned transaction must have a transfer and a change output');
+  const [transfer, change] = outputs.map(adaOutput);
+  const address = plan.address.toLowerCase();
+  if (transfer.address !== address || transfer.lovelace !== COMMITMENT_TRANSFER)
+    throw new Error('Unsigned transaction transfer output differs from the commitment');
+  if (change.address !== address) throw new Error('Unsigned transaction sends change to another address');
+  const fee = body.get(2);
+  if (typeof fee !== 'bigint' || transfer.lovelace + change.lovelace + fee !== plan.input.lovelace)
+    throw new Error('Unsigned transaction does not balance its input');
+  const auxHash = auxiliaryDataHash(txHex);
+  if (auxHash.computed === null || auxHash.computed !== auxHash.declared)
+    throw new Error('Unsigned transaction auxiliary data hash mismatch');
+  const metadata = auxiliary ? auxiliaryMetadata(auxiliary) : null;
+  if (metadata?.size !== 1 || !sameMetadatum(metadata.get(LABEL), plan.metadata))
+    throw new Error('Unsigned transaction metadata differs from the commitment');
+  return { fee, txHash: transactionHash(txHex) };
 }
 export const DEMO_OWNER = 'demo-organizer';
 // Demo evidence is simulated from the bundle alone, so a fresh page or the CLI can re-derive it; the
