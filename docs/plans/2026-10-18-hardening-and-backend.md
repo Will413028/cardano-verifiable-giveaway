@@ -83,7 +83,7 @@
   - 停止條件：Koios 沒有能依 PD3 身分列舉交易的端點——停下，PD3 的身分子題改用新事實。
 
 - [ ] **6. 依 PD1、PD6 更換依賴**（被擋於：步驟 4）
-  - 範圍：依 ADR `docs/adr/2026-10-18-sdk-and-trust-path-dependencies.md`：把 `apps/web/cardano.ts` 的 Mesh 換成 Evolution SDK（鎖精確版本、只在建立頁延遲載入）；`packages/chain` 的 CBOR 用法換成自寫讀取器加 `@noble/hashes`、`@noble/curves`（自 `spikes/s1-sdk/options/minimal.mjs` 移入並改寫為 TypeScript）；`tools/lint.mjs` 禁止 `packages/` 引用任何 Cardano SDK；網頁組完交易後以讀取器重讀未簽 CBOR，欄位不符就不呼叫 `signTx`；移除不再需要的 polyfill 與 alias（F16），`@harmoniclabs/crypto` 是否仍需 Buffer 在本步確認。
+  - 範圍：依 ADR `docs/adr/2026-10-18-sdk-and-trust-path-dependencies.md`：把 `apps/web/cardano.ts` 的 Mesh 換成 Evolution SDK（鎖精確版本、只在建立頁延遲載入）；`packages/chain` 的 CBOR 用法換成自寫讀取器加 `@noble/hashes`、`@noble/curves`（自 `spikes/s1-sdk/options/minimal.mjs` 移入並改寫為 TypeScript）；以步驟 3 的 Biome `noRestrictedImports` 禁止 `packages/` 引用任何 Cardano SDK；網頁組完交易後以讀取器重讀未簽 CBOR，欄位不符就不呼叫 `signTx`；移除不再需要的 polyfill 與 alias（F16），`@harmoniclabs/crypto` 是否仍需 Buffer 在本步確認。
   - 消費端：`rg -n "@meshsdk|cst\.|polyfills|crypto-browserify|stream-browserify" apps packages tools package.json`
   - 不能動：交易內容（輸出、metadata、找零規則）；mainnet 拒絕與 preprod UTxO 核對。
   - 驗收：`make check` 與瀏覽器 E2E 全綠；同一組輸入在換 SDK 前後產生的未簽交易，解碼後比對語意欄位：輸入、輸出地址與金額、metadata 解碼後相等、找零地址、fee 在即時參數估計值的 2 倍以內；bundle 大小記錄在進度表。
