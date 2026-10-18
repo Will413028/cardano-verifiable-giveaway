@@ -21,15 +21,15 @@
 
 ## 本階段依賴的不變量
 
-沿用 MVP 計畫的 I1–I9；PD3 會改寫 I5、I7（見 PD3）。本計畫新增：
+沿用 MVP 計畫的 I1–I9；PD3 改寫 I5、I7（步驟 5 執行）。本計畫新增：
 
 | 不變量 | 依賴它的機制（新系統先寫預計的模組） |
 |---|---|
 | B1 驗證不依賴後端：verifier 不引用後端模組；CLI 只直連 indexer 與 drand relay；後端停擺不影響 PASS 判定 | `packages/protocol/verifier.ts`、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs`、`apps/api/`（預計）、`tools/lint.mjs` 的邊界檢查 |
 | B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/proxy.ts`（預計）、`apps/web/cardano.ts` 的 `submitTx` |
-| B3 後端不存密碼、email、OAuth token 或 session token（依 PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
+| B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；擁有權綁定第一筆（bundleHash, txHash, owner），刪除留 tombstone | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
-| B5 保存有期限：bundle 到 round 後 12 個月（延長上限依 PD4）、伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
+| B5 保存有期限：bundle 到 round 後 12 個月，每次延長 12 個月、總計不超過 round 後 36 個月（PD4）；伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
 | B6 proxy 快取不得讓唯一性列舉漏掉交易：未滿頁的最後一頁不快取 | `apps/api/src/proxy.ts`（預計）的快取層、`packages/chain/index.ts` 的 `findCommitments` |
 
 ## 範圍
@@ -75,8 +75,8 @@
   - 驗收：`make check` 全綠（含 mutation-check）；重產的 vectors 由 Node 與 Python 兩邊算出相同的 bundle hash 與得獎者；inventory F3–F7 各一個回歸測試，把修正改回舊寫法時該測試要失敗；瀏覽器 E2E 與基線的差異只有已知的檢查項數與 proof 格式。
   - 停止條件：canonical 輸出除了 `version` 欄位之外有任何差異——停下，代表動到 canonical 規則。
 
-- [ ] **5. 唯一性重設計**（被擋於：PD3；步驟 4）
-  - 範圍：開工先確認 Koios 能依 PD3 的身分列舉交易（例如 stake credential 用 `account_txs`），記錄端點、分頁數與請求數，再交 PD3 的身分子題拍板。依 PD3 改寫 `checkUniqueness` 與 `findCommitments`，驗證頁與 CLI 列出衝突的承諾。同步改 `BOUNDARY` 常數、`docs/protocol-development.md` 的唯一性段，並在 MVP 計畫 I5、I7、D3、D7 加註由 PD3 接手（F1）。
+- [ ] **5. 唯一性重設計**（被擋於：步驟 4；PD3 身分子題的前提於本步開頭確認）
+  - 範圍：開工先確認 Koios 能依 PD3 的身分列舉交易（例如 stake credential 用 `account_txs`），記錄端點、分頁數與請求數；確認成立後 PD3 身分 A 定案。依 PD3 改寫 `checkUniqueness` 與 `findCommitments`，驗證頁與 CLI 列出衝突的承諾。同步改 `BOUNDARY` 常數、`docs/protocol-development.md` 的唯一性段，並在 MVP 計畫 I5、I7、D3、D7 加註由 PD3 接手（F1）。
   - 消費端：`rg -n "checkUniqueness|findCommitments|address_txs|BOUNDARY|different-drawId" packages apps tools tests docs`
   - 不能動：「同一區塊多筆時 fail closed」；分頁上限超過時判 FAIL；round 時間之後才收錄的承諾不影響已完成的抽獎（`docs/protocol-development.md` 現行規則）。
   - 驗收：回歸測試四個劇本——同錢包、同 round、不同 drawId；同錢包、相鄰 round（R 與 R+1）；round 後補送一筆；兩場時間區間不重疊的連續抽獎。前兩者新實作判 FAIL（舊實作 PASS），第三者不影響原抽獎，第四者兩場都 PASS；mutation：把衝突判定改回（地址, drawId），前兩個劇本的測試要失敗。
@@ -110,20 +110,20 @@
   - 停止條件：Koios 條款不允許代理轉發或快取——停下，交 Will 決定改用其他 indexer 或付費方案。
   - 需要人做的事：申請 Koios Free API key 存本機（碰憑證，由 Will 處理；本機與 CI 不需要，部署前需要）。
 
-- [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD4 擋住每個 owner 的額度；PD2 擋住 CPU 驗收）
+- [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD2 擋住 CPU 驗收）
   - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17、BR-18：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、大小上限）、擁有權綁定第一筆、tombstone、每個 owner 的保存額度、12 個月保存與 Cron 清理；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。
   - 消費端：`rg -n "loadUrl|share-link|bundle=|hash=|showShare|download" apps tools tests`；CLI：`rg -n "verifyProof|argv" apps/verifier-cli`
   - 不能動：B1、B4；CLI 的 proof 模式與 exit code 語意。
   - 驗收：後端測試涵蓋 hash 不符、`validateBundle` 失敗、超過大小、承諾不存在、第二個 owner 上傳同一 bundle、tombstone 後重傳、超過 owner 額度、到期清理（時間注入）；E2E 以新連結格式在 demo 模式完成 DEMO PASS；Node 測試以注入的假 chain 跑 CLI 的 bundle 模式，後端未啟動時結果 PASS；mutation：略過 `validateBundle` 或 tombstone 檢查，各自的測試要失敗。真鏈的 CLI 交叉驗收等真錢包（MVP 計畫步驟 8）。
   - 停止條件：最壞情況的 CPU 時間超過付費方案上限——停下，代表要改成分段處理，交 Will 決定。
 
-- [ ] **11. 擁有者簽章操作**（被擋於：步驟 10；PD1；PD4）
+- [ ] **11. 擁有者簽章操作**（被擋於：步驟 10；PD1）
   - 範圍：BR-09、BR-13：nonce 端點、CIP-30 `signData` payload（網域、操作、bundleHash、network、nonce，5 分鐘有效），依 PD4 的驗證形式送出；後端驗章並確認 key 屬於 owner 地址；刪除與延長（延長上限依 PD4）；刪除後介面提醒保留下載副本。
   - 消費端：無（新端點）；網頁呼叫端：`rg -n "signData" apps`
   - 不能動：B2、B3；owner 取自承諾交易，不取錢包目前的 change address。
   - 驗收：以測試內產生的金鑰簽章；測試涵蓋過期 payload、重用 nonce、別的網域、別的 network、非 owner 的 key、超過延長上限全部被拒；mutation：拿掉 nonce 一次性檢查或 key 與 owner 的比對，各自的測試要失敗。
 
-- [ ] **12. 草稿保存**（被擋於：步驟 11；PD4）
+- [ ] **12. 草稿保存**（被擋於：步驟 11）
   - 範圍：BR-11、BR-12：本機 IndexedDB 草稿與匯出、重新整理後恢復；伺服器草稿依 PD4 的身分與額度，需簽章存取、30 天後自動刪除。
   - 消費端：`rg -n "draft|bundle =|parseEntrants" apps/web`
   - 不能動：草稿不進入驗證流程；B3、B5。
@@ -149,7 +149,7 @@
   - A：Free——零成本；每請求 CPU 10 ms。
   - B：付費方案——每月固定費用；CPU 預設 30 秒。
   - 建議：最壞情況超過 10 ms 就選 B，不為了留在 Free 而縮小 bundle 上限。
-- **PD3 唯一性規則**（狀態：規則子題未決，可現在拍；身分子題未決，需要的事實：步驟 5 開頭的列舉端點確認；擋住步驟：5）
+- **PD3 唯一性規則**（狀態：已決 2026-10-18，Will：規則 A、身分 A；身分 A 以步驟 5 開頭確認列舉端點為前提，不成立時重議；擋住步驟：無；需要的事實：步驟 5 開頭的列舉端點確認。ADR：`docs/adr/2026-10-18-uniqueness-by-interval-overlap.md`）
   - 規則子題（攻擊劇本：主辦者送多筆承諾，開獎後公布有利的那一場；或開獎後補送一筆讓已完成的抽獎失效）：
     - A：時間區間重疊即衝突——每筆承諾的區間是〔收錄時間, round 時間〕；同一身分的兩筆承諾區間重疊就兩筆都判 FAIL，round 之後才收錄的承諾不影響已完成的抽獎。擋住換 drawId、換相鄰 round 與事後補送三種劇本；代價是同一錢包不能同時進行兩場時間重疊的抽獎，要同時辦就得用不同錢包，而跨錢包本來就無法判定。（建議）
     - B：（身分, round）——換相鄰 round 就能繞過。
@@ -158,15 +158,14 @@
     - A：stake credential，地址沒有 stake 部分時用 payment credential——同一 HD 錢包換地址也會被算進去。（建議，前提是 Koios 有可用的列舉端點）
     - B：payment credential——列舉最簡單；換地址就能繞過。
   - 對不變量的影響：改寫 MVP 計畫 I5（唯一性規則）與 I7、`BOUNDARY` 常數的驗證邊界文字；提前拍板 MVP 計畫 D3、D7 的唯一性子題，步驟 5 在 MVP 計畫加註。
-- **PD4 擁有者驗證形式、草稿身分與額度**（狀態：未決；擋住步驟：10 的 owner 額度、11、12；需要的事實：無）
+- **PD4 擁有者驗證形式、草稿身分與額度**（狀態：已決 2026-10-18，Will：驗證形式 A、額度照建議預設；擋住步驟：無；需要的事實：無。ADR：`docs/adr/2026-10-18-wallet-auth-and-bounded-retention.md` 的 Amendment）
   - 驗證形式：
     - A：每次操作都簽章，簽好的 payload 放在 `Authorization` header，不發 session——無狀態，後端不存任何 token；代價是每次操作都要錢包確認。（建議）
     - B：簽一次換短效 session token——操作較順；要保存、過期與撤銷 token，增加 B3 的範圍。
   - 草稿身分：簽章錢包的身分（與 PD3 身分子題同一規則）；草稿在上鏈前就存在，無法取自承諾交易。
   - 額度與上限（數字為建議預設）：每個身分最多 5 份伺服器草稿、每份不超過協定的 bundle 上限；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
-  - 選 A 時，後端 ADR 的「bearer token」改寫為「簽章 payload 放在 Authorization header」。
 
-拍板順序：PD3 規則子題與 PD4 可以現在拍；PD3 身分子題等步驟 5 開頭的列舉確認；PD1 等步驟 2；PD2 等步驟 10 的量測。
+拍板順序：PD3、PD4 已決；PD1 等步驟 2；PD2 等步驟 10 的量測。
 
 ## 進度
 

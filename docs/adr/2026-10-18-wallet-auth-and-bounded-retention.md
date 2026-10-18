@@ -38,7 +38,7 @@ tags: [cardano-verifiable-giveaway, decision, architecture, privacy]
 - **不做帳號（A）。** 擁有者操作（刪除、延長）簽一段 payload，內容含網域、操作、bundleHash、network、伺服器發的一次性 nonce，5 分鐘內有效；驗章時確認簽章 key 屬於 owner 地址。owner 取自承諾交易，不取錢包目前的 change address。
 - **上傳門檻：** 只收 canonical bundle bytes，須同時滿足 `sha256(bytes)` 等於某筆已上鏈承諾的 bundleHash、通過 `validateBundle`、大小在協定上限內。第一筆被接受的（bundleHash, txHash, owner）綁定擁有權；刪除後留下 tombstone，同一份 bytes 不得再上傳。
 - **代管格式：** 代管 bundle 而非 proof；驗證連結帶 `txHash` 與 bundleHash，beacon 與得獎者由 verifier 重算。
-- **濫用防護：** edge 依 IP 與 owner 限流、每個 owner 的保存額度、Koios key 的全域請求預算、以（address, offset）快取、每次請求只查一個地址；CORS 只開放自家網域；以 bearer token 驗證，不用 cookie；讀取端點不加 CAPTCHA；提供檢舉與下架管道。
+- **濫用防護：** edge 依 IP 與 owner 限流、每個 owner 的保存額度、Koios key 的全域請求預算、以（address, offset）快取、每次請求只查一個地址；CORS 只開放自家網域；簽好的 payload 放在 `Authorization` header，不用 cookie（見 Amendment）；讀取端點不加 CAPTCHA；提供檢舉與下架管道。
 - **保存期限：** bundle 預設保存到 round 後 12 個月，擁有者可隨時刪除或延長。伺服器草稿需錢包簽章存取，保存 30 天。草稿另一律存本機 IndexedDB 並可匯出。
 - **刪除：** 參加者的刪除請求以整份 bundle 下架處理（只改部分會使 hash 不符）；鏈上只有 hash，不受影響。介面提醒主辦者保留下載副本。
 - **紀錄：** 不記錄請求內容；IP 只保留到限流所需時間；隱私說明寫明我們是營運資料的 controller。
@@ -69,6 +69,15 @@ tags: [cardano-verifiable-giveaway, decision, architecture, privacy]
 - 硬體錢包普遍不支援 `signData` → 重評擁有者驗證方式，仍不採密碼帳號。
 - 刪除請求或濫用處理量超過單人能力 → 依便利層後端 ADR 縮回只做 proxy。
 - 法律意見認定保存期限或角色定位不符 → 先調整保存與隱私說明，再上線。
+
+## Amendment (2026-10-18)
+
+Will 回覆「都照建議走」，定下階段計畫 PD4。原決定（不做帳號、以 `signData` 證明擁有權）不變，細化如下：
+
+- **驗證形式：每次操作都簽章，不發 session。** 簽好的 payload 放在 `Authorization` header，後端只存一次性 nonce 的使用紀錄，不存任何 token。對照的選項是「簽一次換短效 session token」（SIWE 常見做法）：操作較順，但要保存、過期與撤銷 token，後端多一類憑證。本產品的擁有者操作（刪除、延長、存取草稿）頻率很低，每次多按一次錢包確認的代價小於多保存一類憑證。
+- **草稿身分：** 簽章錢包的身分，規則同[唯一性 ADR](./2026-10-18-uniqueness-by-interval-overlap.md) 的身分子題；草稿在上鏈前就存在，無法取自承諾交易。
+- **額度（SELF-IMPOSED 預設）：** 每個身分最多 5 份伺服器草稿；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
+- 撤銷條件：實際使用顯示擁有者一次要連做多個操作、逐次簽章明顯妨礙使用 → 重評短效 session。
 
 ## Review Notes
 

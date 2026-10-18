@@ -9,7 +9,7 @@
 | BR-01 | API | 唯讀 indexer proxy，只放行驗證與建交易需要的 Koios 端點 | BK Decision | 8、9 |
 | BR-02 | API | proxy 每次請求只查一個地址；以（address, offset）快取 | WA Decision | 9 |
 | BR-03 | API | 依 IP 與 owner 限流；Koios key 有全域請求預算 | WA Decision | 9 |
-| BR-04 | API | CORS 只開放自家網域；以 bearer token 驗證，不用 cookie；讀取端點不加 CAPTCHA | WA Decision | 9 |
+| BR-04 | API | CORS 只開放自家網域；每次操作的簽章 payload 放在 `Authorization` header，不發 session、不用 cookie（PD4）；讀取端點不加 CAPTCHA | WA Decision | 9 |
 | BR-05 | API | 不記錄請求內容；IP 只保留到限流所需時間 | WA Decision | 9 |
 | BR-06 | API | bundle 上傳：`sha256(bytes)` 等於已上鏈承諾的 bundleHash、通過 `validateBundle`、大小在上限內 | WA Decision | 10 |
 | BR-07 | 資料實體 | 代管紀錄綁定第一筆（bundleHash, txHash, owner）；刪除留 tombstone | WA Decision | 10 |
