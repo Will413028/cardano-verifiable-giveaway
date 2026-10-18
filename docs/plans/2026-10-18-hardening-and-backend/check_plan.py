@@ -63,6 +63,11 @@ for cells in rows(requirements, r"BR-\d+"):
     check_steps(cells[0], cells[4])
     cross_check(cells[0], cells[4])
 
+defined = {cells[0] for cells in rows(requirements, r"BR-\d+")} | {cells[0] for cells in rows(inventory, r"F\d+")}
+for ref in sorted(set(re.findall(r"(?<![\w-])(BR-\d+|F\d+)(?![\w])", plan))):
+    if ref not in defined:
+        errors.append(f"{ref}: named in plan but not defined in attachments")
+
 for match in re.finditer(r"^- \*\*(PD\d+) [^*]+\*\*（([^）]*)）", plan, re.M):
     for field in ("狀態", "擋住步驟", "需要的事實"):
         if field not in match.group(2):

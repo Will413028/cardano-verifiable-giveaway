@@ -33,7 +33,7 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 ## Decision
 
 - 規則採 A：同一身分的兩筆承諾，〔收錄時間, round 時間〕區間重疊就兩筆都 FAIL；收錄時間晚於 round 時間的承諾本身 FAIL，且不影響其他承諾。
-- 身分採 stake credential，地址沒有 stake 部分時用 payment credential。前提是 Koios 有依 stake credential 列舉交易的端點，於階段計畫步驟 5 開工時確認；不成立時停下重議身分子題，規則子題不受影響。
+- 身分子題暫停：原決定「stake credential 取自 input 地址」已撤回，見 Review Notes；重新交 Will，規則子題不受影響。
 - 驗證頁與 CLI 列出衝突的承諾；MVP 計畫 I5、I7 與 `BOUNDARY` 常數由階段計畫步驟 5 改寫。
 
 ## Rationale
@@ -58,6 +58,8 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 - 實際主辦者普遍需要同一錢包同時辦多場抽獎 → 評估在 bundle 內宣告互斥群組，仍不放寬到 B。
 
 ## Review Notes
+
+- 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。身分改為「身分 key 列在 `required_signers` 並附 witness」的選項交 Will 重新拍板（階段計畫 PD3 身分子題）；上面身分子題表格的取捨因此不完整。
 
 ## Related
 

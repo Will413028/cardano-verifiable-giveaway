@@ -24,6 +24,7 @@
 | F14 | 交易經 Koios provider 送出，而非錢包 | `apps/web/cardano.ts:30` | 修：改用 CIP-30 `submitTx` | mock 錢包記錄 `submitTx` 被呼叫；改回 provider 送出時測試要失敗 | 9 |
 | F15 | `external-interfaces.md` E5 的 Koios pricing 連結已 404 | `docs/plans/2026-10-01-verifiable-giveaway-mvp/external-interfaces.md:13` | 修：改指 tiers 頁 | 不適用（文件） | 13 |
 | F16 | 只為一筆自轉交易引入 Mesh 與 5 個 polyfill | `package.json`、`tools/build.mjs`、`tools/polyfills.js` | 等決定（PD1） | spike S1 的量測 | 2、6 |
+| F17 | 承諾交易沒有設 validity interval 上限，「在 round 之前收錄」完全採信 indexer 的時間（design-review 2026-10-18） | `apps/web/cardano.ts:19-22`、`packages/protocol/verifier.ts` 的時間檢查 | 等決定（PD5） | 選 A 時：`invalid_hereafter` 晚於 round 的承諾，舊實作 PASS、新實作 FAIL | 7 |
 
 ## 會改變的既有行為
 

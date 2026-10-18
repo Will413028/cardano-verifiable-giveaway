@@ -79,6 +79,15 @@ Will 回覆「都照建議走」，定下階段計畫 PD4。原決定（不做�
 - **額度（SELF-IMPOSED 預設）：** 每個身分最多 5 份伺服器草稿；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
 - 撤銷條件：實際使用顯示擁有者一次要連做多個操作、逐次簽章明顯妨礙使用 → 重評短效 session。
 
+## Amendment 2 (2026-10-18)：代管紀錄以 txHash 為主鍵
+
+design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, owner）綁定擁有權；刪除後留 tombstone，同一份 bytes 不得再上傳」可被搶佔：任何人都能把同一個 bundleHash 寫進自己的交易（round 前公告本來就公開完整 bundle），搶先上傳後刪除，正主就永遠傳不上去。改為：
+
+- 代管紀錄以 `txHash` 為主鍵，owner 由該筆交易推導；同一份 bytes 可對應多筆紀錄。
+- bytes 以 bundleHash 定址存放，以參照計數決定何時真正刪除。
+- 擁有者刪除只移除自己的紀錄；以 bundleHash 為鍵的 tombstone 只用於營運端下架（檢舉或參加者刪除請求），下架後任何人都不得重傳。
+- 這是對原 Decision 的修正而非新取捨：原意是「擁有者能刪自己的代管、下架後不再出現」，新結構兩者都保住，且不讓他人搶佔。
+
 ## Review Notes
 
 ## Related
