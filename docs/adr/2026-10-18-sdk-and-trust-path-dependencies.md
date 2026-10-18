@@ -65,6 +65,13 @@ PD6 信任路徑：
 - 真錢包不肯替 Evolution 組出的 stake key `required_signers` 簽，而其他 SDK 可以 → 重評 PD1。
 - 自寫讀取器或 COSE 出現安全缺陷，或出現無 WASM、保留原始 bytes、經稽核的函式庫且維護成本更低 → 重評 PD6。
 
+## Amendment (2026-10-19)：錢包連線與送出不經 Evolution
+
+- 實作步驟 6 時發現 Evolution 0.6.0 的 `withCip30` 以 `getUsedAddresses` 判斷網路、不取 change address，且 `signTx` 固定 `partialSign=true`；照用會改變計畫明列「不能動」的 mainnet 拒絕與找零規則。所以 `apps/web/cardano.ts` 直接呼叫 CIP-30（`getNetworkId`、`getChangeAddress`、`getUtxos`、`signTx(tx, false)`），Evolution 只負責組交易。
+- 送出改為把簽好的原始 bytes POST 給 indexer，不經 Evolution：Spike S1 量到它會重新編碼，可能改變 bytes。
+- 組完重讀的核對目前只涵蓋步驟 6 產生的欄位（input、輸出、找零、平衡、aux hash、metadata、body 欄位白名單）；`required_signers` 與 `invalid_hereafter` 由步驟 7 加入交易時一起核對。
+- 代價：錢包相容性的處理留在自己的程式碼，Evolution 之後的錢包修正不會自動帶進來。觸發重評：Evolution 的 CIP-30 包裝改成取 change address 並可選 `partialSign`。
+
 ## Review Notes
 
 ## Related
