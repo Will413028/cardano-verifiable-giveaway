@@ -8,7 +8,8 @@ async function walk(path) {
       const source = await readFile(new URL(name, root), 'utf8');
       if (/[^\S\r\n]+$/m.test(source)) throw new Error(`Trailing whitespace: ${name}`);
       if (name.startsWith('apps/') || name.startsWith('packages/')) {
-        if (/\b(?:from|import)\s*[^\n]*spikes\//.test(source)) throw new Error(`Product imports disposable spike: ${name}`);
+        if (/\b(?:from|import)\s*[^\n]*spikes\//.test(source))
+          throw new Error(`Product imports disposable spike: ${name}`);
       }
     }
   }

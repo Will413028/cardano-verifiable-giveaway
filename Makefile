@@ -4,6 +4,7 @@ build:
 typecheck:
 	pnpm exec tsc --project tsconfig.json
 lint:
+	pnpm exec biome check --error-on-warnings
 	node tools/lint.mjs
 test: build
 	node --test tests/*.test.mjs
