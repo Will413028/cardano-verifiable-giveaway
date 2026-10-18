@@ -25,7 +25,7 @@
 
 | 不變量 | 依賴它的機制（新系統先寫預計的模組） |
 |---|---|
-| B1 驗證不依賴後端：verifier 不引用後端模組；CLI 只直連 indexer 與 drand relay；後端停擺不影響 PASS 判定 | `packages/protocol/verifier.ts`、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs`、`apps/api/`（預計）、`tools/lint.mjs` 的邊界檢查 |
+| B1 驗證不依賴後端：verifier 不引用後端模組；CLI 只直連 indexer 與 drand relay；後端停擺不影響 PASS 判定 | `packages/verifier/index.ts`、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs`、`apps/api/`（預計）；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
 | B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/proxy.ts`（預計）、`apps/web/cardano.ts` 的 `submitTx` |
 | B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；代管紀錄以 `txHash` 為主鍵、owner 由該筆交易推導，bytes 以 bundleHash 定址並以參照計數回收；擁有者刪除只移除自己的紀錄，以 bundleHash 為鍵的 tombstone 只用於營運端下架 | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
@@ -61,16 +61,25 @@
   - 停止條件：沒有任何 SDK 能在 Workers 驗證 COSE 簽章——停下回報，PD6 與步驟 11 改用新事實。
   - 完成後的狀態：PD1、PD6 可以拍板。
 
-- [ ] **3. 工程基線：Biome 與拆分 `app.ts`**（被擋於：步驟 1）
+- [x] **3. 工程基線：Biome 與拆分 `app.ts`**（被擋於：步驟 1）
   - 範圍：導入 Biome（lint＋格式化）並接進 `make check`；把 `packages/*`、`apps/*` 改成各有 `package.json` 的 workspace 套件，跨套件以套件名稱引用並宣告 dependencies（pnpm 不讓未宣告的套件被解析），Biome `noRestrictedImports` 禁止跨套件的相對路徑，取代 `tools/lint.mjs` 以正則掃 import 的 spike 邊界檢查；把 `apps/web/app.ts` 拆成狀態、畫面與服務模組，移除模組層級的可變全域狀態。只改結構，不改行為（F12）。
   - 消費端：`rg -n "from '(\.\./)+(packages|apps|spikes)" apps packages tools tests`；`rg -n "app\.js|app\.ts|dist/library" tools Makefile tests`
   - 不能動：所有使用者看得到的行為、DOM id、`browser-check.mjs` 的斷言。
   - 驗收：`make check` 全綠；瀏覽器 E2E 與步驟 1 的基線相同；mutation：加入一行未格式化的程式碼、在 `apps/web` 以相對路徑引用 `spikes/`、在 `packages/protocol` 引用未宣告的 workspace 套件，`make check` 各自要失敗。
   - 停止條件：拆分需要改 DOM 或 E2E 斷言才能通過——停下，代表動到行為。
+  - 完成後的形狀（2026-10-18，依開工 design-review 調整）：
+    - 套件圖單向：`@giveaway/protocol` ← `beacon`、`chain` ← `verifier`（`packages/protocol/verifier.ts` 移到 `packages/verifier/index.ts`，解開套件循環）← `apps/web`、`apps/verifier-cli`。依賴宣告在使用它的套件；根目錄只留工具用的 devDependencies（esbuild、typescript、Biome、`tools/browser-check.mjs` 用的 Mesh，與以名稱引用 library 的 `@giveaway/verifier-cli`）。
+    - CLI 擁有自己的產物：`apps/verifier-cli/library.ts` 打包成 `apps/verifier-cli/dist/library.mjs`（套件 export `./library`）；測試與 `tools/mutation-check.mjs` 以 `@giveaway/verifier-cli/library` 引用；`GIVEAWAY_LIBRARY` 替換機制沿用到步驟 4 改寫 mutation-check 時重評。網頁產物仍在根目錄 `dist/`。
+    - 邊界：pnpm 的解析會往上層 `node_modules` 找，擋不住未宣告的依賴，改由 Biome `noUndeclaredDependencies` 擋；`noImportCycles` 擋模組循環；`noRestrictedImports` 在 `packages/*/*`、`apps/*/*` 禁止 `../**`（套件目前沒有子目錄；Biome 只比對字串、不解析路徑，套件出現子目錄時要加對應深度的 override），在 `tools/`、`tests/` 禁止 `../packages/**`、`../apps/**`、`../spikes/**`。spike 不需要專用規則。
+    - tsconfig 依執行環境拆開：`tsconfig.base.json` 共用選項；`packages/tsconfig.json`（ES2023＋WebWorker，沒有 DOM）、`apps/web/tsconfig.json`（DOM）、`apps/verifier-cli/tsconfig.json`。
+    - Biome 範圍：`packages`、`apps`、`tools`、`tests` 與根目錄 JSON；`tests/*.json` 由 `tools/reference.py` 產生，排除；HTML 不納入（格式化會改 inline 元素間的空白，屬可見行為；原 `tools/lint.mjs` 對 HTML 只查行尾空白，這項檢查不再保留，觸發條件：重寫 `index.html` 時改由產生器或 Biome HTML 處理）；organize imports 關閉。`tools/lint.mjs` 刪除。
+    - 網頁：`app.ts`（入口與流程：擁有狀態、接事件，流程函式仍直接改 DOM，模式取自 `#network`）、`state.ts`（`createState()`，每次載入一份）、`view.ts`（DOM 輔助與整塊畫面的 render）、`services.ts`（不碰 DOM：分享連結編碼、代管 bundle、組 proof；`createChains()` 每次載入建立一份 `DemoChain` 與 `KoiosChain`，明確傳給 `verifyProof`）。沒有顯式流程狀態機，交給步驟 12。
+    - build 仍由根目錄 `tools/build.mjs` 一支腳本建網頁與 CLI，網頁以 `absWorkingDir: apps/web` 解析它宣告的 alias；觸發條件：步驟 6 移除 alias 或步驟 8 加入 Wrangler 時，改成各套件自己的 `build` script 由根目錄 `pnpm -r run build` 串起。
+    - 套件邊界的業界替代：會解析路徑的 dependency-cruiser、eslint-plugin-boundaries，或每套件一份 tsconfig 搭配 Project References；觸發條件：任一套件出現第二層子目錄，或依深度寫的 override 漏擋一次。
 
 - [ ] **4. verifier 正確性修正與 `development-2`**（被擋於：步驟 3）
-  - 範圍：F3（相依檢查在證據失敗時標「未評估」，`Check.passed` 改成三態，網頁與 CLI 的 JSON 輸出同步）、F4（刪除「Round has arrived」與對應的動態 import）、F5（proof 只帶 network、bundle、`txHash`、owner、beacon、winners；「已收錄」與「已確認」分成兩個型別，移除 `confirmedAt: 0`）、F6（torsion point 負向測試）、F7（改用開發期私有 label）；協定文件定義 canonical bundle 的 byte 上限（由 entrant 數與長度上限推導最壞情況），網頁、CLI 與後端共用同一常數，取代各自的 8 MB 常數。協定版本升為 `development-2`：`tools/reference.py` 改版本字串後重產 `tests/vectors.json`，同步更新 `docs/protocol-development.md`。`tools/mutation-check.mjs` 改用新格式並接進 `make check`。round 前公告（`giveaway-pending-1`）改帶 `txHash`＋owner，不再帶完整 commitment。
-  - 消費端：`rg -n "confirmedAt|giveaway-proof-1|giveaway-pending-1|development-1|LABEL|Round has arrived|validateProof|passed|Verdict|count\(\), 8|mutation-check|8_000_000|8 MB" packages apps tools tests docs Makefile`
+  - 範圍：F3（相依檢查在證據失敗時標「未評估」，`Check.passed` 改成三態，網頁與 CLI 的 JSON 輸出同步）、F4（刪除「Round has arrived」與對應的動態 import）、F5（proof 只帶 network、bundle、`txHash`、owner、beacon、winners；「已收錄」與「已確認」分成兩個型別，移除 `confirmedAt: 0`）、F6（torsion point 負向測試）、F7（改用開發期私有 label）；F18（確認輪詢的回應在抽獎被重設或取代後丟棄，不寫入狀態與畫面）；`giveaway-pending-1` 的型別與驗證器移到 `packages/protocol`（目前型別在 `apps/web/services.ts`，只驗 bundle）；`tests/core.test.mjs` 的 `GIVEAWAY_LIBRARY` 替換與 mutation-check 的產物文字竄改一併重評；協定文件定義 canonical bundle 的 byte 上限（由 entrant 數與長度上限推導最壞情況），網頁、CLI 與後端共用同一常數，取代各自的 8 MB 常數。協定版本升為 `development-2`：`tools/reference.py` 改版本字串後重產 `tests/vectors.json`，同步更新 `docs/protocol-development.md`。`tools/mutation-check.mjs` 改用新格式並接進 `make check`。round 前公告（`giveaway-pending-1`）改帶 `txHash`＋owner，不再帶完整 commitment。
+  - 消費端：`rg -n "confirmedAt|giveaway-proof-1|giveaway-pending-1|development-1|LABEL|Round has arrived|validateProof|passed|Verdict|count\(\), 8|mutation-check|GIVEAWAY_LIBRARY|8_000_000|8 MB" packages apps tools tests docs Makefile`
   - 不能動：bundle 的欄位集合與 canonical JSON 規則；抽選演算法；DEMO PASS 與 PASS 的區分。
   - 驗收：`make check` 全綠（含 mutation-check）；重產的 vectors 由 Node 與 Python 兩邊算出相同的 bundle hash 與得獎者；inventory F3–F7 各一個回歸測試，把修正改回舊寫法時該測試要失敗；瀏覽器 E2E 與基線的差異只有已知的檢查項數與 proof 格式。
   - 停止條件：canonical 輸出除了 `version` 欄位之外有任何差異——停下，代表動到 canonical 規則。
@@ -97,10 +106,10 @@
   - 驗收：F2 的回歸測試（indexer 回傳竄改的 metadata JSON、CBOR 不變），舊實作 PASS、新實作 FAIL；身分 key 的 witness 缺少或簽錯時 FAIL；CBOR 被改一個 byte 時 FAIL；`invalid_hereafter` 晚於 round 或缺少時 FAIL，網頁提示逾期須改用更晚的 round 重送；Node 與 Python 對 fixture 算出相同 hash；mutation：略過 auxiliary data hash 比對、witness 驗章或時間上限檢查，各自的測試要失敗。
 
 - [ ] **8. 後端 walking skeleton**（被擋於：步驟 3）
-  - 範圍：新增 `apps/api/`（Workers，TypeScript），共用 `packages/`；`apps/api/tsconfig.json` 使用 Workers 型別，`make typecheck` 涵蓋它；依需要調整 `pnpm-workspace.yaml` 的 `allowBuilds`，CI 的 `pnpm install --frozen-lockfile` 要能通過。本機以 Wrangler 執行，`make check` 跑後端測試。網頁以建置時的 `GIVEAWAY_API_URL`（預設 `http://127.0.0.1:8787`）取得 proxy 位址。接通最薄的一條路徑：網頁經 proxy 取得 Koios `/tip` 並顯示（BR-01 的第一個端點）。B1 邊界以步驟 3 的套件邊界守住：`packages/*` 與 `apps/verifier-cli` 不宣告 `apps/api` 的套件，Biome 規則禁止相對路徑繞過（B1）。
-  - 消費端：無（新模組）；邊界檢查：`rg -n "apps/api" packages apps/verifier-cli`；設定：`rg -n "include|allowBuilds" tsconfig.json pnpm-workspace.yaml`
+  - 範圍：新增 `apps/api/`（Workers，TypeScript），共用 `packages/`；`apps/api/tsconfig.json` 使用 Workers 型別，`make typecheck` 涵蓋它；依需要調整 `pnpm-workspace.yaml` 的 `allowBuilds`，CI 的 `pnpm install --frozen-lockfile` 要能通過。本機以 Wrangler 執行，`make check` 跑後端測試。網頁以建置時的 `GIVEAWAY_API_URL`（預設 `http://127.0.0.1:8787`）取得 proxy 位址。接通最薄的一條路徑：網頁經 proxy 取得 Koios `/tip` 並顯示（BR-01 的第一個端點）。B1 邊界以步驟 3 的套件邊界守住：`packages/*` 與 `apps/verifier-cli` 不宣告 `apps/api` 的套件，Biome 規則禁止相對路徑繞過（B1）；`apps/api/src/` 有子目錄，`biome.json` 要為它加對應深度的 `noRestrictedImports` override。
+  - 消費端：無（新模組）；邊界檢查：`rg -n "apps/api" packages apps/verifier-cli`；設定：`rg -n "include|allowBuilds" tsconfig.base.json packages/tsconfig.json pnpm-workspace.yaml biome.json`
   - 不能動：CLI 的直連行為；Demo 模式。
-  - 驗收：CI 的 install 與 `make check`（含後端 typecheck 與測試）全綠；本機瀏覽器經 proxy 取得 tip（真 Koios，唯讀）；mutation：在 `packages/protocol` 加一行引用 `apps/api`，`make check` 要失敗。
+  - 驗收：CI 的 install 與 `make check`（含後端 typecheck 與測試）全綠；本機瀏覽器經 proxy 取得 tip（真 Koios，唯讀）；mutation：在 `packages/protocol` 加一行引用 `apps/api`，以套件名稱與以相對路徑各一次，`make check` 都要失敗。
   - 停止條件：Worker 呼叫 Koios 公開層也被拒——停下回報，需要 Will 先申請 key。
 
 - [ ] **9. proxy 完整版與交易改由錢包送出**（被擋於：步驟 7、8；前提「Koios 條款允許代理與快取」）
@@ -112,7 +121,7 @@
   - 需要人做的事：申請 Koios Free API key 存本機（碰憑證，由 Will 處理；本機與 CI 不需要，部署前需要）。
 
 - [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD2 擋住 CPU 驗收）
-  - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、協定的 byte 上限）、代管紀錄以 `txHash` 為主鍵（B4）、bytes 以 bundleHash 定址並參照計數、每個 owner 的保存額度、12 個月保存（Cron 清理，讀取時也檢查 `expires_at`）；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。
+  - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、協定的 byte 上限）、代管紀錄以 `txHash` 為主鍵（B4）、bytes 以 bundleHash 定址並參照計數、每個 owner 的保存額度、12 個月保存（Cron 清理，讀取時也檢查 `expires_at`）；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。網頁 `apps/web/services.ts` 的 `assembleProof`（取 beacon 後重算得獎者組成 proof）移到 `packages/verifier`，CLI 的 bundle 模式共用它。
   - 消費端：`rg -n "loadUrl|share-link|bundle=|hash=|showShare|download" apps tools tests`；CLI：`rg -n "verifyProof|argv" apps/verifier-cli`
   - 不能動：B1、B4；CLI 的 proof 模式與 exit code 語意。
   - 驗收：後端測試涵蓋 hash 不符、`validateBundle` 失敗、超過大小、承諾不存在、他人以相同 bundleHash 另送承諾並搶先上傳後刪除（正主仍能上傳且連結有效）、營運下架後重傳被拒、超過 owner 額度、到期後讀取被拒與 Cron 清理（時間注入）；E2E 以新連結格式在 demo 模式完成 DEMO PASS；Node 測試以注入的假 chain 跑 CLI 的 bundle 模式，後端未啟動時結果 PASS；mutation：略過 `validateBundle`、營運下架 tombstone 或參照計數，各自的測試要失敗。真鏈的 CLI 交叉驗收等真錢包（MVP 計畫步驟 8）。
@@ -125,7 +134,7 @@
   - 驗收：以測試內產生的金鑰簽章；測試涵蓋過期 payload、重用 nonce、別的網域、別的 network、非 owner 的 key、超過延長上限全部被拒；mutation：拿掉 nonce 一次性檢查或 key 與 owner 的比對，各自的測試要失敗。
 
 - [ ] **12. 草稿保存**（被擋於：步驟 11）
-  - 範圍：BR-11、BR-12、BR-18：本機 IndexedDB 草稿與匯出、重新整理後恢復；伺服器草稿內容存 R2、紀錄存 D1（D1 單列上限 2 MB，見 [D1 limits](https://developers.cloudflare.com/d1/platform/limits/)），依 PD4 的身分與額度，需簽章存取、30 天後自動刪除。
+  - 範圍：BR-11、BR-12、BR-18：本機 IndexedDB 草稿與匯出、重新整理後恢復；伺服器草稿內容存 R2、紀錄存 D1（D1 單列上限 2 MB，見 [D1 limits](https://developers.cloudflare.com/d1/platform/limits/)），依 PD4 的身分與額度，需簽章存取、30 天後自動刪除。網頁流程改為由狀態推導畫面：模式與流程階段記在 `AppState`（目前取自 `#network` 與元素的 `hidden`），恢復時由狀態 render，取代步驟 3 留下的「流程函式直接改 DOM」。
   - 消費端：`rg -n "draft|bundle =|parseEntrants" apps/web`
   - 不能動：草稿不進入驗證流程；B3、B5。
   - 驗收：E2E：建立草稿、重新整理後恢復、匯出再匯入內容相同；後端測試：未簽章存取被拒、超過額度被拒、30 天到期刪除（時間注入）；mutation：拿掉到期清理或額度檢查，各自的測試要失敗。
@@ -181,7 +190,7 @@
 |---|---|---|---|---|---|
 | 1 開工基線與設計審查 | 完成 | 在 `1d0b4b5` 上：`browser-check.mjs` 11 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core）；`mutation-check.mjs` 5 項（3 個 CLI 竄改、2 個測試竄改）全被擋下、exit 0；design-review 10 個發現：改 8（F-2、F-3、F-4、F-5、F-6、F-8、F-9、F-10）、提 2（F-1→PD3 身分子題重議、F-7→PD5）、駁回 0；指令檔對帳改 1 處（`AGENTS.md` 補後端邊界） | 無 | 無（不改程式） | 見本列提交 |
 | 2 Spike S1：SDK 比較 | 完成 | `spikes/s1-sdk/` 的 `run-node.mjs`、`run-build-node.mjs`、`bundle.mjs`、`runtime.mjs`（Chrome 155.0.8059.82、miniflare 4.20260730.0）、`probe/run.mjs`，原始輸出在 `results/`；fixture `515d0ea3…`、`3883c2a9…`（preprod）＋2 筆合成；四個選項 × 每個量測項都有數字或「不支援」；每個選項的 tx hash 等於 txHash、翻一個 bit 後不同（Mesh 在 workerd 只能以只引 `resolveTxHash` 的入口量）；停止條件未觸發；`make check` exit 0 | 真錢包對 stake key 的 `signData`／`signTx`（等真錢包）；部署後的 Workers（只跑本機 workerd） | 無（spike 不被引用） | 見本列提交 |
-| 3 工程基線 | 未開始 | | | | |
+| 3 工程基線 | 完成 | `make check` exit 0（Biome 30 檔、tsc 三份 tsconfig、13 個測試、10 組 Python vectors、MVP `check_plan.py` OK）；瀏覽器 E2E 11 項 PASS、`mutation-check.mjs` 5 項擋下，與步驟 1 基線相同；pin 轉紅：把查詢結果文字改掉，E2E exit 1；library 打包結果除路徑註解與 `?? []` 外相同；mutation 各自讓 `make check` exit 2：未格式化的一行（format）、`apps/web` 相對引用 `spikes/`（noRestrictedImports）、`packages/protocol` 引用未宣告的 `@giveaway/verifier-cli`（noUndeclaredDependencies，根目錄可解析仍被擋）、`packages/beacon` 相對引用兄弟套件、`packages/chain` 引用 Mesh、`tests` 相對引用套件、`packages` 使用 `document`（tsc TS2584）；`pnpm install --frozen-lockfile` exit 0；design-review 開工 9 項（改 7、記 2）、完成前 6 項（改 3、記 3）；行為等價審查 2 項競態：改為 await 後重讀狀態保留舊行為，缺陷記為 F18 | CI 上的 `make check`（未推送） | `from '../…(packages\|apps\|spikes)'`：0 筆；`app.ts\|dist/library`：只剩 `tools/build.mjs` 的入口與 CLI 產物路徑 | `d031696`、`69fb0e0`、`bf266ae`、本列提交 |
 | 4 verifier 正確性與 development-2 | 未開始 | | | | |
 | 5 唯一性重設計 | 未開始 | | | | |
 | 6 依 PD1、PD6 更換依賴 | 未開始 | | | | |

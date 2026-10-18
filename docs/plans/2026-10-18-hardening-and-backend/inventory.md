@@ -1,6 +1,6 @@
 # 既有缺陷與行為盤點
 
-快照：commit `32d289c`（2026-10-18）。來源：2026-10-18 的設計審查（兩輪獨立 subagent 審查）與本次讀碼；行號以快照為準。機械檢查：`python3 check_plan.py`（同目錄）。
+快照：commit `32d289c`（2026-10-18）。來源：2026-10-18 的設計審查（兩輪獨立 subagent 審查）與本次讀碼；行號以快照為準。步驟 3 之後的路徑：`packages/protocol/verifier.ts` 移到 `packages/verifier/index.ts`，`tools/polyfills.js` 移到 `apps/web/polyfills.js`，`tools/lint.mjs` 已刪除。機械檢查：`python3 check_plan.py`（同目錄）。
 
 處置值：修（附回歸測試：舊行為下會失敗）／接受（附理由）／等決定（附決定編號）。
 
@@ -25,6 +25,7 @@
 | F15 | `external-interfaces.md` E5 的 Koios pricing 連結已 404 | `docs/plans/2026-10-01-verifiable-giveaway-mvp/external-interfaces.md:13` | 修：改指 tiers 頁 | 不適用（文件） | 13 |
 | F16 | 只為一筆自轉交易引入 Mesh 與 5 個 polyfill | `package.json`、`tools/build.mjs`、`tools/polyfills.js` | 等決定（PD1） | spike S1 的量測 | 2、6 |
 | F17 | 承諾交易沒有設 validity interval 上限，「在 round 之前收錄」完全採信 indexer 的時間（design-review 2026-10-18） | `apps/web/cardano.ts:19-22`、`packages/protocol/verifier.ts` 的時間檢查 | 修（依 PD5） | `invalid_hereafter` 晚於 round 或缺少的承諾，舊實作 PASS、新實作 FAIL | 7 |
+| F18 | 確認輪詢不經 `run()`：輪詢等 Koios 回應期間切換模式或重新預覽，回應落地後以 `undefined` 的 bundle 計算，狀態列顯示 TypeError 訊息、輪詢停止（步驟 3 行為等價審查 2026-10-18；步驟 3 刻意保留） | `apps/web/app.ts` 的 `scheduleConfirmation`、`confirm`、`reveal`（標「Read after the await」的三處） | 修 | 輪詢等待中重設抽獎，舊實作狀態列出現 TypeError，新實作丟棄過期的回應、不改畫面 | 4 |
 
 ## 會改變的既有行為
 

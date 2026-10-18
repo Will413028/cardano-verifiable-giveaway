@@ -42,7 +42,7 @@ node apps/verifier-cli/index.mjs draw-example.json
 
 The CLI returns exit code 0 for PASS / DEMO PASS and 1 for FAIL. Preprod verification queries a Koios-compatible indexer and may use `--indexer https://host/api/v1`. Browser access to organizer-hosted bundles requires CORS; share links pin the hosted file hash.
 
-`make check` runs TypeScript checking, Node tests, ten independent Python golden vectors and plan consistency checks. The optional browser end-to-end check uses an existing Playwright installation and Chrome, without downloading browsers or using personal profiles:
+`make check` runs Biome lint and formatting checks, TypeScript checking, Node tests, ten independent Python golden vectors and plan consistency checks. The optional browser end-to-end check uses an existing Playwright installation and Chrome, without downloading browsers or using personal profiles:
 
 ```sh
 GIVEAWAY_PLAYWRIGHT_MODULE=/path/to/playwright-core/index.mjs \
