@@ -1,0 +1,598 @@
+{
+  "dolos": "http://127.0.0.1:3030",
+  "steps": {
+    "beforeAnyOutput": {
+      "status": 404,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "95",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": {
+        "status_code": 404,
+        "error": "Not Found",
+        "message": "The requested component has not been found."
+      }
+    },
+    "unknownStake": {
+      "status": 404,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "95",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": {
+        "status_code": 404,
+        "error": "Not Found",
+        "message": "The requested component has not been found."
+      }
+    },
+    "malformedStake": {
+      "status": 400,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "0",
+        "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": ""
+    },
+    "afterFunding": {
+      "account": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "*",
+          "content-length": "305",
+          "content-type": "application/json",
+          "date": "Mon, 19 Oct 2026 13:15:45 GMT",
+          "vary": "origin, access-control-request-method, access-control-request-headers"
+        },
+        "body": {
+          "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "active": false,
+          "registered": false,
+          "active_epoch": null,
+          "controlled_amount": "2000000000",
+          "rewards_sum": "0",
+          "withdrawals_sum": "0",
+          "reserves_sum": "0",
+          "treasury_sum": "0",
+          "withdrawable_amount": "0",
+          "pool_id": null,
+          "drep_id": null
+        }
+      },
+      "withdrawals": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "*",
+          "content-length": "2",
+          "content-type": "application/json",
+          "date": "Mon, 19 Oct 2026 13:15:45 GMT",
+          "vary": "origin, access-control-request-method, access-control-request-headers"
+        },
+        "body": []
+      }
+    },
+    "unregisteredZeroWithdrawal": {
+      "label": "other stake 5, not registered, 0 ADA",
+      "txHash": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd",
+      "status": 200,
+      "body": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd",
+      "fee": "173221",
+      "included": true,
+      "block_height": 9,
+      "index": 0
+    },
+    "registerAndVoteDeleg": {
+      "label": "register stake 2 + vote deleg abstain (ledger balance)",
+      "txHash": "ad80ef48efd5c9a79fa60c9f352f9f0e1e506857ff9c55aed2f1baca36cdf5b2",
+      "status": 400,
+      "body": "",
+      "fee": "175245"
+    },
+    "registerAndVoteDelegPallasBalance": {
+      "label": "register stake 2 + vote deleg abstain (pallas balance)",
+      "txHash": "c7d96a6c2e3095ef125472eaa237302eebd8eeb6c8850da1730fa295d0271377",
+      "status": 200,
+      "body": "c7d96a6c2e3095ef125472eaa237302eebd8eeb6c8850da1730fa295d0271377",
+      "fee": "175245",
+      "included": true,
+      "block_height": 10,
+      "index": 0
+    },
+    "accountAfterRegistration": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "318",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:47 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": {
+        "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "active": false,
+        "registered": true,
+        "active_epoch": 0,
+        "controlled_amount": "1999824755",
+        "rewards_sum": "0",
+        "withdrawals_sum": "0",
+        "reserves_sum": "0",
+        "treasury_sum": "0",
+        "withdrawable_amount": "0",
+        "pool_id": null,
+        "drep_id": "drep_always_abstain"
+      }
+    },
+    "commitmentZeroWithdrawal": {
+      "label": "commitment-shaped, 0 ADA withdrawal",
+      "txHash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+      "status": 200,
+      "body": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+      "fee": "181141",
+      "included": true,
+      "block_height": 11,
+      "index": 0
+    },
+    "txWithdrawals": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "93",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:47 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": [
+        {
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "amount": "0"
+        }
+      ]
+    },
+    "nonZeroWithdrawal": {
+      "label": "stake 2, 1 ADA withdrawal (ledger balance)",
+      "txHash": "64d4cf34afbd19c2a895d61b636a73ad45a0eb59410fb3d4df00f915c685ad39",
+      "status": 400,
+      "body": "",
+      "fee": "173397"
+    },
+    "nonZeroWithdrawalPallasBalance": {
+      "label": "stake 2, 1 ADA withdrawal (pallas balance)",
+      "txHash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+      "status": 200,
+      "body": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+      "fee": "173397",
+      "included": true,
+      "block_height": 12,
+      "index": 0
+    },
+    "thirdPartyWithoutWitness": {
+      "label": "third party, organizer stake, no stake witness",
+      "txHash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+      "status": 200,
+      "body": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+      "fee": "167545",
+      "included": true,
+      "block_height": 13,
+      "index": 0
+    },
+    "afterSingles": {
+      "account": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "*",
+          "content-length": "324",
+          "content-type": "application/json",
+          "date": "Mon, 19 Oct 2026 13:15:49 GMT",
+          "vary": "origin, access-control-request-method, access-control-request-headers"
+        },
+        "body": {
+          "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "active": false,
+          "registered": true,
+          "active_epoch": 0,
+          "controlled_amount": "1998470217",
+          "rewards_sum": "0",
+          "withdrawals_sum": "1000000",
+          "reserves_sum": "0",
+          "treasury_sum": "0",
+          "withdrawable_amount": "0",
+          "pool_id": null,
+          "drep_id": "drep_always_abstain"
+        }
+      },
+      "withdrawals": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "*",
+          "content-length": "448",
+          "content-type": "application/json",
+          "date": "Mon, 19 Oct 2026 13:15:49 GMT",
+          "vary": "origin, access-control-request-method, access-control-request-headers"
+        },
+        "body": [
+          {
+            "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+            "amount": "0",
+            "tx_slot": 11,
+            "block_time": 1655683211,
+            "block_height": 11
+          },
+          {
+            "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+            "amount": "1000000",
+            "tx_slot": 12,
+            "block_time": 1655683212,
+            "block_height": 12
+          },
+          {
+            "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+            "amount": "0",
+            "tx_slot": 13,
+            "block_time": 1655683213,
+            "block_height": 13
+          }
+        ]
+      }
+    },
+    "batch": {
+      "submitted": 30,
+      "accepted": 30,
+      "included": 30
+    },
+    "expectedRows": [
+      {
+        "txHash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "block_height": 11,
+        "index": 0
+      },
+      {
+        "txHash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "block_height": 12,
+        "index": 0
+      },
+      {
+        "txHash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "block_height": 13,
+        "index": 0
+      },
+      {
+        "txHash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "block_height": 14,
+        "index": 0
+      },
+      {
+        "txHash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "block_height": 14,
+        "index": 1
+      },
+      {
+        "txHash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "block_height": 14,
+        "index": 2
+      },
+      {
+        "txHash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "block_height": 14,
+        "index": 3
+      },
+      {
+        "txHash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "block_height": 14,
+        "index": 4
+      },
+      {
+        "txHash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "block_height": 14,
+        "index": 5
+      },
+      {
+        "txHash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "block_height": 14,
+        "index": 6
+      },
+      {
+        "txHash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "block_height": 14,
+        "index": 7
+      },
+      {
+        "txHash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "block_height": 14,
+        "index": 8
+      },
+      {
+        "txHash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "block_height": 14,
+        "index": 9
+      },
+      {
+        "txHash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "block_height": 15,
+        "index": 0
+      },
+      {
+        "txHash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "block_height": 15,
+        "index": 1
+      },
+      {
+        "txHash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "block_height": 15,
+        "index": 2
+      },
+      {
+        "txHash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "block_height": 15,
+        "index": 3
+      },
+      {
+        "txHash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "block_height": 15,
+        "index": 4
+      },
+      {
+        "txHash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "block_height": 15,
+        "index": 5
+      },
+      {
+        "txHash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "block_height": 15,
+        "index": 6
+      },
+      {
+        "txHash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "block_height": 15,
+        "index": 7
+      },
+      {
+        "txHash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "block_height": 15,
+        "index": 8
+      },
+      {
+        "txHash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "block_height": 15,
+        "index": 9
+      },
+      {
+        "txHash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "block_height": 16,
+        "index": 0
+      },
+      {
+        "txHash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "block_height": 16,
+        "index": 1
+      },
+      {
+        "txHash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "block_height": 16,
+        "index": 2
+      },
+      {
+        "txHash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "block_height": 16,
+        "index": 3
+      },
+      {
+        "txHash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "block_height": 16,
+        "index": 4
+      },
+      {
+        "txHash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "block_height": 16,
+        "index": 5
+      },
+      {
+        "txHash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "block_height": 16,
+        "index": 6
+      },
+      {
+        "txHash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "block_height": 16,
+        "index": 7
+      },
+      {
+        "txHash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "block_height": 16,
+        "index": 8
+      },
+      {
+        "txHash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "block_height": 16,
+        "index": 9
+      }
+    ],
+    "neverSeenStake": {
+      "label": "never-seen stake 10, 0 ADA",
+      "txHash": "97c23c8c5f8b881767921fc617fd241a00ea5592f421fae58f2528931a4972a7",
+      "status": 200,
+      "body": "97c23c8c5f8b881767921fc617fd241a00ea5592f421fae58f2528931a4972a7",
+      "included": false,
+      "healthAfter": "request failed: ECONNREFUSED"
+    }
+  },
+  "params": {
+    "min_fee_a": 44,
+    "min_fee_b": 155381,
+    "key_deposit": "2000000"
+  },
+  "listing": {
+    "firstRow": {
+      "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+      "amount": "0",
+      "tx_slot": 11,
+      "block_time": 1655683211,
+      "block_height": 11
+    },
+    "rows": 33,
+    "requests": {
+      "asc100": 1,
+      "asc10": 4,
+      "desc10": 4
+    },
+    "sameOrderRepeatedAsc100": true,
+    "sameOrderAsc10VsAsc100": true,
+    "descIsReverseOfAsc": true,
+    "defaultOrderIsAsc": true,
+    "ascHeightsNonDecreasing": true,
+    "duplicates": 0,
+    "missingExpected": [],
+    "unexpected": [],
+    "sameBlockOrder": {
+      "blocksWithSeveralRows": 3,
+      "allFollowTxIndex": true
+    },
+    "amounts": [
+      "0",
+      "1000000"
+    ],
+    "fields": [
+      "tx_hash",
+      "amount",
+      "tx_slot",
+      "block_time",
+      "block_height"
+    ]
+  },
+  "fromTo": [
+    {
+      "query": "from=15",
+      "status": 200,
+      "rows": 20,
+      "minHeight": 15,
+      "maxHeight": 16
+    },
+    {
+      "query": "to=15",
+      "status": 200,
+      "rows": 23,
+      "minHeight": 11,
+      "maxHeight": 15
+    },
+    {
+      "query": "from=15&to=15",
+      "status": 200,
+      "rows": 10,
+      "minHeight": 15,
+      "maxHeight": 15
+    },
+    {
+      "query": "from=15:1",
+      "status": 200,
+      "rows": 19,
+      "minHeight": 15,
+      "maxHeight": 16
+    },
+    {
+      "query": "from=16&to=15",
+      "status": 400,
+      "rows": null,
+      "body": {
+        "error": "Bad Request",
+        "message": "Invalid (malformed or out of range) from/to parameter(s).",
+        "status_code": 400
+      },
+      "minHeight": null,
+      "maxHeight": null
+    },
+    {
+      "query": "from=abc",
+      "status": 400,
+      "rows": null,
+      "body": {
+        "error": "Bad Request",
+        "message": "Invalid (malformed or out of range) from/to parameter(s).",
+        "status_code": 400
+      },
+      "minHeight": null,
+      "maxHeight": null
+    }
+  ],
+  "limits": {
+    "count101": {
+      "status": 400,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "86",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": {
+        "error": "Bad Request",
+        "message": "querystring/count must be <= 100",
+        "status_code": 400
+      }
+    },
+    "pagePastEnd": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "2",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": []
+    },
+    "orderBad": {
+      "status": 400,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "content-length": "114",
+        "content-type": "application/json",
+        "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+        "vary": "origin, access-control-request-method, access-control-request-headers"
+      },
+      "body": {
+        "error": "Bad Request",
+        "message": "querystring/order must be equal to one of the allowed values",
+        "status_code": 400
+      }
+    }
+  },
+  "otherStakeWithdrawals": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "146",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd",
+        "amount": "0",
+        "tx_slot": 9,
+        "block_time": 1655683209,
+        "block_height": 9
+      }
+    ]
+  },
+  "thirdPartyIsVisibleAs": "row in organizer stake withdrawals if thirdPartyWithoutWitness.included"
+}

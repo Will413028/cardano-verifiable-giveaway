@@ -1,0 +1,501 @@
+{
+  "node": "cardano-node 11.0.1 - linux-aarch64 - ghc-9.6\ngit rev 97036a66bcf8c89f687ae57a048eecc0389977ef",
+  "protocolVersion": {
+    "major": 10,
+    "minor": 0
+  },
+  "stakeAddressDeposit": 2000000,
+  "pool": "7301761068762f5900bde9eb7c1c15b09840285130f5b0f53606cc57",
+  "tipAtStart": {
+    "block": 51,
+    "epoch": 3,
+    "era": "Conway",
+    "hash": "2713d4b5481af80b145644418ec4041f67f11c194a5f033ad4e2ed6fc86920d8",
+    "slot": 345,
+    "slotInEpoch": 45,
+    "slotsToEpochEnd": 55,
+    "syncProgress": "100.00"
+  },
+  "wallets": {
+    "organizer": {
+      "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+      "stake": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6"
+    },
+    "noDrep": {
+      "address": "addr_test1qzuf2gxdj4hhkzkmhgtd7rfxh5q45sne2h3mlra2up53rr0atyulk4spuk6pamnxdkapfs9869gafnvmpctxj88r4xjqj686du",
+      "stake": "stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3"
+    },
+    "sameTx": {
+      "address": "addr_test1qp2pc2rp8swf55vczgmwmj50an0wv8n7fz3t0x2hqz0ggzvtyxzzftt5mujaxhpw4rsfffx9ckht9ja5gfqexv2kjvfsrskyxk",
+      "stake": "stake_test1uz9jrppy446d7fwntsh23cy55nzutt4jew6yysvnx9tfxycvf2lft"
+    },
+    "thirdParty": {
+      "address": "addr_test1vz9ftj8dtzpsd65gsc94f6cvvhnhm74en9ufe30xegqg0xgkplq9s"
+    }
+  },
+  "steps": {
+    "withdrawBeforeRegistration": {
+      "label": "organizer 0 ADA, stake not registered",
+      "txHash": "882d1971fda03127d28a820efcbe2a5527af79881f56ee09d5a51f396beace30",
+      "fee": "181273",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"} :| [])",
+                "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList [(AccountAddress {aaNetworkId = Testnet, aaId = AccountId {unAccountId = KeyHashObj (KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"})}},Coin 0)]}))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "registerDelegateWithdrawSameTx": {
+      "label": "stake 7: reg + vote deleg + 0 ADA withdrawal in one tx",
+      "txHash": "3cd2f390ac497ef2ba3032d1d0b2859299d18628e91a3835b6093e134f268a36",
+      "fee": "176741",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"8b218424ad74df25d35c2ea8e094a4c5c5aeb2cbb442419331569313\"} :| [])",
+                "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList [(AccountAddress {aaNetworkId = Testnet, aaId = AccountId {unAccountId = KeyHashObj (KeyHash {unKeyHash = \"8b218424ad74df25d35c2ea8e094a4c5c5aeb2cbb442419331569313\"})}},Coin 0)]}))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "sameTxStakeInfo": [],
+    "organizerRegisterAndDelegate": {
+      "label": "organizer: reg + stake/vote deleg (pool, abstain)",
+      "txHash": "82a9e6b06e4a036fba50326e6af50dbd0f0e9b59a4594db314cce5702f0c271a",
+      "fee": "176741",
+      "status": 202,
+      "body": "82a9e6b06e4a036fba50326e6af50dbd0f0e9b59a4594db314cce5702f0c271a",
+      "included": true
+    },
+    "organizerStakeInfoAfterRegistration": [
+      {
+        "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "govActionDeposits": {},
+        "rewardAccountBalance": 0,
+        "stakeDelegation": {
+          "stakePoolBech32": "pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy",
+          "stakePoolHex": "7301761068762f5900bde9eb7c1c15b09840285130f5b0f53606cc57"
+        },
+        "stakeRegistrationDeposit": 2000000,
+        "voteDelegation": "alwaysAbstain"
+      }
+    ],
+    "commitmentZeroWithdrawal": {
+      "label": "organizer commitment, 0 ADA withdrawal",
+      "txHash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+      "fee": "181229",
+      "status": 202,
+      "body": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+      "included": true
+    },
+    "thirdPartyNoStakeWitness": {
+      "label": "third party, organizer stake, no stake witness",
+      "txHash": "bfeb6dca6813d91f341d1eeaf0a0346f927d1e54224ade39a23c81208a2a79f9",
+      "fee": "167545",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (MissingVKeyWitnessesUTXOW (NonEmptySet (fromList [KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"}])))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "thirdPartyRequiredSignerNoWitness": {
+      "label": "third party, organizer stake as required signer, no stake witness",
+      "txHash": "6cc013095d6ee586ca4d5ee582976ef787716af031cfb4514b828f717f04bac9",
+      "fee": "169085",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (MissingVKeyWitnessesUTXOW (NonEmptySet (fromList [KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"}])))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "thirdPartyForgedStakeWitness": {
+      "label": "third party, forged organizer stake witness",
+      "txHash": "bc1f3056ae8b69e604dc3629a2b167f005eeeaddebb14e59b040b31171bac812",
+      "fee": "171989",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (InvalidWitnessesUTXOW (VKey (VerKeyEd25519DSIGN \"8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394\") :| []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "noDrepRegister": {
+      "label": "stake 5: registration only",
+      "txHash": "3b3e62ed81ce7ece06d32a39924cb6fd1a29fc6f11a4515c0d3f2e011604b1d3",
+      "fee": "173661",
+      "status": 202,
+      "body": "3b3e62ed81ce7ece06d32a39924cb6fd1a29fc6f11a4515c0d3f2e011604b1d3",
+      "included": true
+    },
+    "noDrepStakeInfo": [
+      {
+        "address": "stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3",
+        "govActionDeposits": {},
+        "rewardAccountBalance": 0,
+        "stakeDelegation": null,
+        "stakeRegistrationDeposit": 2000000,
+        "voteDelegation": null
+      }
+    ],
+    "noDrepZeroWithdrawal": {
+      "label": "stake 5: 0 ADA withdrawal without DRep delegation",
+      "txHash": "ad309da89f05e86fa5945b724271da49d2edd2ea7d7bdcdff4f5101c6812cafa",
+      "fee": "173221",
+      "status": 400,
+      "body": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"fd5939fb5601e5b41eee666dba14c0a7d151d4cd9b0e16691ce3a9a4\"} :| [])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      }
+    },
+    "noDrepDelegate": {
+      "label": "stake 5: vote deleg abstain",
+      "txHash": "1d29d0cc9f059df0ea1db67675f65330f3c6610663a99635449fe955272e6872",
+      "fee": "173529",
+      "status": 202,
+      "body": "1d29d0cc9f059df0ea1db67675f65330f3c6610663a99635449fe955272e6872",
+      "included": true
+    },
+    "noDrepZeroWithdrawalAfterDelegation": {
+      "label": "stake 5: 0 ADA withdrawal after DRep delegation",
+      "txHash": "603348f87e38bc79f8c2b39d0af8c506bf3d1c763e54a6e3998d9ee6cae91211",
+      "fee": "173221",
+      "status": 202,
+      "body": "603348f87e38bc79f8c2b39d0af8c506bf3d1c763e54a6e3998d9ee6cae91211",
+      "included": true
+    },
+    "rewardWait": {
+      "ms": 355189,
+      "info": [
+        {
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "govActionDeposits": {},
+          "rewardAccountBalance": 169575972,
+          "stakeDelegation": {
+            "stakePoolBech32": "pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy",
+            "stakePoolHex": "7301761068762f5900bde9eb7c1c15b09840285130f5b0f53606cc57"
+          },
+          "stakeRegistrationDeposit": 2000000,
+          "voteDelegation": "alwaysAbstain"
+        }
+      ],
+      "tip": {
+        "block": 437,
+        "epoch": 7,
+        "era": "Conway",
+        "hash": "27ebb1628940843840dcfa7e1228cafe702bc63c253503afd7bbd10611bc1664",
+        "slot": 731,
+        "slotInEpoch": 31,
+        "slotsToEpochEnd": 69,
+        "syncProgress": "100.00"
+      }
+    },
+    "nonZero": {
+      "zero": {
+        "balanceBefore": 169575972,
+        "label": "organizer withdrawal 0, balance 169575972",
+        "txHash": "814260cd7781fa0d8c59e3c60d1075ed5555c10a41f06ad659b4b5477fa0011f",
+        "fee": "181449",
+        "status": 400,
+        "body": {
+          "contents": {
+            "contents": {
+              "contents": {
+                "era": "ShelleyBasedEraConway",
+                "error": [
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList [(AccountAddress {aaNetworkId = Testnet, aaId = AccountId {unAccountId = KeyHashObj (KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"})}},Coin 0)]}))"
+                ],
+                "kind": "ShelleyTxValidationError"
+              },
+              "tag": "TxValidationErrorInCardanoMode"
+            },
+            "tag": "TxCmdTxSubmitValidationError"
+          },
+          "tag": "TxSubmitFail"
+        }
+      },
+      "balanceMinusOne": {
+        "balanceBefore": 169575972,
+        "label": "organizer withdrawal 169575971, balance 169575972",
+        "txHash": "08867f41be0a9767114cbe27cb9566732fe18a0dd31c1defb194e83779bed41b",
+        "fee": "182109",
+        "status": 400,
+        "body": {
+          "contents": {
+            "contents": {
+              "contents": {
+                "era": "ShelleyBasedEraConway",
+                "error": [
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList [(AccountAddress {aaNetworkId = Testnet, aaId = AccountId {unAccountId = KeyHashObj (KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"})}},Coin 169575971)]}))"
+                ],
+                "kind": "ShelleyTxValidationError"
+              },
+              "tag": "TxValidationErrorInCardanoMode"
+            },
+            "tag": "TxCmdTxSubmitValidationError"
+          },
+          "tag": "TxSubmitFail"
+        }
+      },
+      "balancePlusOne": {
+        "balanceBefore": 169575972,
+        "label": "organizer withdrawal 169575973, balance 169575972",
+        "txHash": "acbe77ec89a09729eaf0f087e6d45c0e88e3e7279cb38dbda548c952c09cc1e7",
+        "fee": "182065",
+        "status": 400,
+        "body": {
+          "contents": {
+            "contents": {
+              "contents": {
+                "era": "ShelleyBasedEraConway",
+                "error": [
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList [(AccountAddress {aaNetworkId = Testnet, aaId = AccountId {unAccountId = KeyHashObj (KeyHash {unKeyHash = \"008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079\"})}},Coin 169575973)]}))"
+                ],
+                "kind": "ShelleyTxValidationError"
+              },
+              "tag": "TxValidationErrorInCardanoMode"
+            },
+            "tag": "TxCmdTxSubmitValidationError"
+          },
+          "tag": "TxSubmitFail"
+        }
+      },
+      "fullBalance": {
+        "balanceBefore": "169575972",
+        "label": "organizer withdrawal full 169575972",
+        "txHash": "027120d1fe87150b341dba1c4d8d1407ca2d43df7a7bf2a8340f11f28d72f4e7",
+        "fee": "181625",
+        "status": 202,
+        "body": "027120d1fe87150b341dba1c4d8d1407ca2d43df7a7bf2a8340f11f28d72f4e7",
+        "included": true
+      },
+      "after": [
+        {
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "govActionDeposits": {},
+          "rewardAccountBalance": 0,
+          "stakeDelegation": {
+            "stakePoolBech32": "pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy",
+            "stakePoolHex": "7301761068762f5900bde9eb7c1c15b09840285130f5b0f53606cc57"
+          },
+          "stakeRegistrationDeposit": 2000000,
+          "voteDelegation": "alwaysAbstain"
+        }
+      ],
+      "tip": {
+        "block": 496,
+        "epoch": 7,
+        "era": "Conway",
+        "hash": "b983a2ca258cdeb64ededc87d2261bcd85ac4d79054cee845e1f8b4b46255cbf",
+        "slot": 793,
+        "slotInEpoch": 93,
+        "slotsToEpochEnd": 7,
+        "syncProgress": "100.00"
+      }
+    }
+  },
+  "store": {
+    "withdrawalsAsc": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 487,
+          "block_time": 1792416732,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "027120d1fe87150b341dba1c4d8d1407ca2d43df7a7bf2a8340f11f28d72f4e7",
+          "amount": 169575972,
+          "epoch": 7,
+          "slot": 784
+        },
+        {
+          "block_number": 71,
+          "block_time": 1792416313,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 365
+        }
+      ]
+    },
+    "withdrawalsDesc": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 487,
+          "block_time": 1792416732,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "027120d1fe87150b341dba1c4d8d1407ca2d43df7a7bf2a8340f11f28d72f4e7",
+          "amount": 169575972,
+          "epoch": 7,
+          "slot": 784
+        },
+        {
+          "block_number": 71,
+          "block_time": 1792416313,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 365
+        }
+      ]
+    },
+    "withdrawalsCount1Page2": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 71,
+          "block_time": 1792416313,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 365
+        }
+      ]
+    },
+    "withdrawalsFromTo": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 487,
+          "block_time": 1792416732,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "027120d1fe87150b341dba1c4d8d1407ca2d43df7a7bf2a8340f11f28d72f4e7",
+          "amount": 169575972,
+          "epoch": 7,
+          "slot": 784
+        },
+        {
+          "block_number": 71,
+          "block_time": 1792416313,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 365
+        }
+      ]
+    },
+    "noDrepWithdrawals": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 78,
+          "block_time": 1792416320,
+          "address": "stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3",
+          "tx_hash": "603348f87e38bc79f8c2b39d0af8c506bf3d1c763e54a6e3998d9ee6cae91211",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 372
+        }
+      ]
+    },
+    "unknownStake": {
+      "status": 200,
+      "body": []
+    },
+    "account": {
+      "status": 200,
+      "body": {
+        "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "controlled_amount": 20336205560,
+        "withdrawable_amount": 169169183,
+        "pool_id": "pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy"
+      }
+    },
+    "txWithdrawals": {
+      "status": 200,
+      "body": [
+        {
+          "block_number": 71,
+          "block_time": 1792416313,
+          "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+          "tx_hash": "836ef89613fafbbeeec1091a9089abf51594199391d72141dd3debb034b72228",
+          "amount": 0,
+          "epoch": 3,
+          "slot": 365
+        }
+      ]
+    }
+  },
+  "tipAtEnd": {
+    "block": 514,
+    "epoch": 8,
+    "era": "Conway",
+    "hash": "f91d290785d58fa47e6627cb633102ec4204e0f19609edcfd710e6c792ed87b7",
+    "slot": 811,
+    "slotInEpoch": 11,
+    "slotsToEpochEnd": 89,
+    "syncProgress": "100.00"
+  }
+}
