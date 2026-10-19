@@ -1,19 +1,21 @@
 # 協定硬化與 TypeScript 便利層後端
 
-**Goal：** verifier 的已知缺陷（附件 `inventory.md` F1–F7、F9–F16）全部依處置完成；新增的 TypeScript 後端（Cloudflare Workers）提供唯讀 indexer proxy、bundle 代管、錢包簽章的擁有者操作與草稿保存。CI 跑 `make check` 全綠；瀏覽器 E2E 在本機手動跑通（CI 沒有瀏覽器環境）。後端關閉時，持有下載 bundle 者仍能用 CLI 驗證。驗收見步驟 14。
+**Goal：** verifier 的已知缺陷（附件 `inventory.md` F1–F7、F9–F16）全部依處置完成；新增的 TypeScript 後端（Cloudflare Workers）提供 bundle 代管、錢包簽章的擁有者操作與草稿保存，唯讀 indexer proxy 的存廢依 PD8；網頁與後端讀鏈上資料用專案自架的 Dolos（PD7）。CI 跑 `make check` 全綠；瀏覽器 E2E 在本機手動跑通（CI 沒有瀏覽器環境）。後端與專案 Dolos 都關閉時，持有下載 bundle 者仍能用 CLI 搭配自備的 indexer 驗證。驗收見步驟 14。
 
 **上層：** `docs/plans/2026-10-01-verifiable-giveaway-mvp.md`（MVP 計畫）。本檔沿用它的「全域約束與完成定義」，不重複；主清單見本機個人脈絡檔。
 
-**附件：** `docs/plans/2026-10-18-hardening-and-backend/`：`inventory.md`（既有缺陷與會改變的行為，含處置與去向）、`requirements.md`（後端需求、非功能需求、外部介面）、`check_plan.py`（本計畫的一次性機械檢查）、`spike-s1.md`（步驟 2 的量測結果）。快照 commit `32d289c`。
+**附件：** `docs/plans/2026-10-18-hardening-and-backend/`：`inventory.md`（既有缺陷與會改變的行為，含處置與去向）、`requirements.md`（後端需求、非功能需求、外部介面）、`check_plan.py`（本計畫的一次性機械檢查）、`spike-s1.md`（步驟 2 的量測結果）、`spike-dolos.md`（步驟 8b 產出）。快照 commit `32d289c`。
 
-## 前提（開工時核對過，2026-10-18）
+## 前提（開工時核對過，2026-10-18；indexer 相關 2026-10-19 依 PD7 重寫）
 
 - **會改到或取代的既有部署是否在線：** 無既有部署（README「Status」：No public deployment）。本計畫不部署後端；部署屬 MVP 計畫步驟 10，需要 Will 授權。鏈上沒有任何人依賴的承諾，協定可自由修改；上鏈後不能改的承諾已由 MVP 計畫 I3 規範。
 - 後端範圍、禁止事項、帳號與保存期限依兩份 ADR：`docs/adr/2026-10-18-typescript-convenience-backend.md`、`docs/adr/2026-10-18-wallet-auth-and-bounded-retention.md`（來源：Will，2026-10-18；已確認）。
-- Koios 公開層擋瀏覽器 CORS（真 Chrome 實測，2026-10-18；已確認）。Worker 從伺服器端呼叫不受 CORS 限制，本機開發不需要 API key（推論，步驟 8 驗證）；正式額度需要 Will 申請的 Free key（未確認）。
-- Koios 條款是否允許代理轉發與快取（未確認；2026-10-18 步驟 1 查詢時 koios.rest 整站回 502，官方 repo `cardano-community/koios-artifacts` 的 `html/index.html` 搜尋 terms／proxy／cache／redistribute 無結果；步驟 9 開工時重查，不允許就停）。
+- indexer：不再使用 koios.rest。條款字面禁止系統性擷取、自動化使用與轉發（2026-10-19 步驟 9 重查，見進度表），Will 2026-10-19 決定不取得同意，改採 Blockfrost 形狀介面卡＋自架 Dolos（full archive），CLI 不設專案預設、必須以 `--indexer` 指定使用者自備的 full-archive Blockfrost 相容節點（PD7，ADR `docs/adr/2026-10-19-self-hosted-dolos-indexer.md`；已確認）。
+- Dolos 的 MiniBF（Blockfrost 相容 API）事實（2026-10-19 讀 Dolos 原始碼與 `minibf.mdx`，未在本機實跑）：不需要 API key；`permissive_cors` 預設 true；`/addresses/{a}/transactions` 接受 `addr_vkh`（payment credential）；有 `/accounts/{stake}/transactions`（stake credential）；page×count 超過 `max_scan_items`（預設 3000）時拒絕，營運者可調高；有 Ledger-only、Sliding history、Full archive 三種儲存模式，非 full archive 的節點列舉不出舊承諾、verifier 察覺不到；不能跑在 Workers，需要一台有狀態的 VM。
+- Dolos 的未知（未確認，步驟 8b 開工先量）：preprod full archive 的磁碟與同步時間；`addr_vkh` 與 stake 帳戶列舉的分頁與排序是否穩定（同一區塊多筆時的次序）；stake 帳戶列舉是否列出 stake 只出現在 input 的交易；剛上鏈交易的 `/txs/{h}/cbor` 回 404 還是空值；主網 RAM（調查寫 < 2 GB，沒有出處）；verifier 如何偵測使用者節點的歷史不完整。
+- 公開部署 Dolos 與後端需要 Will 授權（MVP 計畫步驟 10）；本計畫只在本機跑 preprod Dolos（已確認）。
 - 真錢包仍延後（MVP 計畫前提 P2）：自動化測試用測試內產生的金鑰與 mock CIP-30，不使用任何個人錢包或助記詞；preprod 上尚無自己的承諾交易（MVP 附件 `spike-a.md`「鏈上樣本 0」），需要真承諾的驗收標為「等真錢包」（已確認）。
-- 工具鏈（預設，可推翻）：Biome 負責 lint 與格式化；後端用 Wrangler 與 Miniflare 在本機執行，測試用 `@cloudflare/vitest-plugin`（原名 `@cloudflare/vitest-pool-workers`，0.23.0 標為 deprecated 並改名，步驟 8 於 2026-10-19 查核改用）；bundle 存 R2、紀錄存 D1、IP 突發限流用 Rate Limiting binding（計數只在單一機房內、不精確，週期只能 10 或 60 秒，見 [文件](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)，2026-10-18 查核），Koios 全域日預算用單一 Durable Object 計數器，到期清理用 Cron Triggers，讀取時另檢查 `expires_at`。新增套件屬下載，版本鎖在 lockfile。
+- 工具鏈（預設，可推翻）：Biome 負責 lint 與格式化；後端用 Wrangler 與 Miniflare 在本機執行，測試用 `@cloudflare/vitest-plugin`（原名 `@cloudflare/vitest-pool-workers`，0.23.0 標為 deprecated 並改名，步驟 8 於 2026-10-19 查核改用）；bundle 存 R2、紀錄存 D1、IP 突發限流用 Rate Limiting binding（計數只在單一機房內、不精確，週期只能 10 或 60 秒，見 [文件](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)，2026-10-18 查核），到期清理用 Cron Triggers（原為 Koios 全域日預算預設的單一 Durable Object 計數器，理由隨 PD7 消失，存廢依 PD8），讀取時另檢查 `expires_at`。新增套件屬下載，版本鎖在 lockfile。
 - 開發期 metadata label 改用 [CIP-10 registry](https://github.com/cardano-foundation/CIPs/blob/master/CIP-0010/registry.json) 未登記的數字（預設，可推翻；步驟 4 選定並記錄查詢日期）；CIP-10 註冊留給 v1 凍結（MVP 計畫 D7）。
 - 安全參數：簽章 payload 5 分鐘有效、nonce 一次性（依 [CIP-93](https://cips.cardano.org/cip/CIP-0093) 的建議時間窗）；不用 cookie（[OWASP CSRF Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)）。
 
@@ -25,12 +27,12 @@
 
 | 不變量 | 依賴它的機制（新系統先寫預計的模組） |
 |---|---|
-| B1 驗證不依賴後端：verifier 不引用後端模組；CLI 只直連 indexer 與 drand relay；後端停擺不影響 PASS 判定 | `packages/verifier/index.ts`、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs`、`apps/api/`（預計）；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
+| B1 驗證不依賴後端：verifier 不引用後端模組；CLI 沒有專案預設 indexer，只直連使用者以 `--indexer` 指定的 indexer 與 drand relay（PD7）；後端與專案 Dolos 停擺不影響 PASS 判定 | `packages/verifier/index.ts`（不帶預設 indexer）、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs` 的 `--indexer` 解析、`apps/api/`；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
 | B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/proxy.ts`（預計）、`apps/web/cardano.ts` 的 `submitTx` |
 | B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；代管紀錄以 `txHash` 為主鍵、owner 由該筆交易推導，bytes 以 bundleHash 定址並以參照計數回收；擁有者刪除只移除自己的紀錄，以 bundleHash 為鍵的 tombstone 只用於營運端下架 | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
 | B5 保存有期限：bundle 到 round 後 12 個月，每次延長 12 個月、總計不超過 round 後 36 個月（PD4）；伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
-| B6 proxy 快取不得讓唯一性列舉漏掉交易：列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取，防 rollback 造成 offset 位移）；以 txHash 為鍵的 CBOR 回應可長期快取 | `apps/api/src/proxy.ts`（預計）的快取層、`packages/chain/index.ts` 的 `findCommitments` |
+| B6 任何列舉頁快取（Workers proxy 或 Dolos 前的 reverse proxy，是否存在依 PD8）不得讓唯一性列舉漏掉交易：Blockfrost 形狀以 page／count 分頁，位置仍隨 rollback 位移，所以列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取）；以 txHash 為鍵的 CBOR 回應可長期快取 | `apps/api/src/proxy.ts` 的快取層（若 PD8 保留）、`packages/chain/index.ts` 的 `findCommitments` |
 
 ## 範圍
 
@@ -38,8 +40,9 @@
 - 不做：部署與正式網域（MVP 計畫步驟 10、D9，需要 Will 授權）；主網；協定 v1 凍結與 CIP-10 註冊（MVP 計畫 D7）；真錢包驗收（MVP 計畫步驟 2、7）；名單收集與代簽代付（MVP 計畫範圍外）。
 - 延後：
   - 彙總統計（後端 ADR 範圍內）——觸發條件：MVP 計畫 D11 選定服務，且進入 MVP 計畫步驟 10。
-  - 上線後 Cloudflare 共用出口 IP 是否被 Koios 限流——觸發條件：部署到 preprod 環境（本機測不出來）。
-  - 預設交叉比對兩家 indexer——觸發條件：維持 MVP 計畫的延後條件。
+  - 公開 Dolos 主機的容量、監控與濫用防護的實際限流值——觸發條件：MVP 計畫步驟 10 取得部署授權（本機測不出來）。（原「Cloudflare 共用出口 IP 被 Koios 限流」隨 PD7 失效）
+  - 預設交叉比對兩家 indexer——觸發條件：選定公開預設 indexer 時（PD7 重設；Koios、託管 Blockfrost 出局後，第二來源只剩使用者節點或另一個 Dolos）。
+  - 偵測使用者節點的歷史不完整（儲存模式自報、最早可查區塊）——觸發條件：步驟 8b 量到 Dolos 提供可查的儲存模式或最早區塊；否則只靠文件要求。
   - Mithril 交易收錄證明——觸發條件：`mithril-client-wasm` 的交易證明 API 不再需要 `unstable: true`，且 preprod 與主網都已啟用交易認證。
   - 硬體錢包 `signData` 相容性驗收——觸發條件：Will 提供 Ledger 或 Trezor 並授權。
   - 15 個確認的威脅說明（F8）——觸發條件：MVP 計畫 D7 凍結。
@@ -93,6 +96,7 @@
     - F18：每個流程在 await 前保存 `state.draw` 物件，await 後不是同一份就丟棄。`commit()` 的錢包等待不加判斷：`#network` 在 `#draw-form` 內，`run()` 期間被 `lockControls` 停用，使用者無法重設。
 
 - [x] **5. 唯一性重設計**（被擋於：步驟 4）
+  - 部分被 PD7 取代（2026-10-19）：Koios 列舉端點（`account_txs`、`credential_txs`）、每頁 1,000 筆、5,000 筆上限與請求數（5／26 次）只對 Koios 成立，由步驟 8b 對 Dolos 重量並改寫；唯一性規則、五個劇本與 mutation 不受影響。以下保留為紀錄。
   - 範圍：開工先確認 Koios 能依 PD3 的身分列舉交易（stake credential 用 `account_txs`、payment credential 用 `credential_txs`），記錄端點、排序是否穩定、分頁數與請求數。依 PD3 改寫 `checkUniqueness` 與 `findCommitments`，驗證頁與 CLI 列出衝突的承諾。同步改 `BOUNDARY` 常數、`docs/protocol-development.md` 的唯一性段，並在 MVP 計畫 I5、I7、D3、D7 加註由 PD3 接手（F1）。
   - 消費端：`rg -n "checkUniqueness|findCommitments|address_txs|BOUNDARY|different-drawId" packages apps tools tests docs`
   - 不能動：「同一區塊多筆時 fail closed」；分頁上限超過時判 FAIL；round 時間之後才收錄的承諾不影響已完成的抽獎（`docs/protocol-development.md` 現行規則）。
@@ -107,6 +111,7 @@
     - 實測發現的既有缺陷（步驟 5 一併修）：Koios `tx_info` 未帶 `_inputs: true` 時 `inputs` 為空陣列，`readCommitment` 與 `findCommitments` 在真 Koios 上必然判「不是 input」；公開層 request body 超過 5 KiB 回 HTTP 413（75 個 hash 通過、76 個失敗），原本每批 100 個 hash 必然失敗。另：`tx_info` 回應沒有 `valid_contract` 欄位，`valid_contract === false` 的判斷永遠不成立，交步驟 7 以 CBOR 的 `is_valid` 取代。
 
 - [x] **6. 依 PD1、PD6 更換依賴**（被擋於：步驟 4）
+  - 部分被 PD7 取代（2026-10-19）：Evolution 的 Koios 讀取（`getProtocolParameters`、`getUtxosByOutRef`）、把原始 bytes POST 到 Koios `submittx`、E2E mock 的 `utxo_info`，由步驟 8b 改為 Blockfrost 形狀（送出最終由步驟 9 改為錢包 `submitTx`）；依賴更換、組完重讀與 lint 規則不受影響。以下保留為紀錄。
   - 範圍：依 ADR `docs/adr/2026-10-18-sdk-and-trust-path-dependencies.md`：把 `apps/web/cardano.ts` 的 Mesh 換成 Evolution SDK（鎖精確版本、只在建立頁延遲載入）；`packages/chain` 的 CBOR 用法換成自寫讀取器加 `@noble/hashes`、`@noble/curves`（自 `spikes/s1-sdk/options/minimal.mjs` 移入並改寫為 TypeScript）；以步驟 3 的 Biome `noRestrictedImports` 禁止 `packages/` 引用任何 Cardano SDK；網頁組完交易後以讀取器重讀未簽 CBOR，欄位不符就不呼叫 `signTx`；移除不再需要的 polyfill 與 alias（F16），`@harmoniclabs/crypto` 是否仍需 Buffer 在本步確認。
   - 消費端：`rg -n "@meshsdk|cst\.|polyfills|crypto-browserify|stream-browserify" apps packages tools package.json`
   - 不能動：交易內容（輸出、metadata、找零規則）；mainnet 拒絕與 preprod UTxO 核對。
@@ -124,6 +129,7 @@
     - build：步驟 3 記的觸發條件（移除 alias）已發生，判定不拆：網頁 build 只剩入口與 `GIVEAWAY_API_URL` 的 define，`absWorkingDir` 一併拿掉（esbuild 由引用檔所在目錄解析依賴），一支 `tools/build.mjs` 沒有剩下的跨套件耦合。拆成各套件 `build` script 的觸發條件只剩部署（MVP 步驟 10）需要 `wrangler deploy` 前先建網頁。
 
 - [x] **7. 以交易 CBOR 驗證 metadata、身分與時間上限**（被擋於：步驟 5、6）
+  - 部分被 PD7 取代（2026-10-19）：讀取端點（`tx_cbor`、以 `tx_info` 判定主辦者 input、以 `tx_metadata` 批次挑選 label）、`cbor: null` 的處理與 Koios 實測請求數，由步驟 8b 改為 Blockfrost 形狀（`/txs/{h}/cbor`、`/txs/{h}/utxos`、`/txs/{h}/metadata`）並重量；CBOR 自驗、身分 witness、時間上限與其測試不受影響。以下保留為紀錄。
   - 範圍：verifier 向 indexer 取原始交易 CBOR，自行確認 tx hash 與 auxiliary data hash，再從 CBOR 解出 metadata（F2）。身分依 PD3：從 body 讀出 `required_signers`，驗對應 vkey witness 對 tx hash 的簽章，不回溯 input 的前一筆交易；沒有身分 key 簽章的交易不算任何身分的承諾（F1 的第三方劇本）。依 PD5，從 body 讀出 `invalid_hereafter`，以釘死的網路參數換算成時間，必須早於 round 時間（F17）；網頁 `prepareTransaction` 同步加上 `required_signers` 與 `invalid_hereafter`。CBOR 自驗只做承諾交易本身與唯一性列舉中 metadata label 符合的交易——indexer 能漏列交易，對其他交易自驗擋不住任何新攻擊，只會放大 Koios 用量。剩下的信任面（漏列交易、謊報收錄區塊與時間、謊報 input 地址；後者與漏列等價）寫進 inventory F13 的處置與 `docs/protocol-development.md`（F13）。CLI 與瀏覽器共用同一實作；`tools/reference.py` 以同一份 fixture CBOR 重算 tx hash 與 auxiliary data hash，維持雙實作交叉核對。
   - 消費端：`rg -n "readCommitment|tx_metadata|tx_info|commitmentFrom|payment_addr|prepareTransaction|setTTL|invalid" packages apps tools tests`
   - 不能動：確認數規則；`--indexer` 參數。
@@ -139,19 +145,38 @@
     - S1 的 29 個 COSE 向量未移入：屬步驟 11 的 COSE 驗證，本步沒有呼叫端。
 
 - [x] **8. 後端 walking skeleton**（被擋於：步驟 3）
+  - 部分被 PD7 取代（2026-10-19）：proxy 轉發 Koios `/tip` 與「真 Koios」驗收、停止條件「Worker 呼叫 Koios 公開層被拒」不再適用；上游改為 Dolos 由步驟 8b 接手，proxy 存廢依 PD8 由步驟 9 處理。`apps/api` 骨架、套件邊界與 mutation 不受影響。以下保留為紀錄。
   - 範圍：新增 `apps/api/`（Workers，TypeScript），共用 `packages/`；`apps/api/tsconfig.json` 使用 Workers 型別，`make typecheck` 涵蓋它；依需要調整 `pnpm-workspace.yaml` 的 `allowBuilds`，CI 的 `pnpm install --frozen-lockfile` 要能通過。本機以 Wrangler 執行，`make check` 跑後端測試。網頁以建置時的 `GIVEAWAY_API_URL`（預設 `http://127.0.0.1:8787`）取得 proxy 位址。接通最薄的一條路徑：網頁經 proxy 取得 Koios `/tip` 並顯示（BR-01 的第一個端點）。B1 邊界以步驟 3 的套件邊界守住：`packages/*` 與 `apps/verifier-cli` 不宣告 `apps/api` 的套件，Biome 規則禁止相對路徑繞過（B1）；`apps/api/src/` 有子目錄，`biome.json` 要為它加對應深度的 `noRestrictedImports` override。
   - 消費端：無（新模組）；邊界檢查：`rg -n "apps/api" packages apps/verifier-cli`；設定：`rg -n "include|allowBuilds" tsconfig.base.json packages/tsconfig.json pnpm-workspace.yaml biome.json`
   - 不能動：CLI 的直連行為；Demo 模式。
   - 驗收：CI 的 install 與 `make check`（含後端 typecheck 與測試）全綠；本機瀏覽器經 proxy 取得 tip（真 Koios，唯讀）；mutation：在 `packages/protocol` 加一行引用 `apps/api`，以套件名稱與以相對路徑各一次，`make check` 都要失敗。
   - 停止條件：Worker 呼叫 Koios 公開層也被拒——停下回報，需要 Will 先申請 key。
 
-- [ ] **9. proxy 完整版與交易改由錢包送出**（被擋於：步驟 7、8；前提「Koios 條款允許代理與快取」）
-  - 範圍：BR-01、BR-02、BR-03、BR-04、BR-05、BR-15、BR-16：端點 allowlist、每請求一個身分、以（步驟 5 定下的身分鍵, offset）快取且依 B6 只快取深於 `CONFIRMATIONS` 的整頁、依 IP 與 owner 限流（Rate Limiting binding）、全域日預算（Durable Object）、CORS 只開放設定的網域、不記錄請求內容；交易改由 CIP-30 `submitTx` 送出（F14）；驗證頁顯示證據來源，並可填入任何相容 Koios API 且允許 CORS 的 indexer 網址（Koios 公開層不允許，文件寫明；F13 的後半）；新增不 mock 的瀏覽器 E2E（F10、F11），使用一筆 preprod 上任意帶 metadata 的公開交易（開工時選定並把 txHash 記入進度表）。一次完整驗證的 Koios 請求數以 mock indexer 的計數器量測，據此設定限流值。
-  - 消費端：`rg -n "KoiosChain|DEFAULT_INDEXER|KoiosProvider|submitTx|koios\.rest" apps packages tools tests`
-  - 不能動：B1、B2、B6；CLI 預設直連。
-  - 驗收：後端測試涵蓋 allowlist 外端點被拒、超過限流回 429、跨網域 CORS 被拒、請求內容不出現在 log；不 mock 的 E2E 經 proxy 讀到選定交易的 metadata；全域預算在多個 Worker 實例並發下不超額；mutation：拿掉 allowlist、限流、全域預算或 B6 的深度條件，各自的測試要失敗（後者：快取含淺層交易的頁後模擬 rollback，唯一性列舉不得漏掉交易）；mock 錢包記錄 `submitTx` 被呼叫，改回 provider 送出時測試要失敗。
-  - 停止條件：Koios 條款不允許代理轉發或快取——停下，交 Will 決定改用其他 indexer 或付費方案。
-  - 需要人做的事：申請 Koios Free API key 存本機（碰憑證，由 Will 處理；本機與 CI 不需要，部署前需要）。
+- [ ] **8b. indexer 介面卡改成 Blockfrost 形狀，本機 preprod Dolos**（被擋於：步驟 7、8；PD7 已決）
+  - 編號說明：2026-10-19 依 PD7 插在步驟 9 之前；用 8b 而非重新編號，是為了讓程式註解、ADR 與紀錄中的「步驟 9–14」維持原義。`check_plan.py` 只認整數步驟編號，所以附件的「步驟」欄不列 8b，8b 接手的部分寫在需求與缺陷文字裡。
+  - 範圍：
+    - 先量未知（產出附件 `spike-dolos.md`，每項附重現指令）：本機跑 preprod Dolos（full archive、`max_scan_items` 調高到不小於新的列舉上限），記錄版本、磁碟用量與同步時間、RAM；以步驟 5 的兩個 preprod 地址（stake 帳戶 169 筆、payment credential 1,171 筆）測 `/accounts/{stake}/transactions` 與 `/addresses/{addr_vkh}/transactions`：`order=asc` 時重複查詢的集合與順序、同一區塊多筆的次序、跨頁是否重複或遺漏、超過 `max_scan_items` 的回應；stake 只出現在 input 的交易是否被列出；剛上鏈交易的 `/txs/{h}/cbor` 是 404、空值還是延遲出現；Dolos 是否提供可查的儲存模式或最早區塊。
+    - 以 Blockfrost 形狀的介面卡取代 `packages/chain` 的 `KoiosChain`：列舉用上述兩個端點（page／count 分頁、穩定排序；超過上限或回 `max_scan_items` 錯誤時判 FAIL，不當成列表結束）；讀承諾用 `/txs/{h}/cbor`（CBOR 自驗不變）、`/txs/{h}`（收錄區塊與時間）、`/txs/{h}/utxos`（主辦者 input）；列舉中挑選 label 改為每筆 `/txs/{h}/metadata`（Blockfrost 形狀沒有批次查詢）；確認數用 `/blocks/latest`。依實測決定剛上鏈交易沒有 CBOR 時對應 `NotIndexedError` 或 `CborPendingError`。新的列舉上限依 `max_scan_items` 與量到的請求數定，寫進協定文件。
+    - `packages/verifier` 移除預設 indexer（`DEFAULT_INDEXER` 與 `KoiosChain` 預設）；CLI 必須給 `--indexer`，沒給時以非零 exit code 結束並說明節點要求（Blockfrost 相容、full archive、`max_scan_items` 夠大）。
+    - 網頁：建立頁的 Evolution 讀取（協定參數、UTxO）改用 Blockfrost 形狀；讀鏈上資料的位址由建置設定指向專案 Dolos（本機 `http://127.0.0.1:<port>`；是否經 Workers proxy 依 PD8，本步先維持步驟 8 的 `/tip` 路徑並把上游改成 Dolos）；驗證頁可填入使用者自己的 Blockfrost 相容 indexer 網址（BR-16、F13 後半的「可指定 indexer」），未填時用專案 Dolos。送出暫時改走 Dolos 的 submit 端點；Dolos 不支援就把 F14（錢包 `submitTx`）提前到本步。
+    - 重量步驟 5、7 的請求數：對真 Dolos 量上述兩個地址一次完整列舉與驗證的請求數（推論約 ⌈(n+1)/100⌉＋n，1,171 筆約 1,183 次），記入 `spike-dolos.md` 與進度表。
+    - `tools/browser-check.mjs` 與測試的 indexer mock 改成 Blockfrost 形狀；`docs/protocol-development.md` 的 indexer 信任面加上「列舉完整性永遠信任 indexer（Mithril 也不證明）」「使用者節點必須是 full archive」與 CLI 用法。
+  - 消費端：`rg -n -i "koios|KoiosChain|DEFAULT_INDEXER|account_txs|credential_txs|tx_cbor|tx_info|tx_metadata|utxo_info|submittx|epoch_params" packages apps tools tests docs`
+  - 不能動：CBOR 自驗（tx hash、aux data hash、metadata、`required_signers` witness、`invalid_hereafter`）；PD3 唯一性規則、同一區塊 fail closed、超過上限判 FAIL；`NotIndexedError` 與 `CborPendingError` 的語意（只改對應的 HTTP 回應）；proof 格式與 Demo 模式；B1、B2。
+  - 驗收：`make check` 全綠；步驟 5、7 的回歸劇本改用 Blockfrost 形狀的 mock 全部通過；真 Dolos 唯讀：對兩個地址在同一高度以下列舉兩次，集合與順序相同，筆數不少於步驟 5 量到的 169、1,171；CLI 不給 `--indexer` 時 exit code 非零且訊息提到 full archive（Node 測試）；瀏覽器 E2E 通過，且驗證頁填入另一個 indexer 網址後請求只打到該網址；`rg -i koios packages apps tools tests` 0 筆（`spikes/` 除外）。mutation：CLI 加回預設 indexer→測試失敗；列舉只讀第一頁→第二頁才有衝突承諾的劇本由 FAIL 變 PASS、測試失敗；把 `max_scan_items` 錯誤當成列表結束→超過上限的劇本測試失敗；把剛上鏈交易的 CBOR 缺漏當成「不在歷史內」→對應測試失敗。
+  - 停止條件：Dolos 無法依 payment credential 或 stake 帳戶列舉，或重複查詢的排序不穩定——停下，PD3 身分子題與列舉方式交 Will；preprod full archive 在本機跑不起來（磁碟或同步時間超出可用硬體）——停下，帶數字交 Will 重評 ADR 的 B；`max_scan_items` 調高後仍拒絕深頁——停下。
+  - 需要人做的事：下載 Dolos 執行檔與 preprod 快照（屬下載，版本記入 `spike-dolos.md`）；本機磁碟空間由 Will 確認。
+  - 完成後的狀態：網頁 preprod 流程與 indexer 相關驗收需要本機 Dolos 執行中；CLI 一律要 `--indexer`。
+
+- [ ] **9. 交易改由錢包送出、驗證頁證據來源，與公開讀取路徑（依 PD8）**（被擋於：步驟 8b；PD8 擋住 proxy 與限流部分）
+  - 前提（2026-10-19 依 PD7 重寫）：原本 proxy 存在的四個理由對自架 Dolos 逐條重評——繞過 Koios 擋 CORS：Dolos `permissive_cors` 預設 true，理由消失；藏 key：Dolos 不需要 key，理由消失；Koios 日額度的全域預算（Durable Object）：沒有第三方額度，理由消失，剩下的是保護自己的 VM；B6 依 offset 分頁的快取：Blockfrost 形狀是 page／count，仍會隨 rollback 位移，快取若保留仍須守 B6，但它原本是為了省 Koios 額度。公開讀取路徑仍需要 IP 限流與 CORS 政策，差別在放在 Workers proxy 還是 Dolos 前的 reverse proxy，交 PD8。
+  - 範圍：
+    - 不受 PD8 影響：交易改由 CIP-30 `submitTx` 送出（F14、BR-15）；驗證頁顯示鏈上證據來源（BR-16 的後半；可填 indexer 已由步驟 8b 完成，F13 後半）；新增不 mock 的瀏覽器 E2E，對本機 preprod Dolos 讀一筆任意帶 metadata 的公開交易（F10、F11；開工時選定並把 txHash 記入進度表）；後端既有端點的 CORS 只開放設定的網域、不記錄請求內容（BR-04、BR-05）。一次完整驗證的請求數以 mock indexer 的計數器量測，供限流值使用。
+    - 依 PD8：A（建議）——移除 Workers 的唯讀 proxy（步驟 8 的 `/tip` 路徑），網頁直連專案 Dolos；IP 限流、CORS 網域清單與不記錄請求內容寫成 Dolos 前 reverse proxy 的設定與 runbook，交 MVP 計畫步驟 10 部署；BR-01 改寫、BR-02 與 BR-03 的全域預算刪除。B——保留 Workers proxy 縮成 Blockfrost 端點 allowlist＋IP 限流，不做全域預算；BR-02 的快取刪除或保留並守 B6。C——照原 BR-01、BR-02、BR-03 全做（全域預算改成保護 VM 的總量上限）。
+  - 消費端：`rg -n "submitTx|submit|proxy|GIVEAWAY_API_URL|chain-tip|evidence" apps packages tools tests`
+  - 不能動：B1、B2、B6；CLI 沒有專案預設 indexer。
+  - 驗收：mock 錢包記錄 `submitTx` 被呼叫，改回經 indexer 送出時測試要失敗；不 mock 的 E2E 經本機 Dolos 讀到選定交易的 metadata，驗證頁顯示證據來源網址；後端測試涵蓋跨網域 CORS 被拒、請求內容不出現在 log。依 PD8 追加——A：網頁對 Dolos 的請求不經 `apps/api`（E2E 斷言請求主機），reverse proxy 設定在本機對超量請求回 429；B 或 C：allowlist 外端點被拒、超過限流回 429，mutation 拿掉 allowlist、限流或 B6 深度條件各自的測試要失敗（B6：快取含淺層交易的頁後模擬 rollback，唯一性列舉不得漏掉交易）。
+  - 停止條件：PD8 未決時只做「不受 PD8 影響」的部分，proxy 與限流部分不開工；錢包 `submitTx` 在 mock CIP-30 上無法回傳 tx hash——停下回報。
 
 - [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD2 擋住 CPU 驗收）
   - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、協定的 byte 上限）、代管紀錄以 `txHash` 為主鍵（B4）、bytes 以 bundleHash 定址並參照計數、每個 owner 的保存額度、12 個月保存（Cron 清理，讀取時也檢查 `expires_at`）；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。網頁 `apps/web/services.ts` 的 `assembleProof`（取 beacon 後重算得獎者組成 proof）移到 `packages/verifier`，CLI 的 bundle 模式共用它。
@@ -173,13 +198,13 @@
   - 驗收：E2E：建立草稿、重新整理後恢復、匯出再匯入內容相同；後端測試：未簽章存取被拒、超過額度被拒、30 天到期刪除（時間注入）；mutation：拿掉到期清理或額度檢查，各自的測試要失敗。
 
 - [ ] **13. 文件、隱私說明與下架流程**（被擋於：步驟 12）
-  - 範圍：BR-13、BR-14、F15：隱私說明（controller 角色、保存期限、刪除方式、整份下架與保留下載副本的提醒）；檢舉與下架流程，營運端以 Wrangler CLI 手動下架並寫成 runbook（`docs/runbooks/takedown.md`）；更新 `AGENTS.md`、README、`docs/protocol-development.md` 的架構與協定描述；MVP 計畫 `external-interfaces.md` E5 改指 Koios tiers 頁。
-  - 消費端：`rg -n "no product backend|GitHub Pages|static web application|Pricing.html" README.md AGENTS.md docs`
+  - 範圍：BR-13、BR-14、F15：隱私說明（controller 角色、保存期限、刪除方式、整份下架與保留下載副本的提醒）；檢舉與下架流程，營運端以 Wrangler CLI 手動下架並寫成 runbook（`docs/runbooks/takedown.md`）；更新 `AGENTS.md`、README、`docs/protocol-development.md` 的架構與協定描述，含 indexer 改為專案 Dolos、CLI 必須以 `--indexer` 指定 full-archive Blockfrost 相容節點、Dolos 的部署形態（VM）與 PD8 的結果（PD7）；MVP 計畫 `external-interfaces.md` E5 改寫為 Blockfrost 相容 indexer 與 Dolos，Koios 標為已移除（F15）。
+  - 消費端：`rg -n -i "no product backend|GitHub Pages|static web application|Pricing.html|koios" README.md AGENTS.md docs`
   - 不能動：驗證邊界文字（MVP 計畫 I7，PD3 改寫後的版本）；不把未部署的功能寫成已上線（MVP 計畫全域約束）。
-  - 驗收：消費端搜尋指令沒有過期描述；runbook 在本機 Miniflare 照做一次能下架一份測試 bundle 並留下 tombstone；`make check` 全綠。
+  - 驗收：消費端搜尋指令沒有過期描述（`koios` 只剩 ADR、計畫紀錄與 spike 的歷史文字）；runbook 在本機 Miniflare 照做一次能下架一份測試 bundle 並留下 tombstone；`make check` 全綠。
   - 需要人做的事：Will 決定公開的檢舉聯絡管道。
 
-- [ ] **14. 收尾**（被擋於：步驟 13）：完成定義逐項核對（MVP 計畫）；`python3 check_plan.py` 確認 inventory 與需求清單沒有空格且每項都對應到點名它的步驟；獨立設計審查（design-review skill）；長期檢查（B1 邊界檢查、mutation-check、後端測試）已在 `make check` 與 CI；延後項附觸發條件搬回主清單；需要人做的事（Koios key、部署授權、硬體錢包、檢舉管道）列給 Will。驗收：上述指令輸出貼進進度表。
+- [ ] **14. 收尾**（被擋於：步驟 13）：完成定義逐項核對（MVP 計畫）；`python3 check_plan.py` 確認 inventory 與需求清單沒有空格且每項都對應到點名它的步驟；獨立設計審查（design-review skill）；長期檢查（B1 邊界檢查、mutation-check、後端測試）已在 `make check` 與 CI；延後項附觸發條件搬回主清單；需要人做的事（部署授權含 Dolos 的 VM、硬體錢包、檢舉管道；PD8 若仍未決也列入）列給 Will。驗收：上述指令輸出貼進進度表。
 
 ## 決定
 
@@ -214,7 +239,19 @@
   - 草稿身分：簽章錢包的身分（與 PD3 身分子題同一規則）；草稿在上鏈前就存在，無法取自承諾交易。
   - 額度與上限（數字為建議預設）：每個身分最多 5 份伺服器草稿、每份不超過協定的 bundle 上限；每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月。
 
-拍板順序：PD1、PD3、PD4、PD5、PD6 已決；PD2 等步驟 10 的量測。
+- **PD7 indexer 換成什麼、CLI 怎麼接**（狀態：已決 2026-10-19，Will：A′；擋住步驟：無，步驟 8b 依此開工；需要的事實：無。ADR：`docs/adr/2026-10-19-self-hosted-dolos-indexer.md`）
+  - 起因：步驟 9 重查 koios.rest 條款，字面禁止系統性擷取、自動化使用與轉發；Will 決定不取得同意。
+  - 結論：Blockfrost 形狀介面卡＋自架 Dolos（full archive、調高 `max_scan_items`）供網頁與後端；CLI 不設專案預設，必須以 `--indexer` 指定使用者自備的 full-archive 節點。選項 A、B、C、E、F 與取捨見 ADR。
+  - 已知退步：Mithril 不證明列舉完整，唯一性永遠信任 indexer 的列舉；使用者節點必須是 full archive，否則 verifier 察覺不到漏列；請求數由約 26 次升到約 1,183 次（1,171 筆，推論）。
+  - 對計畫的影響：前提段、B1、B6、步驟 5–8 段首註記、新增步驟 8b、步驟 9、13、14 改寫；需求 BR-01、BR-02、BR-03、BR-16、X1 與非功能需求的處置見 `requirements.md`。
+- **PD8 後端唯讀 proxy 的存廢**（狀態：未決，提案 2026-10-19，交 Will；擋住步驟：9 的 proxy 與限流部分；需要的事實：步驟 8b 的請求數量測）
+  - 問題：proxy 的四個理由（Koios CORS、藏 key、Koios 日額度、offset 快取）對自架 Dolos 都已消失或改變（見步驟 9 前提）；公開讀取路徑仍需要 IP 限流與 CORS 政策。後端本身（bundle 代管、草稿）不受影響：後端 ADR 撤銷條件的後半「主辦者不需要託管」未滿足。
+  - A：移除 Workers 唯讀 proxy，網頁直連 Dolos，限流與 CORS 放在 Dolos 前的 reverse proxy（Caddy／nginx 的 rate limit，自架 API 的常見做法）——少一跳與一層要維護的程式，驗證頁填使用者 indexer 時本來就不經 proxy；代價：限流不在 edge、VM 的位址公開，濫用防護要在部署時（MVP 計畫步驟 10）以設定與 runbook 驗收。（建議）
+  - B：保留 Workers proxy，縮成 Blockfrost 端點 allowlist＋IP 限流，不做全域預算；快取刪除或保留並守 B6——edge 限流、可隱藏 VM 位址；代價：每次讀取多一跳與 Workers subrequest，proxy 程式仍要維護。
+  - C：照原 BR-01、BR-02、BR-03 全做，全域預算改成保護 VM 的總量上限——防護最完整；代價：Durable Object 與快取層是為 Koios 額度設計的，對自己的 VM 是否需要沒有證據。
+  - 對需求的影響（提案，Will 拍板前不生效）：A 時 BR-01 改寫為「網頁直連專案 Dolos，reverse proxy 只放行 Blockfrost 唯讀端點」、BR-02 刪除、BR-03 的全域預算刪除且 IP 限流移到 reverse proxy；B 時 BR-03 的全域預算刪除、BR-02 的快取二選一；C 不刪。
+
+拍板順序：PD1、PD3、PD4、PD5、PD6、PD7 已決；PD8 在步驟 8b 量到請求數後交 Will；PD2 等步驟 10 的量測。
 
 ## 進度
 
@@ -230,7 +267,8 @@
 | 6 依 PD1、PD6 更換依賴 | 完成 | `pnpm install --frozen-lockfile` exit 0；`make check` exit 0（Biome 37 檔、四份 tsc、34 個 Node 測試、`apps/api` 10 個 vitest、mutation-check 4 個 CLI 竄改＋9 個檔案竄改、10 組 Python vectors、MVP `check_plan.py` OK）；本計畫 `check_plan.py` OK；瀏覽器 E2E 12 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core；127.0.0.1:4320 被另一個 worktree 的 dev server 佔用，改以 `PORT=4321 node tools/serve.mjs` 起本步的 build，並以只把網址換成 4321 的暫存副本執行 `browser-check.mjs`，斷言未改，跑完刪除）；前後比對（harness 在 scratchpad、不入庫：把該版 `apps/web/cardano.ts` 照正式設定打包，在 Node 以 mock CIP-30 與 mock Koios 執行，攔截交給 `signTx` 的未簽 CBOR，用 S1 spike 的讀取器解碼；before 跑在 `543bf1e` 的匯出檔，after 跑在本步）兩組輸入（enterprise 地址 10 ADA、base 地址 25 ADA 的 #3）：輸入、輸出地址、2 ADA 轉帳輸出、找零地址、metadata 解碼後全等，輸出＋fee＝輸入，body 欄位都是 0、1、2、7；fee Mesh 178,921／180,153、Evolution 177,909／180,373 lovelace，對 minFeeA×未簽 bytes＋minFeeB 的比值 Mesh 1.034／1.027、Evolution 1.027／1.027（2 倍以內）；停止條件未觸發；bundle（esbuild minify，raw／gzip -9 bytes）：初始載入（app.js＋靜態 chunk）241,925／76,574 → 224,788／73,810，建立頁延遲載入的 cardano chunk 5,853,484／1,511,564 → 806,245／233,211，合計 6,095,409／1,588,138 → 1,031,033／307,021；mutation：拿掉 input、transfer output、change address、balance、metadata 任一核對，對應測試失敗（已接進 mutation-check）；`packages/chain` 引用 `@evolution-sdk/evolution`（已在 package.json 宣告時由 `noRestrictedImports` 擋，未宣告時另有 `noUndeclaredDependencies`）、子路徑 `@evolution-sdk/evolution/Address`、`packages/beacon` 引用 `@meshsdk/core`，`biome check` 各自 exit 1，同一檔的 `../protocol` 相對引用仍被擋；把 `cardano.ts` 交給核對的地址改掉，harness 在 `signTx` 之前丟出 transfer output 錯誤；preprod UTxO 核對的負向案例（mock Koios 回報不同金額、查無此 UTxO）都得到「Wallet UTxO is not on preprod」，`signTx` 0 次；CI 於 `eb9a4da` 通過（run 39154422737，job check: success）；主 session 重跑 `make check` exit 0、瀏覽器 E2E 12 項 PASS | 真錢包簽 Evolution 組出的交易（等真錢包）；`cardano.ts` 對 `checkCommitmentTransaction` 的呼叫本身沒有自動測試擋（E2E 只有核對通過的路徑，拿掉呼叫不會讓任何檢查失敗） | 開工前 13 筆：`apps/web/cardano.ts` 3、`apps/web/package.json` 3、`package.json` 1、`tools/browser-check.mjs` 3、`tools/build.mjs` 3；完成後 0 筆（rg exit 1）；改過的匯出 `prepareTransaction`（回傳形狀不變）、`wallets`（只回 id、name）的呼叫端只有 `apps/web/app.ts` 與 `state.ts` 的型別推導 | `b18d6a5`、本列提交 |
 | 7 CBOR 驗證 metadata、身分與時間上限 | 完成 | `pnpm install --frozen-lockfile` exit 0；`make check` exit 0（Biome 38 檔、四份 tsc、47 個 Node 測試、`apps/api` 10 個 vitest、mutation-check 4 個 CLI 竄改＋14 個檔案竄改、Python 10 組 vectors＋6 筆交易 hash、MVP `check_plan.py` OK）；本計畫 `check_plan.py` OK；瀏覽器 E2E 14 項 PASS、exit 0（Chrome 系統安裝版＋npx 快取的 playwright-core；新增「與計畫不符的交易不會被簽」「逾期提示更晚的 round」，F18 劇本改由測試金鑰真簽章並走 `tx_cbor`）；F2 回歸：同一支測試對 `78a37e3` 的實作得 actual PASS／expected FAIL，對本步得 FAIL（scratchpad 以舊 library 的 `KoiosChain`、`verifyProof` 替換執行）；F17、PD3 witness、同錢包換地址、aux 替換四支新測試對舊實作也都失敗；mutation（已接進 mutation-check）：略過 aux hash 比對→`F2: auxiliary data replaced` 失敗、略過 Ed25519 驗章→`PD3 witness` 失敗、略過時間上限→`F17` 失敗，另有組完重讀的 required signers、validity 兩項；E2E mutation：拿掉 `checkCommitmentTransaction` 呼叫→E2E exit 1；Node 與 Python 對 6 筆 fixture 的 tx hash、aux hash 相同，改一個 byte 後不同；唯讀 Koios preprod：`findCommitments` 對步驟 5 的兩個地址 5 次、26 次請求（與步驟 5 相同）、0 筆承諾；真交易 `05aba404`（tag 258 `required_signers`）的 witness 驗章通過、改一個 byte 後不通過；審查修正 1（MED-1）：indexer 有交易列但 `cbor` 為 null 時改丟 `CborPendingError`（不再當 `NotIndexedError`），頁面過 `invalid_hereafter` 仍繼續輪詢、不叫人換 round 重送；新增 Node 測試「lists without its CBOR」與 E2E「indexed transaction without CBOR keeps polling past invalid_hereafter」，兩者在 `846d915` 上失敗（E2E 顯示 expired 訊息）、修正後通過；修正後 `make check` exit 0（48 個 Node 測試）、E2E 15 項 PASS（`tools/browser-check.mjs` 改讀 `PORT`）；獨立對抗式 review：0 HIGH、2 MED（CBOR 未給被誤報逾期→`a8a4557` 修；計數規則偏離 ADR→Will 拍板採新規則、ADR 補 Amendment `0864ef1`）、1 LOW（重讀呼叫只靠 E2E，E2E 不在 CI）；主 session 重跑 `make check` exit 0、E2E 15 項 PASS；CI 於 `9056bb7` 通過（run 39186111870） | CI（未推送）；真錢包是否替 `required_signers` 的 stake key 簽章、送出的承諾能否在 `invalid_hereafter` 前收錄（等真錢包）；Ed25519 與 ledger（libsodium）在非 canonical 簽章上的一致性：未量 | 開工前 49 行（`78a37e3`）；完成後 88 行，增加的是測試與新函式（`readCommitmentTransaction`、`invalidHereafter`、`checkValidityBound` 等）；`tx_info`、`payment_addr` 只剩 `readCommitment` 的主辦者 input 檢查與 E2E mock，`tx_metadata` 只剩列舉時挑選 label 的批次查詢與 E2E mock；`setTTL` 0 筆；改過的匯出：`Confirmed` 加 `validUntil`（建構處 `DemoChain.confirm`、`DemoChain.readCommitment`、`KoiosChain.readCommitment`）、`CommitmentPlan` 加 `signer`、`invalidHereafter`（呼叫端 `apps/web/cardano.ts` 與測試）、`checkTiming` 簽名不變（呼叫端 verifier、`app.ts` 的 `confirm`、`reveal`） | `f27faba`、本列提交 |
 | 8 後端 walking skeleton | 完成 | `pnpm install --frozen-lockfile` exit 0（`allowBuilds` 加 `workerd: false`：與 esbuild 相同，binary 由平台 optionalDependency 提供，postinstall 只做檢查；本機 `wrangler dev` 與 vitest 都在不跑 postinstall 下啟動 workerd）；`make check` exit 0（Biome 37 檔、四份 tsc 含 `apps/api/tsconfig.json`、20 個 Node 測試、`apps/api` 10 個 vitest 測試跑在 workerd、mutation-check、10 組 Python vectors、MVP `check_plan.py` OK）；`make api`（`wrangler dev`，127.0.0.1:8787）＋curl `/tip`：HTTP 200、`Access-Control-Allow-Origin: http://127.0.0.1:4320`、真 Koios preprod tip（block 5307496、epoch 320），停止條件未觸發；`/blocks` 404、`/tip?select=hash` 400、POST 405；瀏覽器（Chrome 155.0.8059.82＋npx 快取 playwright-core，scratchpad 腳本，未進 repo）：`make dev` 頁面切到 preprod 後 `#chain-tip` 顯示「Preprod tip via the backend proxy: block 5307496 · epoch 320 …」，請求只有 `http://127.0.0.1:8787/tip`、直連 koios.rest 0 次；停掉 Wrangler 後顯示「unavailable … (Failed to fetch)」；`browser-check.mjs` 12 項 PASS、exit 0（與步驟 4 相同）；mutation：`packages/protocol` 加 `export { handle } from '@giveaway/api'` → `noUndeclaredDependencies`，`make check` exit 2；改成 `'../../apps/api/src/index.ts'` → `noRestrictedImports`（另有 4 個 `noImportCycles`），exit 2；新 override `apps/*/*/*` 禁止 `../../**`：`apps/api/src` 內引用 `../../../packages/…`、`../../web/…` 被擋，`../proxy.ts` 不擋；拿掉 query 拒收，對應 vitest 測試失敗；`GIVEAWAY_API_URL=` 空字串時 build 失敗（Invalid URL） | CI 於 `6f36258` 通過（run 39152602084，job check: success；Linux 上 workerd 不跑 postinstall 也能啟動，步驟 8 的疑點排除） | `rg -n "apps/api" packages apps/verifier-cli`：0 筆（exit 1）；`rg -n "include\|allowBuilds" tsconfig.base.json packages/tsconfig.json pnpm-workspace.yaml biome.json`：`packages/tsconfig.json` 的 `*/*.ts`（不含 apps）、`biome.json` 四組 includes（新增 `apps/*/*/*`）、`pnpm-workspace.yaml` 的 `allowBuilds`。步驟 3 的 build 觸發條件判定不需執行：`apps/api` 沒有建置產物，`wrangler dev` 與 vitest-plugin 各自打包 `src/index.ts`，`tools/build.mjs` 只多了 `GIVEAWAY_API_URL` 的 define；拆成各套件 `build` script 的觸發條件改為只剩步驟 6 移除 alias，或部署（MVP 步驟 10）需要 `wrangler deploy` 前先建網頁 | `19c26e2`、本列提交 |
-| 9 proxy 完整版 | 未開始（停於前提，待 Will 決定） | 前提重查（2026-10-19 取得）：[Terms & Conditions](https://koios.rest/terms.html)（HTTP 200，「Last updated June 3, 2026」）適用範圍為「the https://koios.rest website and any other media form, media channel … related, linked, or otherwise connected thereto (collectively, the "Site")」，且有：「The Site provides the Content and Marks "AS IS" for your information and personal use only」；「no portion of the Site and no Content or Marks may be copied, reproduced, aggregated, republished, … transmitted, distributed, licensed, or otherwise exploited for any commercial purpose, without our express prior written permission」；禁止事項「Systematically retrieve data or other content from the Site for the purpose of creating or compiling, directly or indirectly, a collection, compendium, database, or directory without our prior written consent」、「Make any automated use of the system, including … data mining, robots, or similar data collection and extraction tools」、「use the Site and/or Content for any other commercial or revenue-generating purpose」。[Tiers](https://koios.rest/tiers.html)：Public 免 key、5,000 req/日、100 req/10 秒、CORS restricted；Free 需註冊 50,000/日；Pro ~$29.99/月 500,000/日、250/10 秒；Premium ~$74.99/月 1.2M/日；「Even unlimited daily requests in custom tiers are subject to the limitations of hardware resources」；條款與 tiers 頁都沒有提到 proxy、cache、API key 共用或伺服器端使用。[FAQ](https://koios.rest/faq.html)：「many folks are already using different cache methods, or capturing ledger information from node」（描述現況，非授權）。`gh search code --owner cardano-community` 搜「Terms of Service」「Systematically retrieve」「proxy cache tier」皆 0 筆；`koios-artifacts` 樹中無 terms／tier／pricing 檔。[koios.rest 首頁](https://koios.rest/) 僅「Released under the MIT License」（指程式碼）。 | 判定：條款找得到，但字面上禁止以系統化擷取建立資料集（快取）、轉發／散布內容與商業用途（需書面同意），未明確允許代理與快取，也未區分網站與 API——不符合「明確允許或明確不禁止且允許伺服器端使用」，依停止條件停下，未寫任何程式。條款是通用範本（字面上連自動化使用都禁止，與 API 本身用途衝突），解讀需 Will 決定：向 Koios（sales@koios.rest）取得書面同意或確認付費層條款、改用其他 indexer，或放棄伺服器端快取。另：步驟 8 已上線的 `/tip` 轉發同樣落在這些條款下。選定交易 txHash、限流量測、全部驗收均未跑。 | 未搜尋（未改程式） | 本列 |
+| 8b indexer 改為 Blockfrost 形狀與本機 Dolos | 未開始 | | | | |
+| 9 錢包送出、證據來源與公開讀取路徑（原「proxy 完整版」） | 未開始（2026-10-19 前提已由 PD7 處理，步驟依 PD7 重寫；proxy 部分待 PD8） | 前提重查（2026-10-19 取得）：[Terms & Conditions](https://koios.rest/terms.html)（HTTP 200，「Last updated June 3, 2026」）適用範圍為「the https://koios.rest website and any other media form, media channel … related, linked, or otherwise connected thereto (collectively, the "Site")」，且有：「The Site provides the Content and Marks "AS IS" for your information and personal use only」；「no portion of the Site and no Content or Marks may be copied, reproduced, aggregated, republished, … transmitted, distributed, licensed, or otherwise exploited for any commercial purpose, without our express prior written permission」；禁止事項「Systematically retrieve data or other content from the Site for the purpose of creating or compiling, directly or indirectly, a collection, compendium, database, or directory without our prior written consent」、「Make any automated use of the system, including … data mining, robots, or similar data collection and extraction tools」、「use the Site and/or Content for any other commercial or revenue-generating purpose」。[Tiers](https://koios.rest/tiers.html)：Public 免 key、5,000 req/日、100 req/10 秒、CORS restricted；Free 需註冊 50,000/日；Pro ~$29.99/月 500,000/日、250/10 秒；Premium ~$74.99/月 1.2M/日；「Even unlimited daily requests in custom tiers are subject to the limitations of hardware resources」；條款與 tiers 頁都沒有提到 proxy、cache、API key 共用或伺服器端使用。[FAQ](https://koios.rest/faq.html)：「many folks are already using different cache methods, or capturing ledger information from node」（描述現況，非授權）。`gh search code --owner cardano-community` 搜「Terms of Service」「Systematically retrieve」「proxy cache tier」皆 0 筆；`koios-artifacts` 樹中無 terms／tier／pricing 檔。[koios.rest 首頁](https://koios.rest/) 僅「Released under the MIT License」（指程式碼）。 | 判定：條款找得到，但字面上禁止以系統化擷取建立資料集（快取）、轉發／散布內容與商業用途（需書面同意），未明確允許代理與快取，也未區分網站與 API——不符合「明確允許或明確不禁止且允許伺服器端使用」，依停止條件停下，未寫任何程式。條款是通用範本（字面上連自動化使用都禁止，與 API 本身用途衝突），解讀需 Will 決定：向 Koios（sales@koios.rest）取得書面同意或確認付費層條款、改用其他 indexer，或放棄伺服器端快取。另：步驟 8 已上線的 `/tip` 轉發同樣落在這些條款下。選定交易 txHash、限流量測、全部驗收均未跑。 | 未搜尋（未改程式） | 本列 |
 | 10 bundle 代管與 CLI bundle 模式 | 未開始 | | | | |
 | 11 擁有者簽章操作 | 未開始 | | | | |
 | 12 草稿保存 | 未開始 | | | | |

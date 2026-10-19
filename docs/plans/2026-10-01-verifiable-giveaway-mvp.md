@@ -30,6 +30,7 @@
 - **P6 目標 repo：** 已確認為本 repo（已建立 GitHub public repo，2026-10-01）；尚無 commit，初始 commit 由建立 repo 的工作負責，不在本計畫。
 - **P7 工具鏈：** 開發預設（可推翻）：TypeScript、Node LTS、pnpm workspace、Node 內建 test runner、`make check` 當驗收入口；採內建 runner 以重用既有離線工具鏈、不增加測試框架相依。Cardano SDK 預設 Mesh，步驟 2 實測後可換成 Evolution SDK 或 Lucid Evolution（`external-interfaces.md` E7）。test vectors 的獨立參考實作用 Python 3（標準函式庫，不加相依）；為了讓 JCS 在兩種語言都容易正確實作，bundle 的值只允許字串、非負整數、陣列與物件，字串不得含控制字元。
 - **P8 鏈上查詢：** 預設（可推翻）：Koios 公開層（免 key，E5）；verifier 允許使用者改用其他 indexer。
+  - 2026-10-19 修訂（Will）：不再使用 Koios（條款字面禁止系統性擷取與自動化使用，決定不取得同意）；網頁與後端改用專案自架 Dolos（Blockfrost 形狀），CLI 不設專案預設、必須以 `--indexer` 指定使用者自備的 full-archive 節點。後續步驟中的 Koios 查詢改對 Dolos 或使用者節點執行。ADR：`docs/adr/2026-10-19-self-hosted-dolos-indexer.md`；實作：`docs/plans/2026-10-18-hardening-and-backend.md` PD7、步驟 8b。
 - **P9 安全參數：** 預設（可推翻）：hash 用 SHA-256；bundle 以 RFC 8785 JCS 正規化後取 hash（E10）；verifier 寫死 drand quicknet chain hash 與 group public key（E4）。
 - **P10 介面語言：** 預設（可推翻）：英文為主，繁體中文可後加。
 - **P11 目標主辦者大多沒有 Cardano 錢包：** 未確認，推論（目標族群是創作者、社群管理員、開源專案，見 `requirements.md` N1、N13）。由步驟 1 提供證據，影響 D4。
