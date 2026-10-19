@@ -45,7 +45,7 @@ PD7 對需求的處置（2026-10-19）：
 
 | 項目 | 門檻 | 狀態與依據 |
 |---|---|---|
-| 上傳驗證的 CPU 時間 | 1 萬筆、每筆 200 字元的 bundle，hash＋`validateBundle` 在選定 Workers 方案的上限內 | 步驟 10 已在本機 workerd 量測（`apps/api/bench/cpu-report.json`）：最壞 244 ms／請求（`a@……@` 形標籤讓 email 正則回溯），超過 Free 10 ms、遠低於付費預設 30 s；Cloudflare 計費 CPU 未量（需部署）。PD2 待 Will 拍板 |
+| 上傳驗證的 CPU 時間 | 1 萬筆、每筆 200 字元的 bundle，hash＋`validateBundle` 在選定 Workers 方案的上限內 | 步驟 10 本機 workerd 量得最壞 276 ms／請求（`a@……@` 回溯）；步驟 10b email 改寫為線性後同構造 n＝1 萬為 25 ms（`apps/api/bench/cpu-report.json`），但每次上傳固定的兩次鏈上讀取約 3 ms、冷啟動 31 ms，Free 的 10 ms ÷ 3 在 n＝1 就不夠（計畫 PD2「步驟 10b 量測與停止」）；Cloudflare 計費 CPU 未量（需部署）。PD2 等 Will 重議 |
 | 後端停擺時的可驗證性 | 後端與專案 Dolos 都停擺時，持有 bundle 者以 CLI 搭配自備的 full-archive indexer（`--indexer`）仍能 PASS | 不變量 B1；步驟 8 起每步驗收，步驟 8b 起改用自備 indexer |
 | 公開讀取路徑的負載 | 單一 IP 或地址不能耗盡專案 Dolos 的容量（原「Koios 額度」，PD7 改寫） | 步驟 8b 量單次驗證請求數（n＝265 時 276 次）；限流放在 Dolos 前的 reverse proxy（PD8 A），初值與驗證在步驟 9；實際值在部署時（MVP 計畫步驟 10）定 |
 | 保存 | bundle 12 個月、草稿 30 天，到期自動刪除 | 步驟 10、12 以時間注入測試驗證 |
