@@ -1,0 +1,9 @@
+{
+  // The PD2 measurement Worker (bench/cpu.mjs), local only: no bindings, never deployed.
+  "name": "giveaway-api-bench",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "send_metrics": false,
+  "observability": { "enabled": false }
+}

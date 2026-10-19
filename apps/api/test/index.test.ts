@@ -1,6 +1,6 @@
 import { exports } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handle } from '../src/index.ts';
+import { type Env, handle } from '../src/index.ts';
 
 // Types `exports` from the main module; `wrangler types` would generate the same declaration.
 declare global {
@@ -12,41 +12,45 @@ declare global {
 }
 
 const PAGE = 'http://127.0.0.1:4320';
-const env = { ALLOWED_ORIGIN: PAGE };
+// Only the origin matters before routing; these requests never reach D1, R2 or the indexer.
+const env = { ALLOWED_ORIGIN: PAGE } as Env;
 const from = (origin: string | null, init: RequestInit = {}, url = 'http://api.test/anything') =>
   new Request(url, { ...init, headers: { ...(origin ? { Origin: origin } : {}), ...(init.headers ?? {}) } });
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('CORS (BR-04)', () => {
-  it('refuses a page on another origin, preflight and request alike, without a CORS header', () => {
+  it('refuses a page on another origin, preflight and request alike, without a CORS header', async () => {
     for (const origin of ['https://evil.example', 'http://127.0.0.1:4321', 'null'])
-      for (const method of ['OPTIONS', 'GET']) {
-        const response = handle(from(origin, { method }), env);
+      for (const method of ['OPTIONS', 'GET', 'PUT']) {
+        const response = await handle(from(origin, { method }, 'http://api.test/bundles/00'), env);
         expect([origin, method, response.status]).toEqual([origin, method, 403]);
         expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
       }
   });
 
-  it('allows only the configured origin and names it, never *', () => {
-    const preflight = handle(from(PAGE, { method: 'OPTIONS' }), env);
+  it('allows only the configured origin and names it, never *', async () => {
+    const preflight = await handle(from(PAGE, { method: 'OPTIONS' }), env);
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
     expect(preflight.headers.get('Vary')).toBe('Origin');
-    const get = handle(from(PAGE), env);
+    // The page reads and uploads hosted bundles (plan step 10).
+    expect(preflight.headers.get('Access-Control-Allow-Methods')).toBe('GET, PUT');
+    expect(preflight.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    const get = await handle(from(PAGE), env);
     expect(get.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
   });
 
-  it('refuses every browser origin when the configured origin is missing or malformed', () => {
+  it('refuses every browser origin when the configured origin is missing or malformed', async () => {
     for (const configured of [{}, { ALLOWED_ORIGIN: '' }, { ALLOWED_ORIGIN: 'not a url' }]) {
-      const response = handle(from(PAGE, { method: 'OPTIONS' }), configured);
+      const response = await handle(from(PAGE, { method: 'OPTIONS' }), configured as Env);
       expect(response.status).toBe(403);
       expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
     }
   });
 
-  it('sends no CORS header to a request without Origin (not a cross-origin page)', () => {
-    const response = handle(from(null), env);
+  it('sends no CORS header to a request without Origin (not a cross-origin page)', async () => {
+    const response = await handle(from(null), env);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
@@ -82,6 +86,10 @@ describe('no request content in logs (BR-05)', () => {
     const requests = [
       from(PAGE, {}, `http://api.test/tip?q=${marker}`),
       from(PAGE, { method: 'POST', body: marker }, 'http://api.test/bundles'),
+      // The upload route reads the body (not JSON: refused before any indexer read) and the read route a record.
+      from(PAGE, { method: 'PUT', body: marker }, `http://api.test/bundles/${'ab'.repeat(32)}`),
+      from(PAGE, {}, `http://api.test/bundles/${'ab'.repeat(32)}?q=${marker}`),
+      from(PAGE, { method: 'PUT', body: marker }, `http://api.test/bundles/${marker}`),
       from(PAGE, { headers: { Authorization: marker, 'CF-Connecting-IP': '203.0.113.7' } }),
       from(`https://${marker}.example`, { method: 'OPTIONS' }),
       from(null, { method: 'PUT', body: marker }, `http://api.test/${marker}`),

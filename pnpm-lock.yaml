@@ -28,6 +28,13 @@ importers:
         version: 5.9.3
 
   apps/api:
+    dependencies:
+      '@giveaway/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
+      '@giveaway/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: 1.4.4

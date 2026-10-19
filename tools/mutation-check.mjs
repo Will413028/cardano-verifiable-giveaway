@@ -194,11 +194,8 @@ await mustFail(
   `${root}apps/verifier-cli/index.mjs`,
   (text) =>
     text
-      .replace("if (index < 0 || !args[index + 1] || args[index + 1].startsWith('--')) {", 'if (false) {')
-      .replace(
-        'new BlockfrostChain(args[index + 1])',
-        "new BlockfrostChain(index < 0 ? 'http://127.0.0.1:3010' : args[index + 1])",
-      ),
+      .replace('if (!indexer) {', 'if (false) {')
+      .replace('const chain = chainFor(indexer);', "const chain = chainFor(indexer ?? 'http://127.0.0.1:3010');"),
   'CLI requires --indexer',
 );
 await mustFail(
@@ -297,8 +294,7 @@ await mustFail(
   'reverse proxy limits every client',
 );
 // The backend (apps/api, BR-04, BR-05): the same rewrite-run-restore, with its vitest suite inside workerd.
-async function mustFailApi(name, mutate, testName) {
-  const path = `${root}apps/api/src/index.ts`;
+async function mustFailApi(name, mutate, testName, path = `${root}apps/api/src/index.ts`) {
   const original = await readFile(path, 'utf8');
   const changed = mutate(original);
   if (changed === original) throw new Error(`${name}: mutation target was not located`);
@@ -330,4 +326,32 @@ await mustFailApi(
       'const allowed = allowedOrigin(env);\n  console.log(request.url);',
     ),
   'writes nothing to the console',
+);
+// Bundle hosting (plan step 10, B4): one guard per mutation, each against the backend test written for it.
+const bundles = `${root}apps/api/src/bundles.ts`;
+await mustFailApi(
+  'Skipping validateBundle in the upload gate',
+  (text) => text.replace('    validateBundle(value);\n', '    void value;\n'),
+  'refuses bytes that fail validateBundle',
+  bundles,
+);
+await mustFailApi(
+  'Not writing the takedown tombstone',
+  (text) =>
+    text.replace(
+      "env.DB.prepare('INSERT OR IGNORE INTO tombstones (bundle_hash, removed_at) VALUES (?, ?)').bind(bundleHash, now),",
+      '',
+    ),
+  'an operator takedown removes every record',
+  bundles,
+);
+await mustFailApi(
+  'Deleting hosted bytes without counting the records that still name them',
+  (text) =>
+    text.replace(
+      'const unreferenced = results.map((row) => objectKey(row.bundle_hash));',
+      'const unreferenced = bundleHashes.map(objectKey);',
+    ),
+  'removing one record keeps bytes another record still names',
+  bundles,
 );

@@ -17,22 +17,27 @@ import {
   validateProof,
 } from '@giveaway/protocol';
 import { NotIndexedError } from '@giveaway/chain';
-import { verifyProof } from '@giveaway/verifier';
+import { assembleProof, verifyProof } from '@giveaway/verifier';
 import {
   announcement,
   type Artifact,
+  type BundleLink,
+  bundleBytes,
+  bundleShareLink,
   type Chains,
   createChains,
   decodeInline,
-  assembleProof,
   encodeInline,
-  fetchHostedBundle,
+  fetchBundle,
   fetchTip,
-  hostedShareLink,
+  hostBundle,
   indexerFor,
   inlineShareLink,
+  type Loaded,
   PROJECT_INDEXER,
+  readShareLink,
   resolveArtifact,
+  resolveBundle,
 } from './services.ts';
 import { type AppState, createState } from './state.ts';
 import {
@@ -80,7 +85,11 @@ function reset(state: AppState) {
   clearTimeout(state.poll);
   state.draw = {};
   clearDrawProgress();
-  if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
+  revokeDownloads(state);
+}
+
+function revokeDownloads(state: AppState) {
+  for (const url of [state.downloadUrl, state.bundleDownloadUrl]) if (url) URL.revokeObjectURL(url);
 }
 
 function updateMode(state: AppState) {
@@ -218,6 +227,8 @@ async function confirm(state: AppState, chains: Chains, late = false) {
   el('stage-commit').classList.add('done');
   show(['confirm', 'late'], false);
   el('open').hidden = false;
+  // Hosting needs a confirmed on-chain commitment (BR-06); a demo draw has none.
+  el('host').hidden = isDemo() || draw.hosted !== undefined;
   status(
     isDemo()
       ? 'Demo confirms before the recorded round. You can reveal the winners.'
@@ -263,11 +274,33 @@ async function reveal(state: AppState, chains: Chains) {
   await renderVerification(state, chains, proof);
 }
 
+// Two downloads (plan step 10): the canonical bundle bytes, which the CLI's bundle mode and any host serve as they are,
+// and the announcement or proof. Once the backend hosts the bundle, its link (txHash + bundle hash) replaces the inline
+// one: it works before and after the round.
 function share(state: AppState, artifact: Artifact) {
-  const link = inlineShareLink(location.href, encodeInline(artifact));
-  if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
-  state.downloadUrl = URL.createObjectURL(new Blob([JSON.stringify(artifact, null, 2)], { type: 'application/json' }));
-  renderShare(artifact, link, state.downloadUrl);
+  state.draw.shared = artifact;
+  const hosted = state.draw.hosted;
+  const link = hosted
+    ? bundleShareLink(location.href, hosted.link)
+    : inlineShareLink(location.href, encodeInline(artifact));
+  revokeDownloads(state);
+  const json = (body: BlobPart) => URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+  state.downloadUrl = json(JSON.stringify(artifact, null, 2));
+  state.bundleDownloadUrl = json(bundleBytes(artifact.bundle));
+  renderShare(artifact, link, { artifact: state.downloadUrl, bundle: state.bundleDownloadUrl }, hosted?.expiresAt);
+}
+
+async function host(state: AppState) {
+  const draw = state.draw;
+  const { bundle, committed, confirmed, shared } = draw;
+  if (isDemo() || !bundle || !committed || !confirmed || !shared)
+    throw new Error('Host a bundle after its commitment is confirmed');
+  const { expiresAt } = await hostBundle(committed.txHash, bundle);
+  if (state.draw !== draw) return;
+  draw.hosted = { link: { txHash: committed.txHash, bundleHash: confirmed.bundleHash }, expiresAt };
+  el('host').hidden = true;
+  share(state, shared);
+  status(`Bundle hosted until ${localTime(expiresAt)}. The verification link works before and after the round.`);
 }
 
 async function copyShareLink() {
@@ -299,11 +332,11 @@ async function renderVerification(state: AppState, chains: Chains, value: unknow
   );
 }
 
-async function load(state: AppState, chains: Chains, read: () => Promise<unknown>) {
+async function load(state: AppState, chains: Chains, read: () => Promise<Loaded>) {
   renderVerificationPending();
   state.verifiedBundle = undefined;
   try {
-    const loaded = await resolveArtifact(await read(), now());
+    const loaded = await read();
     if (loaded.kind === 'demo-commitment')
       renderVerificationNote('DEMO COMMITMENT — simulated evidence. Open the draw to share a complete result bundle.');
     else if (loaded.kind === 'awaiting-round')
@@ -323,10 +356,20 @@ async function readProofFile() {
   return JSON.parse(await file.text());
 }
 
-async function readHosted(url: string, expectedHash?: string) {
-  const hosted = await fetchHostedBundle(url, expectedHash);
-  renderHostedShare(hostedShareLink(location.href, hosted.url, hosted.hash));
-  return JSON.parse(hosted.body);
+// A verification link or the panel's transaction and URL fields (bundle mode): the bytes come from the named source or
+// the backend's copy, must hash to the link's bundle hash, and the verifier recomputes everything else.
+async function readBundle(chains: Chains, link: { txHash: string; bundleHash?: string; source?: string }) {
+  const { bundle, hash } = await fetchBundle(link);
+  const pinned: BundleLink = { txHash: link.txHash, bundleHash: hash, ...(link.source ? { source: link.source } : {}) };
+  renderHostedShare(bundleShareLink(location.href, pinned));
+  return resolveBundle(bundle, link.txHash, { chain: indexerFor(chains, input('indexer').value), now: now() });
+}
+
+function bundleFields(): { txHash: string; source?: string } {
+  const txHash = input('bundle-tx').value.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(txHash)) throw new Error('Enter the commitment transaction hash (64 hex characters)');
+  const source = input('bundle-url').value.trim();
+  return { txHash, ...(source ? { source } : {}) };
 }
 
 function start() {
@@ -357,19 +400,30 @@ function start() {
   el('late').onclick = () => void run(state, () => confirm(state, chains, true));
   el('open').onclick = () => void run(state, () => reveal(state, chains));
   el('share').onclick = () => void run(state, copyShareLink);
+  el('host').onclick = () => void run(state, () => host(state));
   input('lookup').oninput = () => renderLookup(state.verifiedBundle);
-  input('proof-file').onchange = () => void load(state, chains, readProofFile);
-  el('load-url').onclick = () => void load(state, chains, () => readHosted(input('bundle-url').value));
+  const artifact = (read: () => Promise<unknown>) => async () => resolveArtifact(await read(), now());
+  input('proof-file').onchange = () => void load(state, chains, artifact(readProofFile));
+  el('load-url').onclick = () => void load(state, chains, async () => readBundle(chains, bundleFields()));
   text('boundary', BOUNDARY);
   updateMode(state);
   window.addEventListener('beforeunload', () => {
     clearTimeout(state.poll);
-    if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
+    revokeDownloads(state);
   });
-  const query = new URLSearchParams(location.search);
-  if (location.hash.startsWith('#proof=')) void load(state, chains, async () => decodeInline(location.hash.slice(7)));
-  else if (query.has('bundle'))
-    void load(state, chains, () => readHosted(query.get('bundle') ?? '', query.get('hash') ?? undefined));
+  if (location.hash.startsWith('#proof='))
+    void load(
+      state,
+      chains,
+      artifact(async () => decodeInline(location.hash.slice(7))),
+    );
+  // readShareLink throws for the former hosted-proof link (also `bundle=`); load() reports it.
+  else if (['tx', 'bundle'].some((name) => new URLSearchParams(location.search).has(name)))
+    void load(state, chains, async () => {
+      const link = readShareLink(location.search);
+      if (!link) throw new Error('This page link carries no verification link');
+      return readBundle(chains, link);
+    });
 }
 
 start();

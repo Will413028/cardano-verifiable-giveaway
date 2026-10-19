@@ -1,17 +1,23 @@
 import {
+  validateBundle,
   validateProof,
   computeCommitment,
+  roundTime,
   selectWinners,
   checkTiming,
   checkUniqueness,
   checkValidityBound,
   BOUNDARY,
+  type Beacon,
+  type Bundle,
+  type CommitmentRef,
   type Confirmed,
   type Inclusion,
+  type Network,
   type Proof,
 } from '@giveaway/protocol';
-import { verifyBeacon } from '@giveaway/beacon';
-import { type ChainReader, DemoChain } from '@giveaway/chain';
+import { FIXTURE, fetchBeacon, verifyBeacon } from '@giveaway/beacon';
+import { type BundleChainReader, type ChainReader, DEMO_OWNER, DemoChain, demoTxHash } from '@giveaway/chain';
 // A check whose evidence could not be obtained is not evaluated, never passed on the artifact's own word.
 export type CheckResult = 'pass' | 'fail' | 'unevaluated';
 export interface Check {
@@ -136,4 +142,63 @@ export async function verifyProof(
     winners,
     boundary: BOUNDARY,
   };
+}
+
+// A proof assembled from a bundle, its commitment reference and the round's beacon: the winners are recomputed here,
+// never taken from anyone. Shared by the page (opening a draw, a pending announcement after its round, a hosted bundle)
+// and the CLI's bundle mode; verifyProof checks the result like any downloaded proof.
+export async function assembleProof(
+  network: Network,
+  bundle: Bundle,
+  ref: CommitmentRef,
+  beacon: Beacon,
+): Promise<Proof> {
+  return {
+    format: 'giveaway-proof-2',
+    network,
+    bundle,
+    txHash: ref.txHash,
+    owner: ref.owner,
+    beacon,
+    winners: await selectWinners(bundle, beacon.randomness),
+  };
+}
+// The recorded fixture for its own round (no relay needed, as in the demo); every other round from the drand relays,
+// each answer verified against the pinned key.
+export const beaconFor = (round: number): Promise<Beacon> =>
+  round === FIXTURE.round ? Promise.resolve(structuredClone(FIXTURE)) : fetchBeacon(round);
+// The round of the bundle has not been produced yet: there is nothing to verify, only a commitment to wait on.
+export class RoundNotReachedError extends Error {
+  constructor(readonly round: number) {
+    super(`Round ${round} has not been reached yet; the winners can be checked after ${roundTime(round)} (Unix time)`);
+  }
+}
+export interface BundleOptions {
+  // The indexer the caller selected; preprod evidence without one fails (B1, PD7).
+  chain?: BundleChainReader;
+  // Reads the round's verified beacon (default beaconFor).
+  beacon?: (round: number) => Promise<Beacon>;
+  // Unix seconds (default the current time), compared with the round time only.
+  now?: number;
+}
+// Bundle mode (plan step 10, F9): a bundle and the hash of the transaction that committed it are enough. The demo
+// reference is recognised by its derivation from the bundle hash (it binds nothing, docs/protocol-development.md);
+// any other reference is a preprod transaction whose owner is read from the chain (BlockfrostChain.commitmentOwner).
+// The beacon is fetched and the winners recomputed here; nothing else about the draw is taken from the artifact.
+export async function bundleProof(value: unknown, txHash: string, options: BundleOptions = {}): Promise<Proof> {
+  const bundle = validateBundle(value);
+  if (!/^[a-f0-9]{64}$/.test(txHash)) throw new Error('Invalid commitment transaction hash');
+  const round = bundle.drand.round;
+  if ((options.now ?? Date.now() / 1000) < roundTime(round)) throw new RoundNotReachedError(round);
+  const demo = txHash === (await demoTxHash(await computeCommitment(bundle)));
+  let owner = DEMO_OWNER;
+  if (!demo) {
+    if (!options.chain) throw new Error('No indexer selected for preprod evidence');
+    owner = await options.chain.commitmentOwner(txHash);
+  }
+  const beacon = await (options.beacon ?? beaconFor)(round);
+  return assembleProof(demo ? 'demo' : 'preprod', bundle, { txHash, owner }, beacon);
+}
+export async function verifyBundle(value: unknown, txHash: string, options: BundleOptions = {}): Promise<Verdict> {
+  return verifyProof(await bundleProof(value, txHash, options), { chain: options.chain });
 }

@@ -2,7 +2,17 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
-    "includes": ["packages/**", "apps/**", "tools/**", "tests/**", "*.json", "!tests/*.json", "!tools/devchain/*.json"]
+    "includes": [
+      "packages/**",
+      "apps/**",
+      "tools/**",
+      "tests/**",
+      "*.json",
+      "!tests/*.json",
+      "!tools/devchain/*.json",
+      "!apps/api/test/chain-fixture.json",
+      "!apps/api/bench/cpu-report.json"
+    ]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
   "javascript": { "formatter": { "quoteStyle": "single" } },
@@ -83,6 +93,78 @@
                   {
                     "group": ["../../**"],
                     "message": "Files in an app subdirectory (apps/api/src, apps/api/test) stay inside the app: import other workspace packages by name."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/api/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**"],
+                    "message": "Packages are flat directories: import another workspace package by its name and declare it in package.json."
+                  },
+                  {
+                    "group": [
+                      "@evolution-sdk/**",
+                      "@meshsdk/**",
+                      "@blaze-cardano/**",
+                      "@cardano-sdk/**",
+                      "@lucid-evolution/**",
+                      "lucid-cardano",
+                      "@emurgo/**",
+                      "@dcspark/**",
+                      "@harmoniclabs/cardano-ledger-ts",
+                      "@harmoniclabs/plu-ts",
+                      "@harmoniclabs/buildooor"
+                    ],
+                    "message": "Trust path (PD6): the backend reads commitment transactions with @giveaway/chain (plan step 10 upload gate); Cardano SDKs belong only to apps/web transaction building."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/api/*/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../../**"],
+                    "message": "Files in an app subdirectory (apps/api/src, apps/api/test) stay inside the app: import other workspace packages by name."
+                  },
+                  {
+                    "group": [
+                      "@evolution-sdk/**",
+                      "@meshsdk/**",
+                      "@blaze-cardano/**",
+                      "@cardano-sdk/**",
+                      "@lucid-evolution/**",
+                      "lucid-cardano",
+                      "@emurgo/**",
+                      "@dcspark/**",
+                      "@harmoniclabs/cardano-ledger-ts",
+                      "@harmoniclabs/plu-ts",
+                      "@harmoniclabs/buildooor"
+                    ],
+                    "message": "Trust path (PD6): the backend reads commitment transactions with @giveaway/chain (plan step 10 upload gate); Cardano SDKs belong only to apps/web transaction building."
                   }
                 ]
               }

@@ -12,6 +12,16 @@
   "observability": { "enabled": false },
   "vars": {
     // The only browser origin allowed to call the backend (BR-04): the local `make dev` server.
-    "ALLOWED_ORIGIN": "http://127.0.0.1:4320"
-  }
+    "ALLOWED_ORIGIN": "http://127.0.0.1:4320",
+    // The indexer the upload gate reads server-side (apps/api/src/bundles.ts; not a route of this Worker): the local
+    // Dolos dev chain (tools/devchain/dolos.toml).
+    "INDEXER_URL": "http://127.0.0.1:3010"
+  },
+  // Hosting records (plan step 10). Locally Wrangler keeps them under .wrangler/state; no remote database is named
+  // until deployment (MVP plan step 10). Migrations: `wrangler d1 migrations apply giveaway --local`.
+  "d1_databases": [{ "binding": "DB", "database_name": "giveaway", "migrations_dir": "migrations" }],
+  // Hosted bundle bytes, keyed bundles/<sha256 of the bytes>.
+  "r2_buckets": [{ "binding": "BUNDLES", "bucket_name": "giveaway-bundles" }],
+  // Hourly sweep of expired hosting records (BR-08); reads check expires_at as well.
+  "triggers": { "crons": ["17 * * * *"] }
 }

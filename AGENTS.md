@@ -6,7 +6,7 @@ Help community organizers run free giveaways whose committed entrant list, rules
 
 - Read README.md for the planned experience and verification boundaries.
 - The product is exploratory. Use TypeScript, the static web application and the independent Node verifier; development protocol defaults remain unfrozen until preprod acceptance.
-- A TypeScript convenience backend (bundle hosting, drafts) is decided; `apps/api/` holds only a local walking skeleton with no routes yet, and it is not deployed. It never forwards indexer requests (the page reads the project Dolos directly, behind the reverse proxy in `deploy/dolos-proxy/`), signs or submits transactions (the wallet submits with CIP-30 `submitTx`), generates randomness or decides PASS/FAIL, and the verifier never depends on it (`docs/adr/2026-10-18-typescript-convenience-backend.md`).
+- A TypeScript convenience backend (bundle hosting, drafts) is decided; `apps/api/` hosts bundles locally (upload gate, D1 records, R2 bytes, Cron retention) and is not deployed. It never forwards indexer requests (the page reads the project Dolos directly, behind the reverse proxy in `deploy/dolos-proxy/`), signs or submits transactions (the wallet submits with CIP-30 `submitTx`), generates randomness or decides PASS/FAIL, and the verifier never depends on it (`docs/adr/2026-10-18-typescript-convenience-backend.md`).
 - Do not present planned functionality as implemented, deployed or validated by users.
 - Keep payments, revenue splitting, bookings, token issuance, NFTs, betting and cryptocurrency prizes outside the product core.
 - Distinguish blockchain commitments and validator checks from claims about external facts.

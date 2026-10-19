@@ -2,5 +2,5 @@
   // The Worker runs on workerd: Workers types instead of DOM or Node.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "lib": ["ES2023"], "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"] },
-  "include": ["src/*.ts", "test/*.ts", "*.ts"]
+  "include": ["src/*.ts", "test/*.ts", "bench/*.ts", "*.ts"]
 }

@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./library": "./dist/library.mjs"
+    "./library": "./dist/library.mjs",
+    "./cli": "./index.mjs"
   },
   "dependencies": {
     "@giveaway/beacon": "workspace:*",

@@ -1,26 +1,31 @@
 import { fetchBeacon } from '@giveaway/beacon';
 import { BlockfrostChain, DemoChain } from '@giveaway/chain';
 import {
-  ARTIFACT_BYTE_LIMIT,
-  type Beacon,
+  BUNDLE_BYTE_LIMIT,
   type Bundle,
   type CommitmentRef,
+  canonicalize,
   type Network,
   type Pending,
   type Proof,
   roundTime,
-  selectWinners,
   sha256,
+  validateBundle,
   validatePending,
   validateProof,
 } from '@giveaway/protocol';
+import { assembleProof, type BundleOptions, bundleProof, RoundNotReachedError } from '@giveaway/verifier';
 
-// DOM-free work behind the page: share encoding, hosted bundles, the chain tip and assembling proofs.
+// DOM-free work behind the page: share encoding, hosted bundles, the chain tip and resolving artifacts into proofs.
 
 // Replaced at build time by tools/build.mjs from GIVEAWAY_INDEXER_URL: the project's Blockfrost-compatible indexer
 // (default the local Dolos dev chain, http://127.0.0.1:3010).
 declare const GIVEAWAY_INDEXER_URL: string;
 export const PROJECT_INDEXER = GIVEAWAY_INDEXER_URL;
+// Replaced at build time from GIVEAWAY_API_URL: the convenience backend that hosts bundles (default the local
+// `make api`, http://127.0.0.1:8787). Verification never needs it: a bundle can come from any URL (B1).
+declare const GIVEAWAY_API_URL: string;
+export const API_URL = GIVEAWAY_API_URL;
 
 export interface Tip {
   blockHeight: number;
@@ -83,49 +88,89 @@ export function decodeInline(encoded: string): unknown {
   return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(binary, (c) => c.charCodeAt(0))));
 }
 
-export async function fetchHostedBundle(
-  url: string,
-  expectedHash?: string,
-): Promise<{ url: URL; body: string; hash: string }> {
-  const parsed = new URL(url);
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password)
-    throw new Error('Use a public HTTPS URL without credentials');
-  const response = await fetch(parsed, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`Bundle host: HTTP ${response.status}`);
-  const body = await response.text();
-  if (new TextEncoder().encode(body).length > ARTIFACT_BYTE_LIMIT)
-    throw new Error(`Bundle exceeds ${ARTIFACT_BYTE_LIMIT} bytes`);
-  const hash = await sha256(body);
-  if (expectedHash && hash !== expectedHash) throw new Error('Hosted bundle hash does not match the verification link');
-  return { url: parsed, body, hash };
-}
+// The canonical bundle bytes: what the commitment's bundleHash is the SHA-256 of, the `<drawId>.bundle.json` download,
+// what the backend hosts and what the CLI's bundle mode reads.
+export const bundleBytes = (bundle: Bundle) => new TextEncoder().encode(canonicalize(validateBundle(bundle)));
 
-export function hostedShareLink(pageHref: string, bundleUrl: URL, hash: string): string {
+const TX_HASH = /^[a-f0-9]{64}$/;
+// A verification link (BR-10, F9): the commitment transaction and the bundle hash, plus `source` when the bundle bytes
+// are hosted somewhere other than the project backend. Beacon and winners are recomputed by the verifier.
+export interface BundleLink {
+  txHash: string;
+  bundleHash: string;
+  source?: string;
+}
+export function bundleShareLink(pageHref: string, link: BundleLink): string {
   const share = new URL(pageHref);
   share.hash = '';
-  share.search = new URLSearchParams({ bundle: bundleUrl.toString(), hash }).toString();
+  share.search = new URLSearchParams({
+    tx: link.txHash,
+    bundle: link.bundleHash,
+    ...(link.source ? { source: link.source } : {}),
+  }).toString();
   return share.toString();
+}
+// The link in a page URL's query, or null when it carries none. The former hosted-proof link (`bundle` = a proof file
+// URL, `hash` = that file's SHA-256) is refused with an explicit error: the proof's hash is on no chain (F9).
+export function readShareLink(search: string): BundleLink | null {
+  const query = new URLSearchParams(search);
+  if (!query.has('tx') && !query.has('bundle')) return null;
+  const txHash = query.get('tx') ?? '';
+  const bundleHash = query.get('bundle') ?? '';
+  if (query.has('hash') || !TX_HASH.test(bundleHash) || !TX_HASH.test(txHash))
+    throw new Error(
+      'This link uses the former hosted-proof format, which is no longer supported. A verification link names the commitment transaction (tx) and the bundle hash (bundle); ask the organizer for one, or load the downloaded files.',
+    );
+  const source = query.get('source') ?? undefined;
+  return { txHash, bundleHash, ...(source ? { source } : {}) };
+}
+
+// The bundle bytes of a link, from `source` or else from the backend's copy for the commitment (GET /bundles/{txHash}),
+// checked against the expected hash whoever served them.
+export async function fetchBundle(
+  link: { txHash: string; bundleHash?: string; source?: string },
+  api = API_URL,
+): Promise<{ bundle: Bundle; hash: string }> {
+  let url: URL;
+  if (link.source) {
+    url = new URL(link.source);
+    if (url.protocol !== 'https:' || url.username || url.password)
+      throw new Error('Use a public HTTPS URL without credentials');
+  } else url = new URL(`${api}/bundles/${link.txHash}`);
+  const response = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
+  if (!response.ok)
+    throw new Error(
+      link.source
+        ? `Bundle host: HTTP ${response.status}`
+        : `Hosted bundle: HTTP ${response.status} (${(await response.text()).slice(0, 200)})`,
+    );
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length > BUNDLE_BYTE_LIMIT) throw new Error(`Bundle exceeds ${BUNDLE_BYTE_LIMIT} bytes`);
+  const hash = await sha256(bytes);
+  if (link.bundleHash && hash !== link.bundleHash)
+    throw new Error('Hosted bundle hash does not match the verification link');
+  return { bundle: validateBundle(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))), hash };
+}
+
+// Asks the backend to host the canonical bundle bytes of a confirmed commitment (BR-06). The backend checks them
+// against the chain itself; this only reports what it answered.
+export async function hostBundle(txHash: string, bundle: Bundle, api = API_URL): Promise<{ expiresAt: number }> {
+  const response = await fetch(`${api}/bundles/${txHash}`, {
+    method: 'PUT',
+    body: bundleBytes(bundle),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'omit',
+    signal: AbortSignal.timeout(60000),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Bundle hosting refused: HTTP ${response.status} (${text.slice(0, 300)})`);
+  const { expiresAt } = JSON.parse(text);
+  if (!Number.isSafeInteger(expiresAt)) throw new Error('Bundle hosting: unexpected response');
+  return { expiresAt };
 }
 
 export function announcement(network: Network, bundle: Bundle, ref: CommitmentRef): Pending {
   return { format: 'giveaway-pending-2', network, bundle, txHash: ref.txHash, owner: ref.owner };
-}
-
-export async function assembleProof(
-  network: Network,
-  bundle: Bundle,
-  ref: CommitmentRef,
-  beacon: Beacon,
-): Promise<Proof> {
-  return {
-    format: 'giveaway-proof-2',
-    network,
-    bundle,
-    txHash: ref.txHash,
-    owner: ref.owner,
-    beacon,
-    winners: await selectWinners(bundle, beacon.randomness),
-  };
 }
 
 export type Loaded =
@@ -146,4 +191,15 @@ export async function resolveArtifact(value: unknown, now: number): Promise<Load
   if (now < roundTime(bundle.drand.round)) return { kind: 'awaiting-round', round: bundle.drand.round };
   const beacon = await fetchBeacon(bundle.drand.round);
   return { kind: 'proof', value: await assembleProof('preprod', bundle, pending, beacon) };
+}
+
+// A bundle and its commitment transaction (a verification link) become a proof once the round has arrived; before that
+// the page only reports the wait. The owner is read from the transaction (bundle mode, @giveaway/verifier).
+export async function resolveBundle(bundle: Bundle, txHash: string, options: BundleOptions): Promise<Loaded> {
+  try {
+    return { kind: 'proof', value: await bundleProof(bundle, txHash, options) };
+  } catch (e) {
+    if (e instanceof RoundNotReachedError) return { kind: 'awaiting-round', round: e.round };
+    throw e;
+  }
 }

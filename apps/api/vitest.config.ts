@@ -1,5 +1,14 @@
-import { cloudflareTest } from '@cloudflare/vitest-plugin';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 
-// Tests run inside workerd with the bindings declared in wrangler.jsonc.
-export default defineConfig({ plugins: [cloudflareTest({ wrangler: { configPath: './wrangler.jsonc' } })] });
+// Tests run inside workerd with the bindings declared in wrangler.jsonc: D1 and R2 are Miniflare's local
+// implementations (SQLite and its object store), not fakes. The D1 migrations are applied by test/setup.ts.
+export default defineConfig(async () => ({
+  plugins: [
+    cloudflareTest({
+      wrangler: { configPath: './wrangler.jsonc' },
+      miniflare: { bindings: { TEST_MIGRATIONS: await readD1Migrations('./migrations') } },
+    }),
+  ],
+  test: { setupFiles: ['./test/setup.ts'] },
+}));

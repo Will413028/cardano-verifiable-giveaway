@@ -146,10 +146,11 @@ export function checkCommitmentTransaction(txHex: string, plan: CommitmentPlan):
 export const DEMO_OWNER = 'demo-organizer';
 // Demo evidence is simulated from the bundle alone, so a fresh page or the CLI can re-derive it; the
 // transaction hash binds the bundle hash so a changed bundle no longer matches its demo reference.
+export const demoTxHash = (bundleHash: string) => sha256(`giveaway-demo-commitment:${bundleHash}`);
 export async function demoInclusion(bundle: Bundle): Promise<Inclusion> {
   const bundleHash = await computeCommitment(bundle);
   return {
-    txHash: await sha256(`giveaway-demo-commitment:${bundleHash}`),
+    txHash: await demoTxHash(bundleHash),
     owner: DEMO_OWNER,
     bundleHash,
     drawId: bundle.drawId,
@@ -387,6 +388,8 @@ const isTxHash = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{64}
 const BECH32_ADDRESS = /^addr_test1[a-z0-9]+$/;
 // What the verifier needs from an indexer: the referenced commitment and every commitment of its identity.
 export type ChainReader = Pick<BlockfrostChain, 'readCommitment' | 'findCommitments'>;
+// Bundle mode also derives the owner from the transaction (BlockfrostChain.commitmentOwner).
+export type BundleChainReader = ChainReader & Pick<BlockfrostChain, 'commitmentOwner'>;
 // Reads a Blockfrost-shaped indexer (Dolos MiniBF, Blockfrost RYO). There is no default: the caller names the node.
 export class BlockfrostChain {
   readonly base: string;
@@ -464,6 +467,46 @@ export class BlockfrostChain {
       throw new Error('Invalid confirmation block time');
     const slot = tx.invalidHereafter;
     return { ...inclusion, confirmedAt: block.time, validUntil: slot === null ? null : preprodSlotTime(slot) };
+  }
+  // The organizer address of a commitment, derived from the transaction itself (plan step 10, F9): a link or a hosted
+  // bundle carries only the transaction hash and the bundle hash, so the owner a proof names is read back from the
+  // chain. It is the spent input address (collateral and reference inputs excluded) whose stake key is a required
+  // signer with a verifying witness and whose reward account the transaction withdraws from: exactly what
+  // readCommitment checks for a given owner, so the owner found here is then verified like any other. Inputs of more
+  // than one such identity are ambiguous and refused rather than picked from; none means it is not a commitment.
+  async commitmentOwner(txHash: string): Promise<string> {
+    if (!isTxHash(txHash)) throw new Error('Invalid preprod commitment reference');
+    const listed = await this.get(`/txs/${txHash}`);
+    if (listed.status === 404) throw new NotIndexedError();
+    await this.json(`/txs/${txHash}`, listed);
+    const raw = await this.get(`/txs/${txHash}/cbor`);
+    if (raw.status === 404) throw new CborPendingError();
+    const { cbor } = await this.json(`/txs/${txHash}/cbor`, raw);
+    if (typeof cbor !== 'string') throw new Error('Indexer transaction CBOR: unexpected response');
+    const tx = readCommitmentTransaction(cbor, txHash);
+    const utxos = await this.json(`/txs/${txHash}/utxos`);
+    const spent = Array.isArray(utxos.inputs) ? utxos.inputs.filter((x: Row) => !x.collateral && !x.reference) : [];
+    // Identity key hash → the first input address carrying it.
+    const owners = new Map<string, string>();
+    for (const { address } of spent) {
+      if (typeof address !== 'string' || !BECH32_ADDRESS.test(address)) continue;
+      let key: string;
+      try {
+        key = identityKeyHash(address);
+      } catch {
+        continue;
+      }
+      if (tx.signers.has(key) && tx.withdrawals.has(identityRewardAccount(address)) && !owners.has(key))
+        owners.set(key, address);
+    }
+    if (owners.size > 1)
+      throw new Error('The transaction spends from more than one organizer identity; its owner is ambiguous');
+    const [owner] = owners.values();
+    if (!owner)
+      throw new Error(
+        'No input of the transaction is a base address whose stake key signed it and withdrew from its reward account: it is not a commitment',
+      );
+    return owner;
   }
   // `row` is the indexer's transaction or list row: its block height and time are indexer evidence; `tx` was read
   // from CBOR.

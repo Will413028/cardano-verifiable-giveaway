@@ -1,0 +1,73 @@
+{
+  "dolos": "http://127.0.0.1:3010",
+  "api": "http://127.0.0.1:8797",
+  "version": {
+    "url": "127.0.0.1:3010",
+    "version": "1.6.1"
+  },
+  "checks": {
+    "beforeConfirmations": {
+      "status": 409,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "The commitment is not confirmed yet (Waiting for 15 confirmations); try again later"
+    },
+    "hosted": {
+      "status": 201,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "{\"txHash\":\"aaf132e7ee770dc3126b6b90b14a2e253e984c4d377993e3626339378abb6cdc\",\"bundleHash\":\"3c4955a163d096688149067e0fa1871ec7adf7d6e55731d8725aa5358c0b8184\",\"owner\":\"stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6\",\"expiresAt\":1823956404}"
+    },
+    "served": {
+      "status": 200,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": "3c4955a163d096688149067e0fa1871ec7adf7d6e55731d8725aa5358c0b8184",
+      "equal": true
+    },
+    "hashMismatch": {
+      "status": 409,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "The bundle hash does not match the commitment of this transaction"
+    },
+    "unknownTransaction": {
+      "status": 404,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "No commitment with this transaction hash is indexed"
+    },
+    "hashMismatchFromChain": {
+      "status": 409,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "The bundle hash does not match the commitment of this transaction"
+    },
+    "sameBytesOtherIdentity": {
+      "status": 201,
+      "cors": "http://127.0.0.1:4320",
+      "bundleHash": null,
+      "body": "{\"txHash\":\"381f04a0b6ce64922b5564938e3b8bdf3d97593f37a537b05f915f5ccb445af1\",\"bundleHash\":\"3c4955a163d096688149067e0fa1871ec7adf7d6e55731d8725aa5358c0b8184\",\"owner\":\"stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3\",\"expiresAt\":1823956404}"
+    },
+    "cliBundleMode": {
+      "exit": 0,
+      "status": "PASS",
+      "failed": [],
+      "stderr": ""
+    }
+  },
+  "round": 33205680,
+  "migrations": {
+    "status": 0,
+    "output": [
+      "Migrations to be applied:",
+      "│ 0001_bundle_hosting.sql │",
+      "│ 0001_bundle_hosting.sql │ ✅     │"
+    ]
+  },
+  "wranglerPid": 14332,
+  "target": {
+    "txHash": "aaf132e7ee770dc3126b6b90b14a2e253e984c4d377993e3626339378abb6cdc",
+    "height": 12
+  },
+  "result": "all expectations met"
+}

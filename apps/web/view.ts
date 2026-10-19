@@ -37,7 +37,7 @@ export function show(ids: string[], visible: boolean) {
 }
 
 export function clearDrawProgress() {
-  show(['commit-preview', 'commit', 'confirm', 'late', 'open', 'result', 'winner-result', 'share-link'], false);
+  show(['commit-preview', 'commit', 'confirm', 'late', 'open', 'host', 'result', 'winner-result', 'share-link'], false);
   for (const id of ['stage-prepare', 'stage-commit', 'stage-result']) el(id).classList.remove('done');
 }
 
@@ -92,7 +92,12 @@ export function renderWinners(labels: readonly string[]) {
   renderLabels('winners', labels);
 }
 
-export function renderShare(artifact: Artifact, link: string, downloadUrl: string) {
+export function renderShare(
+  artifact: Artifact,
+  link: string,
+  downloads: { artifact: string; bundle: string },
+  hostedUntil?: number,
+) {
   input('share-link').value = link;
   input('share-link').hidden = false;
   el('share').hidden = false;
@@ -101,18 +106,26 @@ export function renderShare(artifact: Artifact, link: string, downloadUrl: strin
     el('result').hidden = false;
     text(
       'result-note',
-      'Publish this commitment link or hosted announcement before the round. A result bundle will be available after opening.',
+      hostedUntil === undefined
+        ? 'Publish this commitment link or hosted announcement before the round. A result bundle will be available after opening.'
+        : `Publish this verification link before the round; it shows the winners once the round arrives. The bundle is hosted until ${localTime(hostedUntil)}: keep the downloaded bundle file.`,
     );
   }
+  const name = artifact.format === 'giveaway-pending-2' ? 'announcement' : 'proof';
   const download = el<HTMLAnchorElement>('download');
-  download.href = downloadUrl;
+  download.href = downloads.artifact;
   download.hidden = false;
-  download.download = `draw-${artifact.bundle.drawId}.json`;
+  download.download = `${artifact.bundle.drawId}.${name}.json`;
   download.textContent =
-    artifact.format === 'giveaway-pending-2' ? '↓ Download commitment announcement' : '↓ Download verification bundle';
+    artifact.format === 'giveaway-pending-2' ? '↓ Download commitment announcement' : '↓ Download verification proof';
+  // The canonical bundle bytes, named for the CLI's bundle mode (`--tx`) and for hosting anywhere.
+  const bundle = el<HTMLAnchorElement>('download-bundle');
+  bundle.href = downloads.bundle;
+  bundle.hidden = false;
+  bundle.download = `${artifact.bundle.drawId}.bundle.json`;
   if (!input('share-link').value) {
     input('share-link').placeholder =
-      'Bundle too large for an inline link. Download, host publicly, then load its URL below.';
+      'Bundle too large for an inline link. Host it (preprod) or publish the bundle file at an HTTPS URL and load it below.';
   }
 }
 
@@ -121,8 +134,8 @@ export function renderHostedShare(link: string) {
   input('share-link').hidden = false;
   el('result').hidden = false;
   el('share').hidden = false;
-  el('download').hidden = true;
-  text('result-note', 'Verification link pins this hosted file’s SHA-256 hash.');
+  show(['download', 'download-bundle'], false);
+  text('result-note', 'Verification link: the commitment transaction and the SHA-256 hash of the bundle it committed.');
 }
 
 export function renderLookup(bundle: Bundle | undefined) {

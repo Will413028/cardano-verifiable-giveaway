@@ -19,6 +19,21 @@ if (
   throw new Error(
     'GIVEAWAY_INDEXER_URL must be an https URL (http only on this machine) without credentials, query or fragment',
   );
+// The convenience backend that hosts bundles (apps/api; default the local `make api`). Same rule as the indexer.
+const apiUrl = new URL(process.env.GIVEAWAY_API_URL ?? 'http://127.0.0.1:8787');
+if (
+  !(
+    apiUrl.protocol === 'https:' ||
+    (apiUrl.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(apiUrl.hostname))
+  ) ||
+  apiUrl.username ||
+  apiUrl.password ||
+  apiUrl.search ||
+  apiUrl.hash
+)
+  throw new Error(
+    'GIVEAWAY_API_URL must be an https URL (http only on this machine) without credentials, query or fragment',
+  );
 await mkdir(`${root}dist`, { recursive: true });
 await build({
   entryPoints: [`${root}apps/web/app.ts`],
@@ -35,6 +50,7 @@ await build({
   // No Node shims: the page's dependencies (Evolution SDK, noble, @harmoniclabs/crypto) run on browser globals alone.
   define: {
     GIVEAWAY_INDEXER_URL: JSON.stringify(indexerUrl.href.replace(/\/$/, '')),
+    GIVEAWAY_API_URL: JSON.stringify(apiUrl.href.replace(/\/$/, '')),
   },
 });
 await build({

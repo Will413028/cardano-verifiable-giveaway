@@ -746,6 +746,153 @@ test('CLI requires --indexer and states the node requirements', async () => {
   assert.equal(demo.status, 0, demo.stderr);
   assert.equal(JSON.parse(demo.stdout).status, 'DEMO PASS');
 });
+// Plan step 10 (F9): a link or a hosted bundle carries only the transaction hash and the bundle hash, so the owner a
+// proof names is derived from the transaction: the input whose stake key signed and withdrew.
+test('the commitment owner is derived from the transaction: signing, withdrawing input; never ambiguous', async () => {
+  const a = await target();
+  assert.equal(await chainOf([a.tx]).commitmentOwner(a.tx.txHash), ORGANIZER.address);
+  // The same stake key committing from its second payment address: that address is the owner.
+  const second = await draw({ drawId: 'second', blockTime: T - 900, blockHeight: 1000, from: ORGANIZER_2 });
+  assert.equal(await chainOf([second.tx]).commitmentOwner(second.tx.txHash), ORGANIZER_2.address);
+  // A third party's address carrying the organizer's stake part, without the stake key: no owner.
+  const third = await draw({
+    drawId: 'third',
+    blockTime: T - 900,
+    blockHeight: 1000,
+    from: THIRD_PARTY,
+    signers: [ORGANIZER.signer],
+    witnesses: THIRD_PARTY.keys,
+  });
+  await assert.rejects(chainOf([third.tx]).commitmentOwner(third.tx.txHash), /not a commitment/);
+  // Signed, but without the withdrawal from the reward account (PD10): no owner.
+  const unwithdrawn = await draw({ drawId: 'nw', blockTime: T - 900, blockHeight: 1000, withdrawals: [] });
+  await assert.rejects(chainOf([unwithdrawn.tx]).commitmentOwner(unwithdrawn.tx.txHash), /not a commitment/);
+  // Two identities that both sign and withdraw, spending from both addresses: refused, not picked from.
+  const both = await draw({
+    drawId: 'both',
+    blockTime: T - 900,
+    blockHeight: 1000,
+    signers: [ORGANIZER.signer, OTHER_WALLET.signer],
+    witnesses: [...ORGANIZER.keys, ...OTHER_WALLET.keys],
+    withdrawals: [
+      [ORGANIZER.account, 0n],
+      [OTHER_WALLET.account, 0n],
+    ],
+  });
+  both.tx.inputs = [ORGANIZER.address, OTHER_WALLET.address];
+  await assert.rejects(chainOf([both.tx]).commitmentOwner(both.tx.txHash), /ambiguous/);
+  await assert.rejects(chainOf([a.tx]).commitmentOwner('cd'.repeat(32)), p.NotIndexedError);
+});
+const bundleText = (b) => p.canonicalize(b);
+test('bundle mode: the bundle and the commitment txHash verify like the proof; nothing else is needed', async () => {
+  const a = await target();
+  const chain = chainOf([a.tx]);
+  const v = await p.verifyBundle(JSON.parse(bundleText(a.proof.bundle)), a.tx.txHash, { chain, now: T });
+  assert.equal(v.status, 'PASS', JSON.stringify(v.checks));
+  // Deriving the owner costs three reads on top of the proof's verification (docs/runbooks/dolos-proxy.md).
+  const proofOnly = chainOf([a.tx]);
+  await p.verifyProof(a.proof, { chain: proofOnly });
+  assert.deepEqual(chain.calls.slice(0, 3), [
+    `/txs/${a.tx.txHash}`,
+    `/txs/${a.tx.txHash}/cbor`,
+    `/txs/${a.tx.txHash}/utxos`,
+  ]);
+  assert.deepEqual(chain.calls.slice(3), proofOnly.calls);
+  assert.deepEqual(v.winners, a.proof.winners);
+  // The assembled proof is the one the organizer would have published.
+  assert.deepEqual(await p.bundleProof(a.proof.bundle, a.tx.txHash, { chain, now: T }), a.proof);
+  // A changed bundle under the same transaction fails on the committed hash.
+  const forged = await tampered(a);
+  const changed = await p.verifyBundle(forged.proof.bundle, a.tx.txHash, { chain: chainOf([a.tx]), now: T });
+  assert.equal(changed.status, 'FAIL');
+  assert.equal(check(changed, 'Commitment hash').result, 'fail');
+  // Before the round there is nothing to verify yet; no beacon is asked for.
+  await assert.rejects(
+    p.bundleProof(a.proof.bundle, a.tx.txHash, {
+      chain,
+      now: T - 1,
+      beacon: () => assert.fail('no beacon before the round'),
+    }),
+    (e) => e instanceof p.RoundNotReachedError && e.round === R,
+  );
+  // Preprod evidence needs an indexer the caller chose (B1).
+  await assert.rejects(p.bundleProof(a.proof.bundle, a.tx.txHash, { now: T }), /No indexer selected/);
+  // The demo reference is recognised from the bundle hash and needs no indexer.
+  const demo = await proof();
+  const demoVerdict = await p.verifyBundle(demo.bundle, demo.txHash, { now: T });
+  assert.equal(demoVerdict.status, 'DEMO PASS');
+});
+test('CLI bundle mode: <bundle.json> --tx with an injected indexer passes and never contacts the backend', async () => {
+  const { main } = await import('@giveaway/verifier-cli/cli');
+  const a = await target();
+  const file = new URL('../dist/cli-bundle-check.bundle.json', import.meta.url);
+  await writeFile(file, bundleText(a.proof.bundle));
+  const run = async (args, txs = [a.tx]) => {
+    const indexer = blockfrostIndexer({ txs });
+    const requested = [];
+    const out = [];
+    const err = [];
+    const code = await main([fileURLToPath(file), ...args], {
+      chainFor: (url) =>
+        new p.BlockfrostChain(url, (input, init) => {
+          requested.push(input);
+          return indexer.fetch(input, init);
+        }),
+      out: (x) => out.push(x),
+      err: (x) => err.push(x),
+    });
+    return { code, out: out.join('\n'), err: err.join('\n'), requested };
+  };
+  const passed = await run(['--tx', a.tx.txHash, '--indexer', 'http://127.0.0.1:3010']);
+  assert.equal(passed.code, 0, passed.err);
+  assert.equal(JSON.parse(passed.out).status, 'PASS');
+  // Every request went to the named indexer; the backend (apps/api, http://127.0.0.1:8787 locally) is not running
+  // and is never asked (B1).
+  assert.ok(passed.requested.length > 0);
+  assert.deepEqual(
+    passed.requested.filter((url) => !url.startsWith('http://127.0.0.1:3010/')),
+    [],
+  );
+  const unknown = await run(['--tx', 'cd'.repeat(32), '--indexer', 'http://127.0.0.1:3010']);
+  assert.equal(unknown.code, 1);
+  assert.match(JSON.parse(unknown.err).error, /not indexed/);
+  // Usage errors keep exit code 2: --tx without a value, and no --indexer.
+  assert.equal((await run(['--tx', '--indexer', 'http://127.0.0.1:3010'])).code, 2);
+  const noIndexer = await run(['--tx', a.tx.txHash]);
+  assert.equal(noIndexer.code, 2);
+  assert.match(noIndexer.err, /--indexer is required/);
+  // A bundle file over the canonical bundle limit is refused before parsing.
+  await writeFile(file, ' '.repeat(p.BUNDLE_BYTE_LIMIT + 1));
+  const large = await run(['--tx', a.tx.txHash, '--indexer', 'http://127.0.0.1:3010']);
+  assert.equal(large.code, 1);
+  assert.match(JSON.parse(large.err).error, /exceeds 6030512 bytes/);
+});
+test('CLI bundle mode as a command: a demo bundle file and its txHash pass with no backend and no indexer read', async () => {
+  const demo = await proof();
+  const file = new URL('../dist/cli-demo.bundle.json', import.meta.url);
+  await writeFile(file, bundleText(demo.bundle));
+  const cli = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(new URL('../apps/verifier-cli/index.mjs', import.meta.url)),
+      fileURLToPath(file),
+      '--tx',
+      demo.txHash,
+      '--indexer',
+      'https://indexer.invalid',
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(cli.status, 0, cli.stderr);
+  const verdict = JSON.parse(cli.stdout);
+  assert.equal(verdict.status, 'DEMO PASS');
+  assert.deepEqual(verdict.winners, demo.winners);
+});
+test('the backend chain fixture is the current output of tools/api-fixture.mjs', async () => {
+  const { generate } = await import('../tools/api-fixture.mjs');
+  const committed = JSON.parse(await readFile(new URL('../apps/api/test/chain-fixture.json', import.meta.url)));
+  assert.deepEqual(committed, JSON.parse(JSON.stringify(await generate())));
+});
 // A bundle the organizer did not commit, with its winners recomputed so only the chain evidence can expose it.
 async function tampered(d) {
   const b = { ...d.proof.bundle, entrants: [...d.proof.bundle.entrants, 'mallory'] };

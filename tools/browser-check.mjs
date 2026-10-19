@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   ALGORITHM,
+  canonicalize,
   commitmentMetadata,
   commitmentValidUntil,
   computeCommitment,
@@ -15,6 +16,7 @@ import {
   QUICKNET,
   roundTime,
   selectWinners,
+  sha256,
   transactionHash,
   VERSION,
 } from '@giveaway/verifier-cli/library';
@@ -25,6 +27,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const origin = `http://127.0.0.1:${process.env.PORT ?? 4320}/`;
 // The project indexer the page was built against (tools/build.mjs GIVEAWAY_INDEXER_URL); every read is mocked here.
 const INDEXER = (process.env.GIVEAWAY_INDEXER_URL ?? 'http://127.0.0.1:3010').replace(/\/$/, '');
+// The backend the page was built against (tools/build.mjs GIVEAWAY_API_URL); mocked where it is used.
+const API = (process.env.GIVEAWAY_API_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({
   executablePath: process.env.GIVEAWAY_CHROME_PATH,
@@ -71,11 +75,17 @@ try {
   await independent.locator('#lookup').fill('not-in-list');
   assert.match(await independent.locator('#lookup-result').textContent(), /not in this bundle/);
   passed('fresh page independently verifies shared result');
-  const downloadEvent = page.waitForEvent('download');
-  await page.click('#download');
-  const download = await downloadEvent;
-  const path = await download.path();
+  // Two downloads (plan step 10): the proof, and the canonical bundle bytes the commitment hashes.
+  const fetchDownload = async (selector) => {
+    const event = page.waitForEvent('download');
+    await page.click(selector);
+    const download = await event;
+    return { path: await download.path(), name: download.suggestedFilename() };
+  };
+  const proofFile = await fetchDownload('#download');
+  const path = proofFile.path;
   const artifact = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(proofFile.name, `${artifact.bundle.drawId}.proof.json`);
   assert.deepEqual(artifact.bundle.entrants, ['alice', 'bob', 'carol']);
   assert.equal(JSON.stringify(artifact).includes('example.com'), false);
   // --indexer is always required; a demo proof never reads it.
@@ -89,6 +99,28 @@ try {
   assert.equal(cli.status, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).status, 'DEMO PASS');
   passed('downloaded public bundle strips contacts and independently passes CLI');
+  const bundleFile = await fetchDownload('#download-bundle');
+  assert.equal(bundleFile.name, `${artifact.bundle.drawId}.bundle.json`);
+  const bundleText = await readFile(bundleFile.path, 'utf8');
+  const bundleHash = await computeCommitment(artifact.bundle);
+  // The bytes are the canonical bundle: their SHA-256 is the committed bundle hash.
+  assert.equal(bundleText, canonicalize(artifact.bundle));
+  assert.equal(await sha256(bundleText), bundleHash);
+  const bundleCli = spawnSync(
+    process.execPath,
+    [
+      `${root}apps/verifier-cli/index.mjs`,
+      bundleFile.path,
+      '--tx',
+      artifact.txHash,
+      '--indexer',
+      'https://indexer.invalid',
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(bundleCli.status, 0, bundleCli.stderr);
+  assert.equal(JSON.parse(bundleCli.stdout).status, 'DEMO PASS');
+  passed('downloaded canonical bundle file hashes to the commitment and passes the CLI bundle mode (--tx)');
   artifact.winners = ['mallory'];
   await independent.locator('#proof-file').setInputFiles({
     name: 'tampered.json',
@@ -98,21 +130,59 @@ try {
   await independent.waitForFunction(() => document.querySelector('#verification').textContent === 'FAIL');
   passed('tampered winner rejected in browser verifier');
   assert.equal(await independent.locator('#verified-result').isVisible(), false);
-  await independent.route('https://fixture.invalid/proof.json', (route) =>
+  // The new verification link (BR-10, F9): commitment txHash + bundle hash, here with the bundle bytes hosted at another
+  // URL (`source`), since a demo draw has no on-chain commitment the backend would host.
+  const BUNDLE_URL = 'https://fixture.invalid/draw.bundle.json';
+  await independent.route(BUNDLE_URL, (route) =>
     route.fulfill({
-      json: { ...artifact, winners: JSON.parse(Buffer.from(link.split('#proof=')[1], 'base64url').toString()).winners },
+      body: bundleText,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
     }),
   );
-  await independent.locator('#bundle-url').fill('https://fixture.invalid/proof.json');
+  await independent.locator('#bundle-tx').fill(artifact.txHash);
+  await independent.locator('#bundle-url').fill(BUNDLE_URL);
   await independent.click('#load-url');
   await independent.waitForFunction(() => document.querySelector('#verification').textContent === 'DEMO PASS');
-  const hostedLink = await independent.locator('#share-link').inputValue();
-  assert.ok(hostedLink.includes('hash='));
-  await independent.goto(hostedLink.replace(/hash=[a-f0-9]+/, `hash=${'0'.repeat(64)}`));
-  await independent.waitForFunction(() =>
+  const hostedLink = new URL(await independent.locator('#share-link').inputValue());
+  assert.deepEqual(Object.fromEntries(hostedLink.searchParams), {
+    tx: artifact.txHash,
+    bundle: bundleHash,
+    source: BUNDLE_URL,
+  });
+  assert.equal(hostedLink.hash, '');
+  const fresh = await browser.newPage();
+  fresh.on('pageerror', (e) => errors.push(e.message));
+  await fresh.route(BUNDLE_URL, (route) =>
+    route.fulfill({
+      body: bundleText,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+    }),
+  );
+  await fresh.goto(hostedLink.toString());
+  await fresh.waitForFunction(() => document.querySelector('#verification').textContent === 'DEMO PASS');
+  assert.equal(await fresh.locator('#checks li').count(), 7);
+  assert.deepEqual(await fresh.locator('#verified-winners li').allTextContents(), JSON.parse(cli.stdout).winners);
+  passed('new link format (txHash + bundle hash) completes DEMO PASS on a fresh page');
+  const changed = new URL(hostedLink);
+  changed.searchParams.set('bundle', '0'.repeat(64));
+  await fresh.goto(changed.toString());
+  await fresh.waitForFunction(() =>
     document.querySelector('#verification').textContent.includes('hash does not match'),
   );
-  passed('hosted bundle sharing pins file hash and rejects changed content');
+  // The former hosted-proof link (a proof file URL and that file's hash) is refused with an explicit error.
+  const former = new URL(origin);
+  former.search = new URLSearchParams({
+    bundle: 'https://fixture.invalid/proof.json',
+    hash: '0'.repeat(64),
+  }).toString();
+  await fresh.goto(former.toString());
+  await fresh.waitForFunction(() =>
+    document.querySelector('#verification').textContent.includes('former hosted-proof'),
+  );
+  await fresh.close();
+  passed('link pins the bundle hash; changed content and the former link format are refused');
   await page.click('#prepare');
   await page.waitForSelector('#commit');
   await page.click('#commit');
@@ -392,6 +462,58 @@ try {
   }
   passed('confirmation response after a reset is discarded');
   passed('the wallet submits the signed commitment (CIP-30 submitTx); the indexer receives no submission');
+  // Hosting (plan step 10): after 15 confirmations the organizer asks the backend to host the canonical bundle bytes
+  // (PUT /bundles/{txHash}); the share link becomes txHash + bundle hash. The backend is mocked here (its gate is
+  // tested in apps/api against D1, R2 and the chain); the page must send exactly the committed bytes.
+  {
+    const { target, pageErrors, submitted } = await preprodPage({
+      sign: true,
+      onRead: async (_route, url, { index }) => {
+        const txHash = url.match(/\/txs\/([a-f0-9]{64})$/)?.[1];
+        if (txHash) index(txHash, 100, Math.floor(Date.now() / 1000) - 60);
+        return false;
+      },
+    });
+    const uploads = [];
+    const hostedUntil = 1_900_000_000;
+    await target.route(`${API}/bundles/*`, async (route) => {
+      const request = route.request();
+      const cors = { 'Access-Control-Allow-Origin': origin.replace(/\/$/, ''), Vary: 'Origin' };
+      if (request.method() === 'OPTIONS')
+        return route.fulfill({
+          status: 204,
+          headers: {
+            ...cors,
+            'Access-Control-Allow-Methods': 'GET, PUT',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          },
+        });
+      uploads.push({ method: request.method(), url: request.url(), body: request.postDataBuffer() });
+      return route.fulfill({ status: 201, headers: cors, json: { expiresAt: hostedUntil } });
+    });
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
+    const committedHash = await target.locator('#preview-hash').textContent();
+    await target.click('#commit');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Submitted'));
+    assert.equal(await target.locator('#host').isVisible(), false);
+    await target.click('#confirm');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Fifteen'));
+    await target.click('#host');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Bundle hosted'));
+    const [txHash] = [...submitted.keys()];
+    assert.equal(uploads.length, 1);
+    assert.equal(uploads[0].method, 'PUT');
+    assert.equal(uploads[0].url, `${API}/bundles/${txHash}`);
+    assert.equal(await sha256(new Uint8Array(uploads[0].body)), committedHash);
+    const link = new URL(await target.locator('#share-link').inputValue());
+    assert.deepEqual(Object.fromEntries(link.searchParams), { tx: txHash, bundle: committedHash });
+    assert.equal(await target.locator('#host').isVisible(), false);
+    assert.match(await target.locator('#result-note').textContent(), /hosted until/);
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed('a confirmed preprod commitment is hosted with its committed bytes and shared as txHash + bundle hash');
   // A signed commitment the indexer never sees: once its invalid_hereafter has passed, the page says it expired
   // and asks for a later round instead of waiting for the round.
   {

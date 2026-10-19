@@ -25,7 +25,7 @@
 
 輸入（步驟 8b 實測，`spike-dolos.md`；本步重量）：
 
-- 一次完整驗證的請求數（步驟 9b 起，PD10）＝5＋⌈(n＋1)/100⌉＋n＋k，n 是 round 前的 withdrawal 列數、k 是帶本協定 label 的列數。開發鏈上 n＝261、k＝1 時 **270 次**；第三方付款到 3,224 個帶主辦者 stake 的地址之後仍是 270 次；加上重疊承諾後 n＝262、k＝2 時 **272 次**（步驟 9b 實測，`dolos-1.6.1-withdrawal-acceptance-report.json`、`rproxy-nginx-1.30.6-withdrawal-report.json` 的 `direct`）。上限 L＝2,900 列時約 2,940 次（推論）。步驟 8b、9 的 PD9 列舉數字（276、278 次）是當時的紀錄。
+- 一次完整驗證的請求數（步驟 9b 起，PD10）＝5＋⌈(n＋1)/100⌉＋n＋k，n 是 round 前的 withdrawal 列數、k 是帶本協定 label 的列數。開發鏈上 n＝261、k＝1 時 **270 次**；第三方付款到 3,224 個帶主辦者 stake 的地址之後仍是 270 次；加上重疊承諾後 n＝262、k＝2 時 **272 次**（步驟 9b 實測，`dolos-1.6.1-withdrawal-acceptance-report.json`、`rproxy-nginx-1.30.6-withdrawal-report.json` 的 `direct`）。上限 L＝2,900 列時約 2,940 次（推論）。步驟 10 的 bundle 模式（驗證連結只帶 txHash＋bundle hash、CLI `--tx`）先從交易推導 owner，多 3 次（`/txs/{h}`、`/cbor`、`/utxos`），n＝261 時 273 次、n＝265 時 279 次（推論：3＋上述實測；多出的 3 次由 `tests/core.test.mjs` 的 bundle 模式測試以 mock 計數斷言），仍在 `delay`＝300 之內。步驟 8b、9 的 PD9 列舉數字（276、278 次）是當時的紀錄。
 - 驗證是循序的：`BlockfrostChain` 每個請求 await 完才發下一個（讀碼 `packages/chain/index.ts`），一次只有一個在途請求。網頁的驗證也走同一個介面卡（E2E 以 mock 計數：n＝1 的身分一次 8 次＝5＋1＋1＋1）。
 
 nginx 的帳（讀碼／文件）：每個 IP 一個 excess 值，每個請求 +1、每秒扣 `rate`；excess ≤ `delay` 時立即轉發，`delay` < excess ≤ `burst` 時延後到速率允許的時間，excess > `burst` 回 429。
