@@ -10,7 +10,7 @@
 
 | 需求 | 設定 | 驗證 |
 |---|---|---|
-| BR-01 只放行唯讀端點 | `map $uri $route`：9 個 Blockfrost 形狀路由（verifier 的 `BlockfrostChain`、網頁的 tip、建立頁 Evolution `BlockfrostProvider` 的協定參數與 UTxO），只收 preprod 識別碼；其他一律 404。查詢字串只收 `count`、`page`、`order`、`from`、`to`。只收 `GET`、`OPTIONS`。轉給 Dolos 的是比對過的正規化路徑（`$uri`），不是原始請求 URI；不轉送 client 的標頭與本文 | `tests/core.test.mjs`「reverse proxy allowlist admits…」（靜態，CI）；`tools/devchain/rproxy-check.mjs` 的 `allowlist`（實測） |
+| BR-01 只放行唯讀端點 | `map $uri $route`：9 個 Blockfrost 形狀路由（verifier 的 `BlockfrostChain`：承諾的四個讀取、tip 與確認區塊、reward account 的 withdrawal 列表；網頁的 tip；建立頁的 stake 帳戶與 Evolution `BlockfrostProvider` 的協定參數與 UTxO；步驟 9b 起拿掉 PD9 的 `/accounts/{stake}/addresses` 與 `/addresses/{a}/transactions`），只收 preprod 識別碼；其他一律 404。查詢字串只收 `count`、`page`、`order`、`from`、`to`。只收 `GET`、`OPTIONS`。轉給 Dolos 的是比對過的正規化路徑（`$uri`），不是原始請求 URI；不轉送 client 的標頭與本文 | `tests/core.test.mjs`「reverse proxy allowlist admits…」（靜態，CI）；`tools/devchain/rproxy-check.mjs` 的 `allowlist`（實測） |
 | BR-03 依 IP 限流 | `limit_req_zone $binary_remote_addr … rate=30r/s`、`limit_req … burst=350 delay=300`、`limit_req_status 429` | 靜態測試；`rproxy-check.mjs` 的 `verification`、`flood` |
 | BR-04 CORS 網域清單 | `map $http_origin $cors`：清單內的 origin 回 `Access-Control-Allow-Origin: <origin>`（不回 `*`）；清單外的 origin 在碰到 Dolos 前就回 403；沒有 `Origin` 的請求（非跨站網頁）放行、不帶 CORS 標頭。Dolos 自己的 `permissive_cors`（回 `*`）標頭以 `proxy_hide_header` 拿掉 | 靜態測試；`rproxy-check.mjs` 的 `cors`；`tools/devchain/browser-live.mjs`（Chrome 經 proxy，含 Evolution 的 preflight） |
 | BR-05 不記錄請求內容 | access log 只有時間、method、路由名、狀態、大小、耗時（`log_format giveaway`），沒有 IP、路徑參數、query、標頭、本文；error log 只寫 `crit` 以上（nginx 在 error 等級的訊息會帶 client 位址與 request line） | 靜態測試；`rproxy-check.mjs` 的 `logs`（帶標記的 query、標頭、本文都不出現在 log） |
@@ -25,8 +25,8 @@
 
 輸入（步驟 8b 實測，`spike-dolos.md`；本步重量）：
 
-- 一次完整驗證的請求數＝5＋⌈(A＋1)/100⌉（只有 stake 身分）＋Σ_a⌈(r_a＋1)/100⌉＋n＋k。開發鏈上 stake 身分 n＝265 時 **276 次**（步驟 8b 實測，本步在全新開發鏈上重跑 `acceptance.mjs` 再得 276）；acceptance 加上重疊承諾後 n＝266、k＝2 時 **278 次**（本步實測，`rproxy-nginx-1.30.6-report.json` 的 `direct`）。上限 L＝2,900 列時約 2,940 次（推論）；步驟 5 的 preprod payment 身分 1,171 筆約 1,188＋k 次（推論，步驟 8c 實測）。
-- 驗證是循序的：`BlockfrostChain` 每個請求 await 完才發下一個（讀碼 `packages/chain/index.ts`），一次只有一個在途請求。網頁的驗證也走同一個介面卡（E2E 以 mock 計數：n＝1 的 stake 身分一次 9 次＝5＋1＋1＋1＋1）。
+- 一次完整驗證的請求數（步驟 9b 起，PD10）＝5＋⌈(n＋1)/100⌉＋n＋k，n 是 round 前的 withdrawal 列數、k 是帶本協定 label 的列數。開發鏈上 n＝261、k＝1 時 **270 次**；第三方付款到 3,224 個帶主辦者 stake 的地址之後仍是 270 次；加上重疊承諾後 n＝262、k＝2 時 **272 次**（步驟 9b 實測，`dolos-1.6.1-withdrawal-acceptance-report.json`、`rproxy-nginx-1.30.6-withdrawal-report.json` 的 `direct`）。上限 L＝2,900 列時約 2,940 次（推論）。步驟 8b、9 的 PD9 列舉數字（276、278 次）是當時的紀錄。
+- 驗證是循序的：`BlockfrostChain` 每個請求 await 完才發下一個（讀碼 `packages/chain/index.ts`），一次只有一個在途請求。網頁的驗證也走同一個介面卡（E2E 以 mock 計數：n＝1 的身分一次 8 次＝5＋1＋1＋1）。
 
 nginx 的帳（讀碼／文件）：每個 IP 一個 excess 值，每個請求 +1、每秒扣 `rate`；excess ≤ `delay` 時立即轉發，`delay` < excess ≤ `burst` 時延後到速率允許的時間，excess > `burst` 回 429。
 
@@ -43,7 +43,7 @@ nginx 的帳（讀碼／文件）：每個 IP 一個 excess 值，每個請求 +
 不在這層處理的（觸發條件）：
 
 - 多 IP 的分散式灌量與總量上限：BR-03 的全域預算已依 PD8 A 刪除；需要時在部署層（VM 防火牆、上游 CDN）處理——觸發條件：步驟 10 部署後量到 Dolos 被多來源壓滿。
-- 「單一地址」的負載（非功能需求「公開讀取路徑的負載」）：每次驗證的請求數由協定的 L＝2,900 列封頂（約 2,940 次），頻率由 IP 限流封頂；不另依查詢的地址限流。灌列數讓某身分每次驗證都接近 L 屬 PD10（未決）。
+- 「單一地址」的負載（非功能需求「公開讀取路徑的負載」）：每次驗證的請求數由協定的 L＝2,900 列封頂（約 2,940 次），頻率由 IP 限流封頂；不另依查詢的地址限流。PD10（步驟 9b）之後只有主辦者自己的 stake key 能加列，第三方灌不了列數。
 - 前面若再加 CDN 或負載平衡，`$binary_remote_addr` 會變成 CDN 的位址，要改用 `real_ip` 模組並只信任該 CDN 的位址段——觸發條件：步驟 10 選定前置 CDN。
 
 ## IP 的保存（BR-05「IP 只保留到限流所需時間」）

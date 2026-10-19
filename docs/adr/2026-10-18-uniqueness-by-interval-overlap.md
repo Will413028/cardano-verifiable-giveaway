@@ -77,6 +77,18 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 - Dolos 穩定版 1.6.1 沒有 `/accounts/{stake}/transactions`。Will 選階段計畫 PD9 的 B：先 `/accounts/{stake}/addresses`，再逐址 `/addresses/{a}/transactions`，依 tx_hash 去重。規則、身分與計數條件不變；上限以 Σ 各地址交易列數計，任一請求非 2xx 判 FAIL。
 - 列舉上限可被第三方便宜灌爆、讓抽獎判 FAIL 的既有弱點另列 PD10。
 
+## Amendment (2026-10-19)：身分只剩 base 地址的 stake key、歷史改讀 reward account 的 withdrawal 列表（PD10）
+
+- 起因（階段計畫 PD10）：PD9 的列舉以「地址的 stake 部分」為索引，任何人都能付款到「自己的 payment＋主辦者 stake」的地址（CIP-19），每筆交易約 248 列、手續費約 0.88 ADA，約 12 筆就把列數推過上限 L，讓主辦者的抽獎判 FAIL（步驟 8b 實測單筆、總成本推論）。計數條件（身分 key 簽章）只有擁有者寫得進，列舉索引卻誰都寫得進。
+- Will 2026-10-19 拍板 PD10 的 W，步驟 9b 先以 spike 確認 ledger 性質（`docs/plans/2026-10-18-hardening-and-backend/spike-withdrawal.md`）後實作：
+  - **承諾規則**：承諾交易必須附身分 stake 的 reward withdrawal（餘額 0 時 0 ADA，非 0 時全額；金額由 ledger 規則決定，verifier 只確認身分的 reward account 在 withdrawals 裡）。沒附的承諾本身無效。真 ledger（cardano-node 11.0.1，協定版本 10.0）實測：第三方不帶 stake witness、只列 `required_signers`、偽造簽章三種都被拒；未委託 DRep 被拒；註冊＋委託＋withdrawal 同一筆被拒，所以第一次承諾前要先有一筆註冊與 DRep 委託交易。
+  - **身分子題（改寫 Decision 第二點）**：身分只剩 base 地址的 stake key；「否則用 payment key」刪除。enterprise 地址沒有 reward account，W 保護不到，建立頁與 verifier 都明確拒絕並說明原因。
+  - **列舉（取代上一則 Amendment 的 PD9 地址列表＋逐址列舉）**：讀 `/accounts/{stake}/withdrawals?order=asc`，讀到第一列 `block_time ≥ roundTime(round)` 就停（那之後收錄的承諾不可能與被驗的承諾區間重疊）；列表顯示出非遞增次序或重複交易時判 FAIL。上限 L＝2,900 保留，計 round 前讀到的列數，超過判 FAIL，訊息寫明這是主辦者自己的承諾歷史（只有主辦者的 stake key 寫得進）；不需要 INCONCLUSIVE。
+  - **計數條件不變**：列表上、label 符合的交易，仍要有效且身分 key 列在 `required_signers`、witness 驗章通過才算。
+- 實測（Dolos 1.6.1 開發鏈，`dolos-1.6.1-withdrawal-acceptance-report.json`）：261 列歷史的驗證 270 次請求；第三方付款到 3,224 個帶主辦者 stake 的地址後仍 PASS、請求數同為 270；同 stake 第二地址的重疊承諾 FAIL 並列出；enterprise 主辦者 FAIL 並說明原因、0 次 indexer 請求。
+- 代價：主辦者要先註冊 stake（押金 2 ADA，可退）並委託 DRep（always-abstain 即可）；reward 非 0 時要全額提領，跨 epoch 邊界組好的交易可能因餘額改變而被拒（推論）；使用者的節點要記錄 0 ADA withdrawal 並遵守 `order=asc`（Yaci Store 0.12.0 不遵守，會被次序檢查擋成 FAIL）；真錢包是否替 withdrawal 的 stake key 簽章仍屬既有的「等真錢包」。
+- Revocation Triggers 補充：真錢包驗收顯示主流 CIP-30 錢包不簽帶 withdrawal 的交易，或 ledger 規則改成不需 stake witness 即可提領 0 ADA → 重議 PD10（備案 C＋L：列舉截到 round、L 改本機預算）。
+
 ## Review Notes
 
 - 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。同日 Will 回覆「都照建議走」，身分改為 `required_signers`＋witness（見 Decision）。

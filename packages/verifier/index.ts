@@ -64,7 +64,8 @@ export async function verifyProof(
       const chain = options.chain;
       if (!chain) throw new Error('No indexer selected for preprod evidence');
       commitment = await chain.readCommitment(proof.txHash, proof.owner);
-      candidates = await chain.findCommitments(proof.owner);
+      // The history up to the referenced commitment's round: nothing included later can overlap it.
+      candidates = await chain.findCommitments(proof.owner, commitment.round);
       add('Cardano evidence', 'pass', 'Read from selected preprod indexer; evidence still depends on that indexer');
     } else {
       commitment = await new DemoChain().readCommitment(proof.bundle);

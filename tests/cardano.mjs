@@ -58,7 +58,8 @@ export const sign = (key, message) => ed25519.sign(message, key.secret);
 // `signers` are hex key hashes for required_signers; `witnesses` are keys that sign the transaction id.
 // `legacy` uses Shelley encodings (plain arrays, a bare metadata map), the default is Conway (tags 258/259).
 // `inputs` ([tx id hex, index] pairs), `outputs` ([address hex, lovelace] pairs) and `fee` replace the default single
-// input, 2 ADA output and fee, for balanced transactions a ledger accepts (tools/devchain).
+// input, 2 ADA output and fee, for balanced transactions a ledger accepts (tools/devchain). `withdrawals` ([reward
+// account hex, lovelace] pairs) is body field 5.
 export function buildTransaction({
   label,
   metadata,
@@ -70,6 +71,7 @@ export function buildTransaction({
   inputs = [[input, 0]],
   outputs = [[address, 2_000_000n]],
   fee = 170_000n,
+  withdrawals = [],
   legacy = false,
   valid = true,
   corruptSignature = false,
@@ -90,6 +92,8 @@ export function buildTransaction({
     [2, BigInt(fee)],
   ]);
   if (invalidHereafter !== null) body.set(3, BigInt(invalidHereafter));
+  if (withdrawals.length)
+    body.set(5, new Map(withdrawals.map(([account, lovelace]) => [unhex(account), BigInt(lovelace)])));
   if (auxiliary) body.set(7, blake2b(auxiliary, { dkLen: 32 }));
   if (signers.length) body.set(14, set(signers.map(unhex)));
   const bodyBytes = cbor(body);

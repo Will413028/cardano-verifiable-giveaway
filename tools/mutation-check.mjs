@@ -153,6 +153,11 @@ for (const [field, message, testName] of [
     'Unsigned transaction validity upper bound differs from the commitment',
     'unsigned commitment re-read: validity upper bound',
   ],
+  [
+    'withdrawal',
+    'Unsigned transaction withdrawal differs from the organizer reward account balance',
+    'unsigned commitment re-read: withdrawal',
+  ],
 ])
   await mustFail(
     `Skipping the unsigned ${field} comparison`,
@@ -183,7 +188,7 @@ await mustFail(
   (text) => text.replace('return checkValidityBound(commitment, round) && ', 'return '),
   'F17: invalid_hereafter',
 );
-// Step 8b: the Blockfrost-shaped adapter (PD7, PD9). One guard per mutation, each against the test written for it.
+// Step 8b: the Blockfrost-shaped adapter (PD7). One guard per mutation, each against the test written for it.
 await mustFail(
   'CLI falling back to a default indexer',
   `${root}apps/verifier-cli/index.mjs`,
@@ -197,7 +202,7 @@ await mustFail(
   'CLI requires --indexer',
 );
 await mustFail(
-  'Enumerating only the first page of each address',
+  'Enumerating only the first page of the withdrawal list',
   library,
   (text) => text.replace('if (listed.length < PAGE) break;', 'break;'),
   'a conflicting commitment on the second page',
@@ -223,22 +228,45 @@ await mustFail(
   'an enumerated commitment whose CBOR is not served',
 );
 await mustFail(
-  'Taking a non-2xx answer for one address as an empty list',
+  'Taking a non-2xx answer of the withdrawal list as an empty page',
   library,
   (text) => text.replace(/(const listed = await this\.page\([^;]*\));/, '$1.catch(() => []);'),
-  'any non-2xx answer for one of the identity addresses',
+  'any non-2xx answer for the withdrawal list',
+);
+// Step 9b (PD10): the history is the organizer reward account's withdrawal list. One guard per mutation.
+await mustFail(
+  'Not requiring the commitment to withdraw from the organizer reward account',
+  library,
+  (text) => text.replace('if (!tx.withdrawals.has(identityRewardAccount(owner)))', 'if (false)'),
+  'PD10: a commitment without a withdrawal',
 );
 await mustFail(
-  'Counting the enumeration limit per address instead of summed',
+  'Reading the withdrawal list past the round',
   library,
-  (text) => text.replace('for (const address of lists) {', 'for (const address of lists) { enumerated = 0;'),
-  'history over L enumerated rows fails',
+  (text) => text.replace('if (row.block_time >= end) break read;', ''),
+  'the withdrawal list is read only up to the round',
 );
 await mustFail(
-  'Merging the address lists without tx_hash deduplication',
+  'Removing the withdrawal row limit',
   library,
-  (text) => text.replace('rows.set(row.tx_hash, row);', 'rows.set(address + row.tx_hash, row);'),
-  'one transaction listed under several identity addresses',
+  (text) => text.replace('if (rows.length > HISTORY_ROW_LIMIT) throw historyTooLarge();', ''),
+  'history over L withdrawal rows',
+);
+await mustFail(
+  'Trusting the withdrawal list order',
+  library,
+  (text) => text.replace('if (row.block_height < previous.height || row.block_time < previous.time)', 'if (false)'),
+  'a withdrawal list out of ascending order',
+);
+await mustFail(
+  'Allowing an enterprise organizer address',
+  library,
+  (text) =>
+    text.replace(
+      /if \(type === 6\)\s*throw new Error\(\s*"Organizer address must be a base address with a stake key[^"]*"\s*\);/,
+      'if (type === 6 && bytes.length === 29) return { kind: "stake", key: hex(bytes.slice(1)) };',
+    ),
+  'enterprise organizer is refused',
 );
 // The reverse proxy in front of the project Dolos (plan step 9, PD8 A): each guard of the committed config, removed
 // alone, fails its static check. tools/devchain/rproxy-check.mjs removes the same guards in a live nginx.

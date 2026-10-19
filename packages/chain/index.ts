@@ -10,7 +10,6 @@ import {
   type Inclusion,
   hex,
   sha256,
-  unhex,
 } from '@giveaway/protocol';
 import {
   auxiliaryDataHash,
@@ -25,6 +24,7 @@ import {
   transactionHash,
   transactionParts,
   verifiedSigners,
+  withdrawals,
 } from './cbor.ts';
 export * from './cbor.ts';
 
@@ -70,10 +70,14 @@ export interface CommitmentPlan {
   signer: string;
   // The invalid_hereafter slot, whose time precedes the round (PD5).
   invalidHereafter: bigint;
+  // The reward withdrawal every commitment carries (PD10): the organizer reward account (hex) and its whole balance,
+  // which the ledger requires (0 when the balance is 0).
+  withdrawal: { account: string; lovelace: bigint };
 }
-// inputs, outputs, fee, invalid_hereafter, auxiliary data hash, required_signers: anything else (mint, withdrawals,
-// certificates, collateral, validity start...) is refused.
-const COMMITMENT_BODY_FIELDS = new Set<unknown>([0, 1, 2, 3, 7, 14]);
+// inputs, outputs, fee, invalid_hereafter, withdrawals, auxiliary data hash, required_signers: anything else (mint,
+// certificates, collateral, validity start...) is refused. Stake registration and DRep delegation cannot share the
+// commitment transaction: the ledger checks the withdrawal against the state before it (spike-withdrawal.md).
+const COMMITMENT_BODY_FIELDS = new Set<unknown>([0, 1, 2, 3, 5, 7, 14]);
 function adaOutput(output: CborValue): { address: string; lovelace: bigint } {
   const [address, amount, extra] = isCborMap(output)
     ? [output.get(0), output.get(1), [...output.keys()].some((k) => k !== 0 && k !== 1)]
@@ -117,8 +121,14 @@ export function checkCommitmentTransaction(txHex: string, plan: CommitmentPlan):
   if (transfer.address !== address || transfer.lovelace !== COMMITMENT_TRANSFER)
     throw new Error('Unsigned transaction transfer output differs from the commitment');
   if (change.address !== address) throw new Error('Unsigned transaction sends change to another address');
+  const withdrawn = withdrawals(body);
+  if (withdrawn.size !== 1 || withdrawn.get(plan.withdrawal.account.toLowerCase()) !== plan.withdrawal.lovelace)
+    throw new Error('Unsigned transaction withdrawal differs from the organizer reward account balance');
   const fee = body.get(2);
-  if (typeof fee !== 'bigint' || transfer.lovelace + change.lovelace + fee !== plan.input.lovelace)
+  if (
+    typeof fee !== 'bigint' ||
+    transfer.lovelace + change.lovelace + fee !== plan.input.lovelace + plan.withdrawal.lovelace
+  )
     throw new Error('Unsigned transaction does not balance its input');
   const auxHash = auxiliaryDataHash(txHex);
   if (auxHash.computed === null || auxHash.computed !== auxHash.declared)
@@ -222,24 +232,32 @@ export function encodeBech32(prefix: string, bytes: Uint8Array): string {
   const checksum = Array.from({ length: 6 }, (_, i) => (chk >>> (5 * (5 - i))) & 31);
   return `${prefix}1${[...words, ...checksum].map((w) => BECH32[w]).join('')}`;
 }
-// The uniqueness identity of an organizer address (PD3): its stake credential when the address has one,
-// otherwise its payment credential. Only key credentials are supported; `key` is what the indexer
-// enumerates by and what any enumeration cache would be keyed on (B6).
-export type Identity = { kind: 'stake'; key: string } | { kind: 'payment'; key: string };
+// The uniqueness identity of an organizer address (PD3, PD10): the stake credential of a key-hash base address. The
+// history is the reward account's withdrawals, which only the stake key can add, so an address without a stake key
+// (enterprise) has no identity here and is refused. `key` is the stake address the indexer enumerates by and what
+// any enumeration cache would be keyed on (B6).
+export type Identity = { kind: 'stake'; key: string };
 export function identityOf(owner: string): Identity {
   const { prefix, bytes } = decodeBech32(owner);
   const type = bytes[0] >> 4;
   if (prefix !== 'addr_test' || (bytes[0] & 15) !== 0) throw new Error('Organizer address is not a preprod address');
+  if (type === 6)
+    throw new Error(
+      'Organizer address must be a base address with a stake key: an enterprise address has no reward account, and uniqueness is read from the stake reward account withdrawals (PD10)',
+    );
   if (type === 0 && bytes.length === 57)
     return { kind: 'stake', key: encodeBech32('stake_test', Uint8Array.from([0xe0, ...bytes.slice(29)])) };
-  if (type === 6 && bytes.length === 29) return { kind: 'payment', key: hex(bytes.slice(1)) };
-  throw new Error('Organizer address must be a key-hash base or enterprise address');
+  throw new Error('Organizer address must be a key-hash base address');
 }
-// The key hash (hex) of the organizer identity: the stake key of a base address, else the payment key (PD3).
+// The key hash (hex) of the organizer identity: the stake key of the base address (PD3).
 export function identityKeyHash(owner: string): string {
-  const identity = identityOf(owner);
-  const { bytes } = decodeBech32(owner);
-  return identity.kind === 'stake' ? hex(bytes.slice(29)) : hex(bytes.slice(1));
+  identityOf(owner);
+  return hex(decodeBech32(owner).bytes.slice(29));
+}
+// The organizer reward account (hex, CIP-19 header e0: testnet key-hash stake address) every commitment withdraws
+// from (PD10).
+export function identityRewardAccount(owner: string): string {
+  return hex(decodeBech32(identityOf(owner).key).bytes);
 }
 export interface CommitmentMetadata {
   bundleHash: string;
@@ -259,6 +277,8 @@ export interface CommitmentTransaction {
   valid: boolean;
   // The invalid_hereafter slot, or null when the transaction sets none.
   invalidHereafter: bigint | null;
+  // Reward accounts (hex) the transaction withdraws from (body field 5).
+  withdrawals: Set<string>;
 }
 // The LABEL entry as a commitment: null when absent or another protocol version, 'malformed' when it claims
 // this version without valid commitment fields (the same field rules the indexer JSON was held to before).
@@ -300,6 +320,7 @@ export function readCommitmentTransaction(txHex: string, txHash: string): Commit
     signers: verifiedSigners(parts),
     valid: isValidTransaction(parts),
     invalidHereafter: invalidHereafter(parts.body),
+    withdrawals: new Set(withdrawals(parts.body).keys()),
   };
 }
 // The indexer has no such transaction: before its invalid_hereafter it may still be included, after it never.
@@ -315,15 +336,19 @@ export class CborPendingError extends Error {
     super('The indexer lists the transaction but has not served its CBOR yet');
   }
 }
-// The uniqueness enumeration limit L (plan step 8b, docs/protocol-development.md "Uniqueness"): the sum of the rows
-// every enumerated list returns, counted here rather than left to the node's max_scan_items. A history that would
-// need more fails verification. 2,900 is the largest multiple of the page size whose end-detecting page (page 30 of
-// 100) stays within the Dolos default max_scan_items of 3,000, so a default node serves every history accepted here.
+// The uniqueness enumeration limit L (plan steps 8b, 9b; docs/protocol-development.md "Uniqueness"): the rows of the
+// organizer reward account's withdrawal list read before the round, counted here rather than left to the node's
+// max_scan_items. Only the stake key can add a row (a withdrawal needs its witness on the ledger), so a history over L
+// is the organizer's own doing and fails verification. 2,900 is the largest multiple of the page size whose
+// end-detecting page (page 30 of 100) stays within the Dolos default max_scan_items of 3,000, so a default node serves
+// every history accepted here.
 export const HISTORY_ROW_LIMIT = 2_900;
 // Blockfrost's maximum page size; Dolos refuses count > 100 with HTTP 400.
 const PAGE = 100;
 const historyTooLarge = () =>
-  new Error(`Organizer history exceeds ${HISTORY_ROW_LIMIT} enumerated rows; uniqueness cannot be established`);
+  new Error(
+    `Organizer history exceeds ${HISTORY_ROW_LIMIT} withdrawal rows before the round; uniqueness cannot be established. Only the organizer stake key can add these rows: this is the organizer's own commitment history`,
+  );
 // A non-2xx answer. The status decides (any of them fails the read); the body only picks the message.
 export class IndexerError extends Error {
   constructor(
@@ -417,6 +442,11 @@ export class BlockfrostChain {
       throw new Error(
         'Organizer identity key did not sign the commitment (required signer witness missing or invalid)',
       );
+    // PD10: a commitment withdraws from the organizer reward account. That needs the stake key's witness on the ledger
+    // and lists the transaction under the account's withdrawals, the history uniqueness reads; read here from the
+    // checked CBOR, so an indexer listing a transaction there cannot stand in for the withdrawal itself.
+    if (!tx.withdrawals.has(identityRewardAccount(owner)))
+      throw new Error('Commitment does not withdraw from the organizer stake reward account (required since PD10)');
     // The CBOR holds only input references; which address an input spends from is the indexer's report. Collateral
     // and reference inputs are not spent by a valid transaction.
     const utxos = await this.json(`/txs/${txHash}/utxos`);
@@ -452,58 +482,45 @@ export class BlockfrostChain {
       blockTime: row.block_time,
     };
   }
-  // The lists that make up an identity's history (PD9): a payment credential is one list (addr_vkh); a stake
-  // credential is every address the node lists for the account, each enumerated on its own.
-  private async historyLists(owner: string): Promise<string[]> {
-    const identity = identityOf(owner);
-    if (identity.kind === 'payment') return [encodeBech32('addr_vkh', unhex(identity.key))];
-    const addresses: string[] = [];
-    for (let page = 1; ; page++) {
-      const rows = await this.page(`/accounts/${identity.key}/addresses`, page);
-      for (const row of rows) {
-        if (typeof row.address !== 'string' || !BECH32_ADDRESS.test(row.address))
-          throw new Error('Invalid account address list');
-        addresses.push(row.address);
-      }
-      // Every listed address holds at least one row, so more addresses than L already exceed it.
-      if (addresses.length > HISTORY_ROW_LIMIT) throw historyTooLarge();
-      if (rows.length < PAGE) return addresses;
-    }
-  }
-  // Every commitment of the owner's identity, whatever its drawId or round; uniqueness compares their intervals.
-  async findCommitments(owner: string): Promise<Inclusion[]> {
+  // Every commitment of the owner's identity included before the round, whatever its drawId or round; uniqueness
+  // compares their intervals. The history is the reward account's withdrawal list (PD10): every commitment withdraws
+  // from it and only the stake key can add a row, so rows paid to addresses that merely carry the organizer's stake
+  // part never appear and cost nothing. The list is read in ascending order and stops at the first row included at or
+  // after the round: such a commitment cannot overlap [inclusion, round) (checkUniqueness), and rows the organizer
+  // adds after the draw neither count toward L nor cost requests.
+  async findCommitments(owner: string, round: number): Promise<Inclusion[]> {
     if (!BECH32_ADDRESS.test(owner)) throw new Error('Invalid organizer address');
+    if (!Number.isSafeInteger(round)) throw new Error('Invalid round');
     const signer = identityKeyHash(owner);
-    const lists = await this.historyLists(owner);
-    // One transaction can touch several of the identity's addresses: it is one transaction, but every row it adds
-    // counts toward L, since the node scanned it once per list.
-    const rows = new Map<string, Row>();
-    let enumerated = 0;
-    for (const address of lists) {
-      for (let page = 1; ; page++) {
-        // Any non-2xx answer for one address fails the whole history: that address may hold the conflict.
-        const listed = await this.page(`/addresses/${address}/transactions?order=asc`, page);
-        enumerated += listed.length;
-        if (enumerated > HISTORY_ROW_LIMIT) throw historyTooLarge();
-        for (const row of listed) {
-          if (
-            !isTxHash(row.tx_hash) ||
-            !Number.isSafeInteger(row.block_height) ||
-            !Number.isSafeInteger(row.block_time) ||
-            !Number.isSafeInteger(row.tx_index)
-          )
-            throw new Error('Invalid transaction list');
-          const seen = rows.get(row.tx_hash);
-          if (seen && (seen.block_height !== row.block_height || seen.tx_index !== row.tx_index))
-            throw new Error('Inconsistent transaction list');
-          rows.set(row.tx_hash, row);
-        }
-        if (listed.length < PAGE) break;
+    const account = identityOf(owner).key;
+    const end = roundTime(round);
+    const rows: Row[] = [];
+    const seen = new Set<string>();
+    let previous = { height: -1, time: -1 };
+    read: for (let page = 1; ; page++) {
+      // Any non-2xx answer fails the whole history (IndexerError): the missing page may hold the conflict. An unknown
+      // account (404) is not an empty history: the referenced commitment itself withdraws from it.
+      const listed = await this.page(`/accounts/${account}/withdrawals?order=asc`, page);
+      for (const row of listed) {
+        if (!isTxHash(row.tx_hash) || !Number.isSafeInteger(row.block_height) || !Number.isSafeInteger(row.block_time))
+          throw new Error('Invalid withdrawal list');
+        // A transaction withdraws from one account at most once. The stop below relies on the ascending order: a list
+        // seen out of order (Yaci Store 0.12.0 ignores `order`, spike-withdrawal.md) may hold a pre-round row behind
+        // the first row past the round, so it fails. A node that places one there without showing any disorder is
+        // omitting it, which the verifier trusts the indexer not to do (docs/protocol-development.md).
+        if (seen.has(row.tx_hash)) throw new Error('Inconsistent withdrawal list');
+        if (row.block_height < previous.height || row.block_time < previous.time)
+          throw new Error('Withdrawal list is not in ascending order');
+        previous = { height: row.block_height, time: row.block_time };
+        if (row.block_time >= end) break read;
+        seen.add(row.tx_hash);
+        rows.push(row);
+        if (rows.length > HISTORY_ROW_LIMIT) throw historyTooLarge();
       }
+      if (listed.length < PAGE) break;
     }
-    const ordered = [...rows.values()].sort((a, b) => a.block_height - b.block_height || a.tx_index - b.tx_index);
     const found: Inclusion[] = [];
-    for (const row of ordered) {
+    for (const row of rows) {
       // The indexer's metadata JSON only selects which transactions to read as CBOR: hiding a commitment here is
       // no different from leaving it out of the enumeration, and everything counted is read from checked CBOR.
       const metadata = await this.json(`/txs/${row.tx_hash}/metadata`);
@@ -515,10 +532,10 @@ export class BlockfrostChain {
       const { cbor } = await this.json(`/txs/${row.tx_hash}/cbor`, raw);
       if (typeof cbor !== 'string') throw new Error('Organizer history transaction evidence is incomplete');
       const tx = readCommitmentTransaction(cbor, row.tx_hash);
-      // Only the identity key's verified signature makes a transaction this identity's commitment (PD3): a
-      // third party can put the organizer's stake part in its own address but cannot sign with its key.
-      // Which address the inputs spend from is not consulted, so the same wallet committing from another
-      // payment address is still counted.
+      // Only the identity key's verified signature makes a transaction this identity's commitment (PD3). A real
+      // ledger already refuses a withdrawal without the stake key's witness; an indexer or a chain that lists one
+      // anyway (the Dolos emulator does not validate withdrawals) still cannot make it count. Which address the
+      // inputs spend from is not consulted, so the same wallet committing from another payment address is counted.
       // A malformed entry in the identity's own signed transaction still fails the history (inclusionFrom).
       if (!tx.valid || !tx.signers.has(signer) || (!tx.metadata && !tx.malformed)) continue;
       found.push(this.inclusionFrom(row.tx_hash, owner, row, tx));

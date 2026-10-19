@@ -18,7 +18,7 @@ import {
   transactionHash,
   VERSION,
 } from '@giveaway/verifier-cli/library';
-import { ANSWERS, blockfrostIndexer } from '../tests/blockfrost-mock.mjs';
+import { ACCOUNT, ANSWERS, blockfrostIndexer } from '../tests/blockfrost-mock.mjs';
 import { buildTransaction, cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Same PORT variable as tools/serve.mjs, so a check can run beside another dev server.
@@ -141,8 +141,8 @@ try {
   assert.equal(await mainnet.locator('#commit').isVisible(), false);
   await mainnet.close();
   passed('mock mainnet wallet cannot build or submit');
-  // Two wallets: an enterprise address that never signs, and a base address whose test keys (tests/cardano.mjs,
-  // seeds 1 and 2) sign in Node through an exposed function, so the page gets real vkey witnesses.
+  // Two wallets: an enterprise address, which the page refuses as organizer (PD10), and a base address whose test keys
+  // (tests/cardano.mjs, seeds 1 and 2) sign in Node through an exposed function, so the page gets real vkey witnesses.
   const payment = testKey(1);
   const stake = testKey(2);
   const wallets = {
@@ -150,6 +150,7 @@ try {
     base: `00${payment.hash}${stake.hash}`,
   };
   const bech32 = (hex) => encodeBech32('addr_test', unhex(hex));
+  const STAKE = encodeBech32('stake_test', unhex(`e0${stake.hash}`));
   // CIP-30 UTxO CBOR: [[tx id, index 0], [address, 10 ADA]].
   const utxoOf = (addressHex) =>
     `82825820${'00'.repeat(32)}0082${addressHex.length === 58 ? '581d' : '5839'}${addressHex}1a00989680`;
@@ -174,13 +175,21 @@ try {
   // copied from Dolos 1.6.1 and, for /tx/submit, from the reverse proxy in front of it). The wallet's UTxO is output 0
   // of transaction 00…00, which the indexer reports under `utxoHash` (default the same id). A transaction the wallet
   // submitted (`submitted`, filled by the mock wallet's submitTx) is not indexed (/txs/{h} answers 404) unless
-  // `onRead` indexes it; `onRead(route, url, ctx)` may answer a read itself and returns true when it did. Every
-  // request that reaches the indexer is in `indexer.calls`.
-  const routePreprod = async (target, addressHex, submitted, { utxoHash = '00'.repeat(32), onRead } = {}) => {
+  // `onRead` indexes it; `onRead(route, url, ctx)` may answer a read itself and returns true when it did. The base
+  // wallet's stake account answers as recorded after registration and DRep delegation, with `account`'s fields
+  // replacing those; `account: null` makes it a stake credential the node never saw (404). Every request that reaches
+  // the indexer is in `indexer.calls`.
+  const routePreprod = async (
+    target,
+    addressHex,
+    submitted,
+    { utxoHash = '00'.repeat(32), onRead, account = {} } = {},
+  ) => {
     const txs = [];
     const funding = `/txs/${'00'.repeat(32)}/utxos`;
     const indexer = blockfrostIndexer({
       txs,
+      accounts: account === null ? {} : { [STAKE]: account },
       fault: (path) =>
         path === funding
           ? ANSWERS.json(200, {
@@ -248,7 +257,7 @@ try {
       },
     };
   };
-  const preprodPage = async ({ wallet = 'enterprise', sign = false, clock = false, ...route } = {}) => {
+  const preprodPage = async ({ wallet = 'base', sign = false, clock = false, ...route } = {}) => {
     const target = await browser.newPage();
     const pageErrors = [];
     target.on('pageerror', (e) => pageErrors.push(e.message));
@@ -276,6 +285,40 @@ try {
     await target.close();
   }
   passed('mock preprod wallet builds unsigned commitment and displays fee');
+  // PD10: an enterprise address has no reward account, so it cannot be an organizer; the page says why and builds nothing.
+  {
+    const { target, indexer } = await preprodPage({ wallet: 'enterprise' });
+    await target.click('#prepare');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('base address'));
+    assert.match(
+      await statusText(target),
+      /must be a base address with a stake key.*enterprise address has no reward account/,
+    );
+    assert.equal(await target.locator('#commit').isVisible(), false);
+    assert.equal(await target.evaluate(() => window.signCalls), 0);
+    assert.ok(!indexer.calls.some((c) => c.startsWith('/accounts/')));
+    await target.close();
+  }
+  passed('enterprise organizer address is refused on the creation page with the reason');
+  // PD10: the stake key must be registered and delegated to a DRep in an earlier transaction; the page explains that
+  // instead of building a commitment the ledger would refuse.
+  for (const [name, account, expected] of [
+    ['never seen on chain (404)', null, /is not registered/],
+    ['not registered', { ...ACCOUNT.unregistered, stake_address: STAKE }, /is not registered/],
+    ['registered, no DRep', { registered: true, drep_id: null }, /is not delegated to a DRep/],
+  ]) {
+    const { target, indexer } = await preprodPage({ account });
+    await target.click('#prepare');
+    await target.waitForFunction(() => /registered|DRep/.test(document.querySelector('#draw-status').textContent));
+    const text = await statusText(target);
+    assert.match(text, expected, name);
+    assert.match(text, /separate transaction/, name);
+    assert.equal(await target.locator('#commit').isVisible(), false, name);
+    assert.equal(await target.evaluate(() => window.signCalls), 0, name);
+    assert.ok(indexer.calls.includes(`/accounts/${STAKE}`), name);
+    await target.close();
+  }
+  passed('unregistered or undelegated stake key gets the setup explanation, nothing to sign');
   // The indexer reports the wallet's UTxO under another transaction id (Evolution takes the id from the answer body);
   // the SDK builds a transaction spending that output, and the re-read of the unsigned CBOR must stop it before the
   // wallet is asked to sign.
@@ -434,6 +477,7 @@ try {
       metadata,
       signers: [identityKeyHash(owner)],
       witnesses: [payment, stake],
+      withdrawals: [[`e0${stake.hash}`, 0n]],
       invalidHereafter: preprodSlotAt(commitmentValidUntil(FIXTURE.round)),
       address: wallets.base,
     });
@@ -486,10 +530,10 @@ try {
       `Chain evidence source: ${own} (the indexer you named). The result depends on what this indexer reports.`,
     );
     // The requests of one full verification, counted by the mock (plan step 9, for the reverse proxy's rate limit):
-    // reading the commitment 5 (/txs/{h}, /cbor, /utxos, /blocks/latest, /blocks/{h+14}), the account's address list
-    // 1 page, its one address 1 page, metadata of the n = 1 listed transaction, CBOR of the k = 1 label match.
+    // reading the commitment 5 (/txs/{h}, /cbor, /utxos, /blocks/latest, /blocks/{h+14}), the account's withdrawal list
+    // 1 page, metadata of the n = 1 listed transaction, CBOR of the k = 1 label match.
     report.verificationRequests = [...ownMock.calls];
-    assert.equal(ownMock.calls.length, 5 + 1 + 1 + 1 + 1, JSON.stringify(ownMock.calls));
+    assert.equal(ownMock.calls.length, 5 + 1 + 1 + 1, JSON.stringify(ownMock.calls));
     const indexerHosts = hosts.filter((h) => h !== new URL(origin).origin);
     assert.ok(indexerHosts.length > 0 && indexerHosts.every((h) => h === own), JSON.stringify(indexerHosts));
     assert.equal(projectMock.calls.length, 0);

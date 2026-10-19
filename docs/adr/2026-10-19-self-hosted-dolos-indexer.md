@@ -97,6 +97,12 @@ supersedes-partially: 2026-10-18-typescript-convenience-backend.md（proxy 只�
 - Will 2026-10-19 選 PD9 的 B：stake 身分用 `/accounts/{stake}/addresses`＋逐址 `/addresses/{a}/transactions`，留在穩定版。使用者節點要求加上「帳戶地址列表包含歷史地址」。理由與審查見階段計畫 PD9。
 - 觸發重評：Dolos 2.x 穩定版釋出或 lts/v1 backport 帳戶交易端點。
 
+## Amendment (2026-10-19)：唯一性改讀 `/accounts/{stake}/withdrawals`（PD10，步驟 9b）
+
+- 上一則 Amendment 的 PD9 列舉（地址列表＋逐址）被 PD10 的 withdrawal 列表取代：每筆承諾附身分 stake 的 reward withdrawal，verifier 讀 `/accounts/{stake}/withdrawals?order=asc`，讀到 round 就停。理由、實測與代價見 [唯一性 ADR](./2026-10-18-uniqueness-by-interval-overlap.md) 的同日 Amendment。
+- 使用者節點要求改為：full archive、記錄 0 ADA withdrawal 且 withdrawal 列表遵守 `order=asc`（Dolos 1.6.1 實測兩者皆是；db-sync 要開 `ioShelley`）、`max_scan_items` 至少 3,000；「帳戶地址列表包含歷史地址」不再需要。reverse proxy 的 allowlist 拿掉 `/accounts/{stake}/addresses` 與 `/addresses/{a}/transactions`，加入 `/accounts/{stake}`（建立頁讀註冊與 DRep 委託）與 `/accounts/{stake}/withdrawals`。
+- enterprise（payment credential）身分拿掉，`/addresses/{addr_vkh}/transactions` 不再使用；Context 對 `addr_vkh` 的描述只是當時的事實紀錄。
+
 ## Review Notes
 
 - 2026-10-19 獨立審查（v1 退回）：補上 `max_scan_items` 預設 3000、儲存模式造成的唯一性誤判 PASS、A 對 B1 的退步、請求數量化、db-sync 數字屬主網、Blockfrost 條款範圍；新增 A′、E、F 三個選項。v2 已處理全部發現後交 Will 拍板。

@@ -134,7 +134,11 @@ async function prepare(state: AppState) {
     const transaction = await prepareTransaction(bundle, input('wallet').value, PROJECT_INDEXER);
     state.draw.transaction = transaction;
     status(
-      `Ready to sign. Estimated fee: ${transaction.fee.toFixed(6)} test ADA. The transaction returns the transferred ADA to your wallet.`,
+      `Ready to sign. Estimated fee: ${transaction.fee.toFixed(6)} test ADA. The transaction returns the transferred ADA to your wallet${
+        transaction.withdrawn > 0
+          ? ` and withdraws your ${transaction.withdrawn.toFixed(6)} test ADA of staking rewards into it`
+          : ''
+      }.`,
     );
   } else status('List and rules locked in the preview. Commit the demo draw next.');
   show(['commit-preview', 'commit'], true);

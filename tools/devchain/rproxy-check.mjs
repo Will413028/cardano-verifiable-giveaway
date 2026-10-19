@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import { connect } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { BlockfrostChain, verifyProof } from '@giveaway/verifier-cli/library';
+import { BlockfrostChain, identityOf, verifyProof } from '@giveaway/verifier-cli/library';
 import { BASE } from './devchain.mjs';
 
 const [out, runDir] = process.argv.slice(2);
@@ -32,6 +32,7 @@ const proof = JSON.parse(await readFile(`${out}/proof.json`, 'utf8'));
 const accepted = JSON.parse(await readFile(`${out}/report.json`, 'utf8'));
 const txHash = proof.txHash;
 const owner = proof.owner;
+const stake = identityOf(owner).key;
 const log = (...args) => console.error(new Date().toISOString(), ...args);
 
 // One HTTP/1.1 request on its own connection; the path is sent exactly as given (no client-side normalization).
@@ -87,8 +88,8 @@ const direct = await verifyThrough(BASE);
 log('direct verification', direct.status, direct.requests);
 
 const checks = {
-  // A full verification (the step 8b identity: n = 266 rows after acceptance.mjs's overlapping commitment) through
-  // the proxy, twice back to back: never a 429 or 5xx, and the same verdict as reading Dolos directly.
+  // A full verification (the acceptance identity: its withdrawal list after acceptance.mjs's overlapping commitment)
+  // through the proxy, twice back to back: never a 429 or 5xx, and the same verdict as reading Dolos directly.
   async verification() {
     const runs = [await verifyThrough(PROXY_URL), await verifyThrough(PROXY_URL)];
     const same = runs.every(
@@ -112,13 +113,18 @@ const checks = {
       `/txs/${txHash}/utxos`,
       `/txs/${txHash}/metadata`,
       '/epochs/latest/parameters',
-      `/addresses/${owner}/transactions?order=asc&count=100&page=1`,
+      `/accounts/${stake}`,
+      `/accounts/${stake}/withdrawals?order=asc&count=100&page=1`,
     ];
     const refused = [
       ['GET', '/', 404],
       ['GET', '/health', 404],
       ['GET', '/genesis', 404],
       ['GET', `/addresses/${owner}/utxos`, 404],
+      // The PD9 enumeration, superseded by the withdrawal list (step 9b): Dolos answers both with 200.
+      ['GET', `/accounts/${stake}/addresses?count=100&page=1`, 404],
+      ['GET', `/addresses/${owner}/transactions?order=asc&count=100&page=1`, 404],
+      ['GET', `/accounts/${stake}/withdrawals%0A`, 404],
       ['GET', `/txs/${txHash}/%2e%2e/%2e%2e/genesis`, 404],
       ['GET', `/blocks/latest/../../genesis`, 404],
       ['GET', `/blocks/latest%0A`, 404],
@@ -195,7 +201,7 @@ const checks = {
 // header and a body: the logs hold neither the marker nor the client address, any transaction id, address or stake
 // key, nor a query string; the access log is not empty, so it is written at all.
 async function markerTraffic() {
-  await raw('GET', `/addresses/${owner}/transactions?order=${MARKER}`, { 'X-Note': MARKER });
+  await raw('GET', `/accounts/${stake}/withdrawals?order=${MARKER}`, { 'X-Note': MARKER });
   await raw('POST', `/txs/${txHash}`, { 'Content-Type': 'text/plain' }, MARKER);
   await raw('GET', `/txs/${txHash}/cbor`, { Cookie: `session=${MARKER}`, Origin: PAGE });
 }

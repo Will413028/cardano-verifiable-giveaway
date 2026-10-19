@@ -219,6 +219,21 @@ export function requiredSigners(body: CborMap): string[] {
     throw new Error('Transaction required_signers is malformed');
   return items.map((k) => hex(k as Uint8Array));
 }
+// Body field 5 (withdrawals, {reward_account => coin}) as hex reward account → lovelace; empty when absent. A reward
+// account is a 29-byte stake address (header and credential, CIP-19).
+export function withdrawals(body: CborMap): Map<string, bigint> {
+  const out = new Map<string, bigint>();
+  if (!body.has(5)) return out;
+  const entries = body.get(5);
+  if (!isCborMap(entries)) throw new Error('Transaction withdrawals are malformed');
+  for (const [account, amount] of entries) {
+    if (!(account instanceof Uint8Array) || account.length !== 29 || typeof amount !== 'bigint' || amount < 0n)
+      throw new Error('Transaction withdrawals are malformed');
+    if (out.has(hex(account))) throw new Error('Transaction withdrawals are malformed');
+    out.set(hex(account), amount);
+  }
+  return out;
+}
 // Key hashes that are listed in required_signers AND have a vkey witness whose Ed25519 signature over the
 // transaction id verifies (RFC 8032 strict decoding; the ledger rejects any transaction with an invalid witness).
 export function verifiedSigners(parts: TransactionParts): Set<string> {

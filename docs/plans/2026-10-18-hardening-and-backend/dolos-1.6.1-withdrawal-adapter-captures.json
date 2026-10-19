@@ -1,0 +1,322 @@
+{
+  "account": {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "319",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+      "active": false,
+      "registered": true,
+      "active_epoch": 0,
+      "controlled_amount": "18427656993",
+      "rewards_sum": "0",
+      "withdrawals_sum": "0",
+      "reserves_sum": "0",
+      "treasury_sum": "0",
+      "withdrawable_amount": "0",
+      "pool_id": null,
+      "drep_id": "drep_always_abstain"
+    }
+  },
+  "account-unregistered": {
+    "path": "/accounts/stake_test1uqjhzsk56euudsj6cjf8av3q4ph6q0stqlqy6scsjc0vnmqhspkrk",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "304",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "stake_address": "stake_test1uqjhzsk56euudsj6cjf8av3q4ph6q0stqlqy6scsjc0vnmqhspkrk",
+      "active": false,
+      "registered": false,
+      "active_epoch": null,
+      "controlled_amount": "100000000",
+      "rewards_sum": "0",
+      "withdrawals_sum": "0",
+      "reserves_sum": "0",
+      "treasury_sum": "0",
+      "withdrawable_amount": "0",
+      "pool_id": null,
+      "drep_id": null
+    }
+  },
+  "account-unknown": {
+    "path": "/accounts/stake_test1uz46h2at4w46h2at4w46h2at4w46h2at4w46h2at4w46h2cwudutw",
+    "method": "GET",
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "0",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": ""
+  },
+  "withdrawals": {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "14701",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "b9b7e0871b3ed427e95a67227b327cc88b925db4faa3e669ece09b3953eba3cf",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "42ee927d77689aeee943b99a606053060bee79d21b805a7180602997c36d57e1",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "39a137df2ed7e77c2381d7cd02e3422c2506e884f535f0bad865710784261bdf",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  "withdrawals-past-end": {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=9",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": []
+  },
+  "withdrawals-unregistered": {
+    "path": "/accounts/stake_test1uqjhzsk56euudsj6cjf8av3q4ph6q0stqlqy6scsjc0vnmqhspkrk/withdrawals?order=asc&count=100&page=1",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": []
+  },
+  "commitment-info": {
+    "path": "/txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "601",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "hash": "d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2",
+      "block": "17660cf54ad3374f5d57a62b5dabf2dd791fa28edf65e56cff6e1a7e2fb93f8f",
+      "block_height": 42,
+      "block_time": 1655683242,
+      "slot": 42,
+      "index": 0,
+      "output_amount": [
+        {
+          "unit": "lovelace",
+          "quantity": "49810807"
+        }
+      ],
+      "fees": "189193",
+      "deposit": "0",
+      "size": 722,
+      "invalid_before": null,
+      "invalid_hereafter": "40119864",
+      "utxo_count": 3,
+      "withdrawal_count": 1,
+      "mir_cert_count": 0,
+      "delegation_count": 0,
+      "stake_cert_count": 0,
+      "pool_update_count": 0,
+      "pool_retire_count": 0,
+      "asset_mint_or_burn_count": 0,
+      "redeemer_count": 0,
+      "valid_contract": true,
+      "treasury_donation": "0"
+    }
+  },
+  "commitment-cbor": {
+    "path": "/txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1457",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "cbor": "84a700d9010281825820897c35292e473413f6218cec06c80f4fd988dbfc5d0693348b68c6f80edaf5ba183c0182825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a02d988f7021a0002e309031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad907907900075820b8f963a5e82ec34e7e87874757b1b88be40dd44968a0ef47be9adbcda7e62cf50ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c5840db28ff8e21d703841fdd01ded9ebb732447c51169652bc6c7bc8d1ee99aabde28abc8dafc3543ab6bcee2d758799a8a5184ad42d0bd0f80afde4ea557b7ee3078258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b39458401097b8f43bf4132056e00463ddd24d1cdfabd312959fe3c629daf7d17d899f30d1df66c40c265253c1d18a6bbb18bf6d4928a2e5aa5d7e5fac6a7128353cb102f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d32666472617749646f646576636861696e2d7461726765746a62756e646c654861736878406230366262363964376338383462343835303263303065626662363364633763306463306361663735343637363337356637613664346537663836643435656169636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a000f4240"
+    }
+  },
+  "commitment-utxos": {
+    "path": "/txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1071",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "hash": "d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2",
+      "inputs": [
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "amount": [
+            {
+              "unit": "lovelace",
+              "quantity": "50000000"
+            }
+          ],
+          "tx_hash": "897c35292e473413f6218cec06c80f4fd988dbfc5d0693348b68c6f80edaf5ba",
+          "output_index": 60,
+          "data_hash": null,
+          "inline_datum": null,
+          "reference_script_hash": null,
+          "collateral": false,
+          "reference": false
+        }
+      ],
+      "outputs": [
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "amount": [
+            {
+              "unit": "lovelace",
+              "quantity": "2000000"
+            }
+          ],
+          "output_index": 0,
+          "data_hash": null,
+          "inline_datum": null,
+          "collateral": false,
+          "reference_script_hash": null,
+          "consumed_by_tx": null
+        },
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "amount": [
+            {
+              "unit": "lovelace",
+              "quantity": "47810807"
+            }
+          ],
+          "output_index": 1,
+          "data_hash": null,
+          "inline_datum": null,
+          "collateral": false,
+          "reference_script_hash": null,
+          "consumed_by_tx": null
+        }
+      ]
+    }
+  },
+  "commitment-metadata": {
+    "path": "/txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "269",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "label": "20261018",
+        "json_metadata": {
+          "chainHash": "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 1000000,
+          "bundleHash": "b06bb69d7c884b48502c00ebfb63dc7c0dc0caf754676375f7a6d4e7f86d45ea",
+          "protocol": "development-2",
+          "drawId": "devchain-target"
+        }
+      }
+    ]
+  },
+  "commitment-withdrawals": {
+    "path": "/txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/withdrawals",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "93",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "amount": "0"
+      }
+    ]
+  },
+  "blocks-latest": {
+    "path": "/blocks/latest",
+    "method": "GET",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "423",
+      "content-type": "application/json",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "time": 1655683324,
+      "height": 124,
+      "hash": "79821f22f10b71816a9210b9f506a470916951803336853c8f8e2c21bea1f14b",
+      "slot": 124,
+      "epoch": 0,
+      "epoch_slot": 124,
+      "slot_leader": "ShelleyGenesis-836cc68931c2e4e3",
+      "size": 0,
+      "tx_count": 0,
+      "output": null,
+      "fees": null,
+      "block_vrf": "vrf_vk1xrd0ec",
+      "op_cert": "",
+      "op_cert_counter": "0",
+      "previous_block": "1bbc3c0392321cb0847ea5d20d41bf3eafc9a442265b282d215dfac39eb65335",
+      "next_block": null,
+      "confirmations": 0
+    }
+  }
+}

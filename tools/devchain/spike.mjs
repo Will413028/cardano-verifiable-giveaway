@@ -83,7 +83,8 @@ async function burst(wallet, list, signerHash) {
 }
 log('bursts');
 await burst(WALLETS.organizer, sent.organizer, identityKeyHash(WALLETS.organizer.address));
-await burst(WALLETS.enterprise, sent.enterprise, identityKeyHash(WALLETS.enterprise.address));
+// Step 8b measured the enterprise (payment credential) identity, which step 9b removed (PD10): its key is named here.
+await burst(WALLETS.enterprise, sent.enterprise, WALLETS.enterprise.keys[0].hash);
 
 // 3. Enumeration endpoints.
 const stake = stakeAddress(WALLETS.organizer.keys[1].hash);

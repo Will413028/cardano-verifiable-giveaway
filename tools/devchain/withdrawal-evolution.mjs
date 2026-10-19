@@ -241,7 +241,8 @@ async function signAndSubmit(label, unsigned) {
     .build({ fullProtocolParameters: params, availableUtxos: [u.verified], changeAddress });
   const unsigned = Transaction.toCBORHex(await built.toTransaction());
   const step = describe(unsigned);
-  // Today's trust-path check (packages/chain checkCommitmentTransaction) still refuses body field 5: step 9b changes it.
+  // The trust-path re-read (packages/chain checkCommitmentTransaction). When this spike ran it refused body field 5
+  // (recorded in yaci-0.12.0-evolution-report.json); since step 9b it takes the planned withdrawal and accepts it.
   try {
     checkCommitmentTransaction(unsigned, {
       input: { txHash: u.txHash, index: u.index, lovelace: u.lovelace },
@@ -249,6 +250,7 @@ async function signAndSubmit(label, unsigned) {
       metadata,
       signer: stake.hash,
       invalidHereafter: preprodSlotAt(validUntil),
+      withdrawal: { account: `e0${stake.hash}`, lovelace: 0n },
     });
     step.currentCheck = 'accepted';
   } catch (error) {

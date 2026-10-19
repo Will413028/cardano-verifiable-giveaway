@@ -249,10 +249,14 @@ const THIRD_PARTY_PAYMENT = testKey(3);
 const ORGANIZER_PAYMENT_2 = testKey(6);
 const addressHex = (payment, stake) => (stake ? `00${payment}${stake}` : `60${payment}`);
 const bech32 = (h) => p.encodeBech32('addr_test', unhex(h));
+// `signer` and `account` are what the page puts in a commitment from this address: the stake key as the only required
+// signer and a withdrawal from its reward account (none for an enterprise address, which has neither).
 const wallet = (payment, stakeHash, keys) => ({
   address: bech32(addressHex(payment.hash, stakeHash)),
   hex: addressHex(payment.hash, stakeHash),
   keys,
+  signer: stakeHash ?? payment.hash,
+  account: stakeHash ? `e0${stakeHash}` : null,
 });
 const ORGANIZER = wallet(ORGANIZER_PAYMENT, ORGANIZER_STAKE.hash, [ORGANIZER_PAYMENT, ORGANIZER_STAKE]);
 const ORGANIZER_2 = wallet(ORGANIZER_PAYMENT_2, ORGANIZER_STAKE.hash, [ORGANIZER_PAYMENT_2, ORGANIZER_STAKE]);
@@ -260,26 +264,25 @@ const OTHER_WALLET = wallet(testKey(4), testKey(5).hash, [testKey(4), testKey(5)
 const ENTERPRISE_PAYMENT = testKey(7);
 const ENTERPRISE = wallet(ENTERPRISE_PAYMENT, undefined, [ENTERPRISE_PAYMENT]);
 const THIRD_PARTY = wallet(THIRD_PARTY_PAYMENT, ORGANIZER_STAKE.hash, [THIRD_PARTY_PAYMENT]);
-test('identity is the stake credential when present, otherwise the payment credential', () => {
+test('identity is the stake credential of a base address; enterprise addresses are refused with the reason', () => {
   const real =
     'addr_test1qq99squlfgmcgxaphmqydchcwfrxf5wuwgckd7lcfashmtzc5uj7mzanqm7z93xcrhc7se409hcy839khvsy43mn0y9s8u87rz';
   assert.deepEqual(p.identityOf(real), {
     kind: 'stake',
     key: 'stake_test1upv2wf0d3wesdlpzcnvpmu0gv6hjmuzrcjmtkgz2caehjzch5uhyx',
   });
+  // PD10: an enterprise address has no reward account, so it has no withdrawal history to enumerate.
   const enterprise = 'addr_test1vp2tm2edv657xp2as78nkxqausp0s3cwx5vv804r6zlxy9skmt69m';
-  assert.deepEqual(p.identityOf(enterprise), {
-    kind: 'payment',
-    key: '54bdab2d66a9e3055d878f3b181de402f8470e3518c3bea3d0be6216',
-  });
-  // The key that must sign: the stake key hash inside the stake address, or the payment key hash.
+  for (const read of [p.identityOf, p.identityKeyHash, p.identityRewardAccount])
+    assert.throws(() => read(enterprise), /must be a base address with a stake key.*enterprise address has no reward/);
+  // The key that must sign: the stake key hash inside the stake address; the account it withdraws from.
   assert.equal(p.identityKeyHash(real), '58a725ed8bb306fc22c4d81df1e866af2df043c4b6bb204ac773790b');
-  assert.equal(p.identityKeyHash(enterprise), '54bdab2d66a9e3055d878f3b181de402f8470e3518c3bea3d0be6216');
   assert.equal(p.identityKeyHash(ORGANIZER.address), ORGANIZER_STAKE.hash);
+  assert.equal(p.identityRewardAccount(ORGANIZER.address), `e0${ORGANIZER_STAKE.hash}`);
   assert.equal(p.identityOf(THIRD_PARTY.address).key, p.identityOf(ORGANIZER.address).key);
   assert.throws(() => p.identityOf(`${real.slice(0, -1)}q`), /checksum/);
   const fill = (b) => b.repeat(28);
-  assert.throws(() => p.identityOf(bech32(`10${fill('01')}${fill('02')}`)), /key-hash/);
+  assert.throws(() => p.identityOf(bech32(`10${fill('01')}${fill('02')}`)), /key-hash base/);
   assert.throws(() => p.identityOf(p.encodeBech32('addr', unhex(`01${fill('01')}${fill('02')}`))), /preprod/);
 });
 test('the pinned preprod slot clock matches the indexer for a real transaction', () => {
@@ -291,8 +294,8 @@ test('the pinned preprod slot clock matches the indexer for a real transaction',
 // A Blockfrost-shaped indexer over a fixed set of transactions (tests/blockfrost-mock.mjs: status codes, error bodies
 // and headers copied from Dolos 1.6.1). Each transaction's raw CBOR, metadata JSON (`json` overrides what the indexer
 // claims), inputs, inclusion and confirmation time are served from the same record, and it is listed under every
-// address among its inputs and `outputs`. Requests go through the adapter's own HTTP handling; `chain.calls` lists
-// every path it asked for.
+// address among its inputs and `outputs`, and under the withdrawal list of every reward account its CBOR withdraws
+// from. Requests go through the adapter's own HTTP handling; `chain.calls` lists every path it asked for.
 function chainOf(txs, options = {}) {
   const indexer = blockfrostIndexer({ txs, ...options });
   const chain = new p.BlockfrostChain('https://indexer.test', indexer.fetch);
@@ -301,7 +304,8 @@ function chainOf(txs, options = {}) {
 }
 // One committed draw: its bundle, the proof the organizer publishes and the signed transaction the chain holds.
 // By default the transaction is what the page builds: the wallet's identity key as the only required signer,
-// witnesses from all of the wallet's keys, and invalid_hereafter at commitmentValidUntil(round).
+// witnesses from all of the wallet's keys, invalid_hereafter at commitmentValidUntil(round) and a 0 ADA withdrawal
+// from the reward account of the address's stake key (PD10).
 const R = p.FIXTURE.round;
 const T = p.roundTime(R);
 // A real quicknet beacon for a second round, fetched from api.drand.sh on 2026-10-19 and verified below.
@@ -319,8 +323,9 @@ async function draw({
   beacon = p.FIXTURE,
   label = p.LABEL,
   validUntil = p.commitmentValidUntil(round),
-  signers = [p.identityKeyHash(from.address)],
+  signers = [from.signer],
   witnesses = from.keys,
+  withdrawals = from.account ? [[from.account, 0n]] : [],
   ...options
 }) {
   const b = { ...bundle(), drawId, drand: { chainHash: p.QUICKNET, round } };
@@ -333,6 +338,7 @@ async function draw({
     invalidHereafter: validUntil === null ? null : p.preprodSlotAt(validUntil),
     input: await p.sha256(`${drawId}:${round}:${blockHeight}:${from.address}`),
     address: from.hex,
+    withdrawals,
     ...options,
   });
   const tx = { ...built, label, inputs: [from.address], metadata, blockHeight, blockTime };
@@ -502,105 +508,198 @@ function inclusion(d) {
     blockTime: d.tx.blockTime,
   };
 }
-test('history enumerates by identity, ignores incoming commitments and does not wait for confirmations', async () => {
+const STAKE = p.identityOf(ORGANIZER.address).key;
+const withdrawalList = (page) => `/accounts/${STAKE}/withdrawals?order=asc&count=100&page=${page}`;
+test('history is the reward account withdrawal list: incoming commitments are not in it, confirmations not needed', async () => {
   const a = await target();
   const incoming = await draw({ drawId: 'example-1', blockTime: T - 1000, blockHeight: 999, from: OTHER_WALLET });
-  // Sent by another wallet to the organizer's address, so it is listed in the organizer's history.
+  // Sent by another wallet to the organizer's address: it withdraws from that wallet's account, not the organizer's.
   const chain = chainOf([{ ...incoming.tx, outputs: [ORGANIZER.address] }, a.tx]);
-  const candidates = await chain.findCommitments(ORGANIZER.address);
+  const candidates = await chain.findCommitments(ORGANIZER.address, R);
   assert.deepEqual(candidates, [inclusion(a)]);
   assert.ok(
     chain.calls.every((c) => !c.startsWith('/blocks') && !c.endsWith('/utxos')),
     'History needs neither confirmation blocks nor input addresses',
   );
-  // PD9: the stake account's addresses first, then each address.
-  assert.equal(chain.calls[0], `/accounts/${p.identityOf(ORGANIZER.address).key}/addresses?count=100&page=1`);
-  // An enterprise address has no stake part and is enumerated by its payment credential (addr_vkh).
+  // PD10: one list, the stake account's withdrawals, ascending; no address list, no per-address enumeration.
+  assert.deepEqual(chain.calls, [withdrawalList(1), `/txs/${a.tx.txHash}/metadata`, `/txs/${a.tx.txHash}/cbor`]);
+});
+test('enterprise organizer is refused by the verifier with the reason, before any indexer request', async () => {
   const e = await draw({ drawId: 'example-1', blockTime: T - 900, blockHeight: 1000, from: ENTERPRISE });
-  const credential = chainOf([e.tx]);
-  assert.deepEqual(await credential.findCommitments(ENTERPRISE.address), [inclusion(e)]);
-  const vkh = p.encodeBech32('addr_vkh', unhex(ENTERPRISE_PAYMENT.hash));
-  assert.equal(credential.calls[0], `/addresses/${vkh}/transactions?order=asc&count=100&page=1`);
-  assert.equal((await verify(e, [e])).status, 'PASS');
+  const chain = chainOf([e.tx]);
+  const v = await p.verifyProof(e.proof, { chain });
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /must be a base address with a stake key/);
+  assert.match(check(v, 'Cardano evidence').detail, /enterprise address has no reward account/);
+  assert.deepEqual(chain.calls, []);
+  await assert.rejects(chain.findCommitments(ENTERPRISE.address, R), /must be a base address/);
 });
-// Rows of plain transactions on `count` addresses under the organizer stake, `rows` each.
-const stakeAddresses = (count, from = 100) =>
-  Array.from({ length: count }, (_, i) =>
-    bech32(addressHex((from + i).toString(16).padStart(56, '0'), ORGANIZER_STAKE.hash)),
-  );
-test('history over L enumerated rows fails, counted across addresses, before reading any metadata', async () => {
+test('PD10: a commitment without a withdrawal from the organizer reward account fails', async () => {
+  // The candidate a cheating organizer keeps in reserve: signed by its stake key, but no withdrawal. A node indexing the
+  // CBOR (Dolos) never lists it under the account; one that does (`listedUnder`) still cannot make it pass, because the
+  // withdrawal is read from the transaction's own checked bytes.
+  for (const [name, options] of [
+    ['no withdrawal', { withdrawals: [] }],
+    ['withdrawal from another account', { withdrawals: [[OTHER_WALLET.account, 0n]] }],
+  ]) {
+    const a = await target(options);
+    // Listed under the organizer account first: without the rule this candidate would pass (FAIL → PASS).
+    for (const listed of [{ ...a.tx, listedUnder: [STAKE] }, a.tx]) {
+      const v = await verify({ ...a, tx: listed }, [{ tx: listed }]);
+      assert.equal(v.status, 'FAIL', name);
+      assert.match(check(v, 'Cardano evidence').detail, /does not withdraw/, name);
+    }
+    await assert.rejects(
+      chainOf([a.tx]).readCommitment(a.tx.txHash, ORGANIZER.address),
+      /does not withdraw from the organizer stake reward account/,
+      name,
+    );
+  }
+  assert.equal((await verify(await target(), [await target()])).status, 'PASS');
+});
+// The flood PD10 was about: outputs to addresses that pair the attacker's payment key with the organizer's stake key
+// (CIP-19 lets anyone build them), 248 per transaction as on the dev chain (spike-dolos.md), signed by the attacker.
+async function mangledFlood(rows) {
+  const txs = [];
+  for (let n = 0; n * 248 < rows; n++) {
+    const outputs = Array.from({ length: Math.min(248, rows - n * 248) }, (_, i) =>
+      wallet(testKey(10 + ((n * 248 + i) % 200)), ORGANIZER_STAKE.hash, []),
+    );
+    const built = buildTransaction({
+      witnesses: [THIRD_PARTY_PAYMENT],
+      input: (n + 1).toString(16).padStart(64, '0'),
+      outputs: outputs.map((o) => [o.hex, 1_000_000n]),
+    });
+    txs.push({
+      ...built,
+      inputs: [THIRD_PARTY.address],
+      outputs: outputs.map((o) => o.address),
+      blockHeight: 900 + n,
+      blockTime: T - 2000 + n,
+    });
+  }
+  return txs;
+}
+test('PD10: a flood of mangled-address outputs neither fails uniqueness nor adds requests', async () => {
+  const a = await target();
+  const plainRun = chainOf([a.tx]);
+  assert.equal((await p.verifyProof(a.proof, { chain: plainRun })).status, 'PASS');
+  const flood = await mangledFlood(3000);
+  const outputs = flood.reduce((n, t) => n + t.outputs.length, 0);
+  assert.ok(outputs >= 3000, `${outputs} mangled outputs`);
+  const flooded = chainOf([...flood, a.tx]);
+  const v = await p.verifyProof(a.proof, { chain: flooded });
+  assert.equal(v.status, 'PASS', JSON.stringify(v.checks));
+  // The request count is the same request for request: the flood adds no list row, page or metadata read.
+  assert.deepEqual(flooded.calls, plainRun.calls);
+  assert.equal(flooded.calls.length, 5 + 1 + 1 + 1);
+});
+// Withdrawal rows of plain transactions before the target (one per block below height 1,000 + `rows`), and the target
+// at height 5,000 so every filler precedes it.
+const before = (rows, from = 1) => fillerRows(rows, { from, height: 1, time: T - 10_000 });
+test('history over L withdrawal rows before the round fails as the organizer own history; L rows pass', async () => {
   assert.equal(p.HISTORY_ROW_LIMIT, 2900);
+  const a = await target({ blockHeight: 5000 });
+  // 2,900 plain withdrawals and the commitment: 2,901 rows.
+  const over = chainOf([a.tx], { extraWithdrawals: { [STAKE]: before(2900) } });
+  await assert.rejects(over.findCommitments(ORGANIZER.address, R), /exceeds 2900 withdrawal rows before the round/);
+  const v = await p.verifyProof(a.proof, { chain: chainOf([a.tx], { extraWithdrawals: { [STAKE]: before(2900) } }) });
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /Only the organizer stake key can add these rows/);
+  assert.ok(!over.calls.some((c) => c.endsWith('/metadata')), 'fails before reading any metadata');
+  // One row fewer: 29 full pages, then page 30 (100 × 30 = the default max_scan_items) ends the list.
+  const fits = chainOf([a.tx], { extraWithdrawals: { [STAKE]: before(2899) } });
+  assert.deepEqual(await fits.findCommitments(ORGANIZER.address, R), [inclusion(a)]);
+  assert.ok(fits.calls.includes(withdrawalList(30)));
+});
+test('the withdrawal list is read only up to the round: later rows cost no request and do not count', async () => {
   const a = await target();
-  // 1 + 1,450 + 1,450 = 2,901 rows: no address alone exceeds L, their sum does.
-  const [x, y] = stakeAddresses(2);
-  const extraRows = { [x]: fillerRows(1450, { from: 1 }), [y]: fillerRows(1450, { from: 10_001 }) };
-  const chain = chainOf([a.tx], { extraRows });
-  await assert.rejects(chain.findCommitments(ORGANIZER.address), /exceeds 2900 enumerated rows/);
-  assert.ok(!chain.calls.some((c) => c.endsWith('/metadata')));
-  // One row fewer is accepted, on a node with the Dolos default max_scan_items (3000).
-  const fits = chainOf([a.tx], {
-    extraRows: { [x]: fillerRows(1450, { from: 1 }), [y]: fillerRows(1449, { from: 10_001 }) },
+  // 2,950 rows of the organizer's own later activity, all included at or after the round.
+  const after = fillerRows(2950, { from: 1, height: 2000, time: T });
+  const chain = chainOf([a.tx], { extraWithdrawals: { [STAKE]: after } });
+  assert.deepEqual(await chain.findCommitments(ORGANIZER.address, R), [inclusion(a)]);
+  assert.deepEqual(
+    chain.calls.filter((c) => c.includes('/withdrawals')),
+    [withdrawalList(1)],
+  );
+  assert.equal(
+    (await p.verifyProof(a.proof, { chain: chainOf([a.tx], { extraWithdrawals: { [STAKE]: after } }) })).status,
+    'PASS',
+  );
+  // A row at exactly the round time is past the end; one second earlier is read.
+  const edge = chainOf([a.tx], { extraWithdrawals: { [STAKE]: fillerRows(1, { height: 1500, time: T - 1 }) } });
+  await edge.findCommitments(ORGANIZER.address, R);
+  assert.ok(edge.calls.includes(`/txs/${'1'.padStart(64, '0')}/metadata`));
+});
+test('a withdrawal list out of ascending order or repeating a transaction fails', async () => {
+  const a = await target();
+  // Yaci Store 0.12.0 answers in its own order whatever `order` says (spike-withdrawal.md). A list seen out of order may
+  // also hold a pre-round row behind the first row past the round, where the stop would never read it; so it fails,
+  // even when every row it shows is harmless.
+  const rowOf = (d) => ({
+    ...fillerRows(1, { height: d.tx.blockHeight, time: d.tx.blockTime })[0],
+    tx_hash: d.tx.txHash,
   });
-  assert.deepEqual(await fits.findCommitments(ORGANIZER.address), [inclusion(a)]);
+  const shown = [
+    ...fillerRows(1, { from: 2, height: 1500, time: T - 100 }),
+    ...fillerRows(1, { from: 3, height: 1, time: T - 5000 }),
+  ];
+  const fault = (path) => (path === withdrawalList(1) ? ANSWERS.json(200, [rowOf(a), ...shown]) : undefined);
+  const v = await verify(a, [a], { extraWithdrawals: { [STAKE]: shown }, fault });
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /not in ascending order/);
+  const twice = fillerRows(1, { height: 1, time: T - 5000 });
+  const repeat = (path) => (path === withdrawalList(1) ? ANSWERS.json(200, [...twice, ...twice]) : undefined);
+  await assert.rejects(chainOf([a.tx], { fault: repeat }).findCommitments(ORGANIZER.address, R), /Inconsistent/);
 });
-test('a history of exactly L rows on one address is read to its end on a default node', async () => {
-  const a = await target();
-  // 2,899 plain transactions and the commitment: 29 full pages, then page 30 (100 × 30 = max_scan_items) is [].
-  const chain = chainOf([a.tx], { extraRows: { [ORGANIZER.address]: fillerRows(2899, { from: 1 }) } });
-  assert.deepEqual(await chain.findCommitments(ORGANIZER.address), [inclusion(a)]);
-  assert.ok(chain.calls.includes(`/addresses/${ORGANIZER.address}/transactions?order=asc&count=100&page=30`));
-});
-test('more account addresses than L fails without enumerating any address', async () => {
-  const a = await target();
-  const extraRows = Object.fromEntries(stakeAddresses(2901).map((x) => [x, []]));
-  const chain = chainOf([a.tx], { extraRows });
-  await assert.rejects(chain.findCommitments(ORGANIZER.address), /exceeds 2900 enumerated rows/);
-  assert.ok(!chain.calls.some((c) => c.startsWith('/addresses/')));
-});
-// Plain transactions before and between, so the target is on page 1 of the organizer's address and `later` on page 2.
+// Plain withdrawals before and between, so the target is on page 1 of the list and `later` on page 2.
 async function secondPage(later = {}) {
   const a = await target();
   const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100, ...later });
-  const extraRows = {
-    [ORGANIZER.address]: [...fillerRows(50, { from: 1, height: 1 }), ...fillerRows(60, { from: 1001, height: 1001 })],
+  const extraWithdrawals = {
+    [STAKE]: [
+      ...fillerRows(50, { from: 1, height: 1, time: T - 5000 }),
+      ...fillerRows(60, { from: 1001, height: 1001, time: T - 890 }),
+    ],
   };
-  return { a, b, extraRows };
+  return { a, b, extraWithdrawals };
 }
-test('a conflicting commitment on the second page of an address is found', async () => {
-  const { a, b, extraRows } = await secondPage();
-  const v = await verify(a, [a, b], { extraRows });
+test('a conflicting commitment on the second page of the withdrawal list is found', async () => {
+  const { a, b, extraWithdrawals } = await secondPage();
+  const chain = chainOf([a.tx, b.tx], { extraWithdrawals });
+  const v = await p.verifyProof(a.proof, { chain });
   assert.equal(v.status, 'FAIL');
   assert.deepEqual(
     v.conflicts.map((c) => c.txHash),
     [b.tx.txHash],
   );
+  assert.ok(chain.calls.includes(withdrawalList(2)));
 });
 test('a scan-limit 400 is never the end of a list', async () => {
   // max_scan_items 100: page 2 (2 × 100) is refused with Dolos's 400 "pagination scan limit exceeded".
-  const { a, b, extraRows } = await secondPage();
-  const v = await verify(a, [a, b], { extraRows, maxScan: 100 });
+  const { a, b, extraWithdrawals } = await secondPage();
+  const v = await verify(a, [a, b], { extraWithdrawals, maxScan: 100 });
   assert.equal(v.status, 'FAIL');
   assert.match(check(v, 'Cardano evidence').detail, /HTTP 400 \(pagination scan limit exceeded.*max_scan_items/);
 });
-test('any non-2xx answer for one of the identity addresses fails the whole history', async () => {
-  const a = await target();
-  // The conflict sits on the organizer's second payment address only.
-  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100, from: ORGANIZER_2 });
-  assert.equal((await verify(a, [a, b])).status, 'FAIL');
+test('any non-2xx answer for the withdrawal list fails the whole history', async () => {
+  const { a, b, extraWithdrawals } = await secondPage();
+  assert.equal((await verify(a, [a, b], { extraWithdrawals })).status, 'FAIL');
   for (const [name, answer] of [
     ['scan limit 400', ANSWERS.scanLimit()],
-    ['unknown address 404', ANSWERS.unknownComponent()],
+    ['unknown account 404', ANSWERS.unknownAccount()],
     ['route missing 404', ANSWERS.routeMissing()],
     ['server error 500', { status: 500, headers: {}, body: '' }],
   ]) {
-    const fault = (path) => (path.startsWith(`/addresses/${ORGANIZER_2.address}/`) ? answer : undefined);
-    const v = await verify(a, [a, b], { fault });
+    // The page holding the conflict answers with an error.
+    const fault = (path) => (path === withdrawalList(2) ? answer : undefined);
+    const v = await verify(a, [a, b], { extraWithdrawals, fault });
     assert.equal(v.status, 'FAIL', name);
     assert.equal(check(v, 'Cardano evidence').result, 'fail', name);
     assert.deepEqual(v.conflicts, [], name);
   }
-  // The address list itself: a node without the endpoint (404, empty body) is named as such.
-  const missing = (path) => (path.startsWith('/accounts/') ? ANSWERS.routeMissing() : undefined);
+  // A node without the endpoint (404, empty body) is named as such.
+  const missing = (path) => (path.includes('/withdrawals') ? ANSWERS.routeMissing() : undefined);
   assert.match(check(await verify(a, [a], { fault: missing }), 'Cardano evidence').detail, /lacks this endpoint/);
 });
 test('an enumerated commitment whose CBOR is not served fails the history', async () => {
@@ -610,20 +709,6 @@ test('an enumerated commitment whose CBOR is not served fails the history', asyn
   const v = await verify(a, [a, b], { fault });
   assert.equal(v.status, 'FAIL');
   assert.match(check(v, 'Cardano evidence').detail, /evidence is incomplete/);
-});
-test('one transaction listed under several identity addresses counts once', async () => {
-  const a = await target();
-  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100 });
-  // b pays three addresses that share the organizer stake: three rows, one transaction.
-  const spread = { ...b.tx, outputs: [ORGANIZER.address, ORGANIZER_2.address, THIRD_PARTY.address] };
-  const chain = chainOf([a.tx, spread]);
-  assert.deepEqual(await chain.findCommitments(ORGANIZER.address), [inclusion(a), inclusion(b)]);
-  assert.equal(chain.calls.filter((c) => c === `/txs/${b.tx.txHash}/metadata`).length, 1);
-  const v = await p.verifyProof(a.proof, { chain: chainOf([a.tx, spread]) });
-  assert.deepEqual(
-    v.conflicts.map((c) => c.txHash),
-    [b.tx.txHash],
-  );
 });
 test('preprod evidence without a selected indexer fails; indexer URLs must be https or on this machine', async () => {
   const a = await target();
@@ -717,7 +802,7 @@ test('PD3 witness: a missing, corrupted, foreign or unlisted identity signature 
     const v = await verify(a, [a]);
     assert.equal(v.status, 'FAIL', name);
     // Not counted in the history either, so the referenced commitment is missing from it.
-    assert.deepEqual(await chainOf([a.tx]).findCommitments(ORGANIZER.address), [], name);
+    assert.deepEqual(await chainOf([a.tx]).findCommitments(ORGANIZER.address, R), [], name);
   }
   assert.equal((await verify(await target(), [await target()])).status, 'PASS');
 });
@@ -741,7 +826,7 @@ test('F17: invalid_hereafter missing or not before the round fails', async () =>
 test('a phase-2 failed transaction is not a commitment', async () => {
   const a = await target({ valid: false });
   await assert.rejects(chainOf([a.tx]).readCommitment(a.tx.txHash, ORGANIZER.address), /Invalid transaction/);
-  assert.deepEqual(await chainOf([a.tx]).findCommitments(ORGANIZER.address), []);
+  assert.deepEqual(await chainOf([a.tx]).findCommitments(ORGANIZER.address, R), []);
 });
 test('Shelley encodings (plain arrays, bare metadata map, no is_valid) read the same as Conway', async () => {
   const a = await target({ legacy: true });
@@ -753,7 +838,7 @@ const TRANSACTIONS = JSON.parse(await readFile(new URL('./transactions.json', im
 const fixture = (name) => TRANSACTIONS.find((x) => x.name === name).cbor;
 test('Node and Python compute the same transaction and auxiliary data hashes for the shared fixtures', () => {
   // tools/reference.py --check recomputes the same fields from the same bytes with its own CBOR walker.
-  assert.equal(TRANSACTIONS.length, 6);
+  assert.equal(TRANSACTIONS.length, 7);
   for (const t of TRANSACTIONS) {
     assert.equal(p.transactionHash(t.cbor), t.txHash, t.name);
     const aux = p.auxiliaryDataHash(t.cbor);
@@ -786,9 +871,12 @@ test('trust-path reader hashes the raw body and auxiliary data bytes of a prepro
   assert.notEqual(p.transactionHash(flipped), p.transactionHash(PREPROD_TX));
   assert.throws(() => p.transactionHash(`${PREPROD_TX}00`), /trailing/);
 });
-// An unsigned commitment as Evolution SDK 0.6.0 builds it in apps/web/cardano.ts (base address, 25 ADA input #3,
-// epoch 316 parameters, round 1000400); generated by running the bundled page module against a mock wallet.
-const UNSIGNED = fixture('unsigned-evolution');
+// An unsigned commitment as the Evolution SDK builds it in apps/web/cardano.ts (base address, 25 ADA input #3, reward
+// balance 0, round 1000400), regenerated by tools/unsigned-fixture.mjs: the bundled page module against a mock wallet
+// and the Blockfrost mock. `unsigned-evolution` is the same commitment built before PD10, without the withdrawal.
+const UNSIGNED = fixture('unsigned-evolution-withdrawal');
+const UNSIGNED_BEFORE_PD10 = fixture('unsigned-evolution');
+const WITHDRAWAL = `581de0${'22'.repeat(28)}00`;
 const ORGANIZER_HEX = `00${'11'.repeat(28)}${'22'.repeat(28)}`;
 const UNSIGNED_BUNDLE = {
   ...bundle(['alice', 'bob']),
@@ -802,6 +890,7 @@ const plan = async () => ({
   metadata: p.commitmentMetadata(UNSIGNED_BUNDLE, await p.computeCommitment(UNSIGNED_BUNDLE)),
   signer: '22'.repeat(28),
   invalidHereafter: p.preprodSlotAt(p.commitmentValidUntil(1000400)),
+  withdrawal: { account: `e0${'22'.repeat(28)}`, lovelace: 0n },
 });
 const swap = (from, to, nth = 0) => {
   let at = -1;
@@ -811,7 +900,8 @@ const swap = (from, to, nth = 0) => {
 };
 test('unsigned commitment re-read accepts the planned transaction', async () => {
   const checked = p.checkCommitmentTransaction(UNSIGNED, await plan());
-  assert.equal(checked.fee, 186621n);
+  assert.equal(checked.fee, 188117n);
+  assert.deepEqual([...p.transactionParts(UNSIGNED).body.keys()], [0, 1, 2, 3, 5, 7, 14]);
   assert.equal(checked.txHash, p.transactionHash(UNSIGNED));
 });
 test('unsigned commitment re-read: input', async () => {
@@ -839,9 +929,9 @@ test('unsigned commitment re-read: change address', async () => {
 });
 test('unsigned commitment re-read: balance, fields and witnesses', async () => {
   const base = await plan();
-  assert.throws(() => p.checkCommitmentTransaction(swap('1a015c1ac3', '1a015c1ac2'), base), /does not balance/);
+  assert.throws(() => p.checkCommitmentTransaction(swap('1a015c14eb', '1a015c14ea'), base), /does not balance/);
   // Body map grows by one field (validity start, key 8).
-  assert.throws(() => p.checkCommitmentTransaction(swap('84a6', '84a70800'), base), /unexpected body field 8/);
+  assert.throws(() => p.checkCommitmentTransaction(swap('84a7', '84a80800'), base), /unexpected body field 8/);
   assert.throws(
     () => p.checkCommitmentTransaction(swap('a0f5d90103', 'a10080f5d90103'), base),
     /already carries witnesses/,
@@ -868,6 +958,28 @@ test('unsigned commitment re-read: required signers', async () => {
     /required signers differ/,
   );
   assert.throws(() => p.checkCommitmentTransaction(UNSIGNED, { ...base, signer: '11'.repeat(28) }), /required signers/);
+});
+test('unsigned commitment re-read: withdrawal', async () => {
+  const base = await plan();
+  // PD10: the commitment the page built before the withdrawal rule is refused.
+  assert.throws(() => p.checkCommitmentTransaction(UNSIGNED_BEFORE_PD10, base), /withdrawal differs/);
+  // Another amount than the reward balance, another account, a second withdrawal.
+  assert.throws(
+    () => p.checkCommitmentTransaction(swap(WITHDRAWAL, `${WITHDRAWAL.slice(0, -2)}01`), base),
+    /withdrawal differs/,
+  );
+  const elsewhere = { ...base, withdrawal: { account: `e0${'33'.repeat(28)}`, lovelace: 0n } };
+  assert.throws(() => p.checkCommitmentTransaction(UNSIGNED, elsewhere), /withdrawal differs/);
+  assert.throws(
+    () => p.checkCommitmentTransaction(swap(`a1${WITHDRAWAL}`, `a2${WITHDRAWAL}581de0${'33'.repeat(28)}00`), base),
+    /withdrawal differs/,
+  );
+  // The withdrawn amount enters the balance: planned and built as 1 lovelace, the outputs no longer add up.
+  const one = { ...base, withdrawal: { ...base.withdrawal, lovelace: 1n } };
+  assert.throws(
+    () => p.checkCommitmentTransaction(swap(WITHDRAWAL, `${WITHDRAWAL.slice(0, -2)}01`), one),
+    /does not balance/,
+  );
 });
 test('unsigned commitment re-read: validity upper bound', async () => {
   const base = await plan();
@@ -906,25 +1018,23 @@ const nginxLookup = (entries, value) => {
 const proxyRoute = (path) => nginxLookup(nginxMap('$uri', '$route'), path);
 const proxyArgs = (query) => nginxLookup(nginxMap('$args', '$args_ok'), query);
 test('reverse proxy allowlist admits every read the verifier and the page make, and nothing else (BR-01)', async () => {
-  // A stake identity with two payment addresses and an enterprise identity, verified through the Blockfrost mock;
-  // every request path and query the adapter sends is recorded by it.
+  // A stake identity committing from two payment addresses, verified through the Blockfrost mock; every request path
+  // and query the adapter sends is recorded by it.
   const a = await target();
   const b = await draw({ drawId: 'example-2', blockTime: T + 60, blockHeight: 1300, from: ORGANIZER_2 });
-  const e = await draw({ drawId: 'example-3', blockTime: T - 900, blockHeight: 1000, from: ENTERPRISE });
   const stake = chainOf([a.tx, b.tx]);
-  const enterprise = chainOf([e.tx]);
   assert.equal((await p.verifyProof(a.proof, { chain: stake })).status, 'PASS');
-  assert.equal((await p.verifyProof(e.proof, { chain: enterprise })).status, 'PASS');
   const read = [
     ...stake.calls,
-    ...enterprise.calls,
-    // The page's tip (apps/web/services.ts fetchTip) and Evolution 0.6.0 BlockfrostProvider on the creation page:
-    // getProtocolParameters and getUtxosByOutRef (dist/sdk/provider/internal/BlockfrostEffect.js lines 202, 367).
+    // The page's tip (apps/web/services.ts fetchTip), the creation page's stake account (apps/web/cardano.ts
+    // rewardWithdrawal) and Evolution 0.6.0 BlockfrostProvider on the creation page: getProtocolParameters and
+    // getUtxosByOutRef (dist/sdk/provider/internal/BlockfrostEffect.js lines 202, 367).
     '/blocks/latest',
+    `/accounts/${STAKE}`,
     '/epochs/latest/parameters',
     `/txs/${'ab'.repeat(32)}/utxos`,
   ];
-  for (const name of ['account-addresses', 'address-transactions', 'tx-metadata', 'tx-cbor', 'blocks-height'])
+  for (const name of ['account-withdrawals', 'account', 'tx-metadata', 'tx-cbor', 'blocks-height'])
     assert.ok(
       read.some((c) => proxyRoute(c.split('?')[0]) === name),
       `the verification exercises ${name}`,
@@ -942,7 +1052,12 @@ test('reverse proxy allowlist admits every read the verifier and the page make, 
     '/network/eras',
     `/addresses/${ORGANIZER.address}/utxos`,
     `/addresses/${ORGANIZER.address}`,
-    `/accounts/${p.identityOf(ORGANIZER.address).key}`,
+    // The PD9 enumeration, superseded by the withdrawal list (PD10).
+    `/accounts/${STAKE}/addresses`,
+    `/addresses/${ORGANIZER.address}/transactions`,
+    `/addresses/${p.encodeBech32('addr_vkh', unhex(ENTERPRISE_PAYMENT.hash))}/transactions`,
+    `/accounts/${STAKE}/withdrawals/x`,
+    `/accounts/${STAKE}/delegations`,
     `/txs/${'ab'.repeat(32)}/redeemers`,
     `/txs/${'AB'.repeat(32)}`,
     '/blocks/latest/txs',
@@ -950,8 +1065,9 @@ test('reverse proxy allowlist admits every read the verifier and the page make, 
     '/blocks/latest\n',
     `/txs/${'ab'.repeat(32)}\n`,
     // Mainnet identifiers: the project Dolos is preprod only.
-    '/addresses/addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x/transactions',
-    `/accounts/stake1${'q'.repeat(53)}/addresses`,
+    `/accounts/stake1${'q'.repeat(53)}`,
+    `/accounts/stake1${'q'.repeat(53)}/withdrawals`,
+    `/accounts/${STAKE}/withdrawals\n`,
   ];
   for (const path of refused) assert.equal(proxyRoute(path), '', `refused: ${path}`);
   for (const query of ['select=hash', 'page=1&count=100&project_id=x', 'page=1;count=2', 'page=%31'])

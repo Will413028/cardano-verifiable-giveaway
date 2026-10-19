@@ -1,0 +1,747 @@
+{
+  "nginx": "nginx version: nginx/1.30.6",
+  "dolos": "http://127.0.0.1:3010",
+  "proxy": "http://127.0.0.1:3020",
+  "identityRows": 261,
+  "direct": {
+    "status": "FAIL",
+    "requests": 272,
+    "statuses": {
+      "200": 272
+    },
+    "ms": 517
+  },
+  "variants": {
+    "committed": {
+      "pid": 53931,
+      "checks": {
+        "verification": {
+          "pass": true,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 847
+            },
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 7340
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": true,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 200,
+            "GET /epochs/latest/parameters": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 200,
+            "GET /": 404,
+            "GET /health": 404,
+            "GET /genesis": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 404,
+            "GET /blocks/latest/../../genesis": 404,
+            "GET /blocks/latest%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 404,
+            "POST /tx/submit": 404,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": true,
+          "detail": {
+            "page": {
+              "status": 200,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "foreignPreflight": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "noOrigin": {
+              "status": 200,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": true,
+          "detail": {
+            "statuses": {
+              "200": 52,
+              "429": 398
+            }
+          }
+        },
+        "logs": {
+          "pass": true,
+          "detail": {
+            "found": [],
+            "accessLines": 1026,
+            "errorBytes": 0,
+            "sample": [
+              "2026-10-19T22:31:12+08:00 GET tx 200 601 0.001",
+              "2026-10-19T22:31:12+08:00 GET tx-cbor 200 1457 0.001",
+              "2026-10-19T22:31:12+08:00 GET tx-utxos 200 1071 0.001"
+            ],
+            "statusCounts": {
+              "200": 607,
+              "204": 1,
+              "400": 2,
+              "403": 3,
+              "404": 13,
+              "405": 2,
+              "429": 398
+            }
+          }
+        }
+      },
+      "captures": {
+        "tx-submit": {
+          "status": 404,
+          "headers": {
+            "content-type": "text/html",
+            "access-control-allow-origin": "http://127.0.0.1:4320",
+            "access-control-allow-methods": "GET, OPTIONS",
+            "access-control-allow-headers": "Content-Type",
+            "access-control-max-age": "600",
+            "vary": "Origin"
+          },
+          "body": "<html>\r\n<head><title>404 Not Found</title></head>\r\n<body>\r\n<center><h1>404 Not Found</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+        },
+        "foreign-origin": {
+          "status": 403,
+          "headers": {
+            "content-type": "text/html",
+            "access-control-max-age": "600",
+            "vary": "Origin"
+          },
+          "body": "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+        }
+      },
+      "failed": [],
+      "asExpected": true
+    },
+    "no-allowlist": {
+      "pid": 54673,
+      "checks": {
+        "verification": {
+          "pass": true,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 844
+            },
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 7491
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": false,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 200,
+            "GET /epochs/latest/parameters": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 200,
+            "GET /": 200,
+            "GET /health": 200,
+            "GET /genesis": 200,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 200,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 400,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 200,
+            "GET /blocks/latest/../../genesis": 200,
+            "GET /blocks/latest%0A": 400,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 400,
+            "POST /tx/submit": 405,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": true,
+          "detail": {
+            "page": {
+              "status": 200,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "foreignPreflight": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "noOrigin": {
+              "status": 200,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": true,
+          "detail": {
+            "statuses": {
+              "200": 53,
+              "429": 397
+            }
+          }
+        },
+        "logs": {
+          "pass": true,
+          "detail": {
+            "found": [],
+            "accessLines": 1024,
+            "errorBytes": 0,
+            "sample": [
+              "2026-10-19T22:31:22+08:00 GET tx 200 601 0.009",
+              "2026-10-19T22:31:22+08:00 GET tx-cbor 200 1457 0.007",
+              "2026-10-19T22:31:22+08:00 GET tx-utxos 200 1071 0.024"
+            ],
+            "statusCounts": {
+              "200": 616,
+              "204": 1,
+              "400": 5,
+              "403": 2,
+              "405": 3,
+              "429": 397
+            }
+          }
+        }
+      },
+      "failed": [
+        "allowlist"
+      ],
+      "asExpected": true
+    },
+    "no-rate-limit": {
+      "pid": 55137,
+      "checks": {
+        "verification": {
+          "pass": true,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 2424
+            },
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 1816
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": true,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 200,
+            "GET /epochs/latest/parameters": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 200,
+            "GET /": 404,
+            "GET /health": 404,
+            "GET /genesis": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 404,
+            "GET /blocks/latest/../../genesis": 404,
+            "GET /blocks/latest%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 404,
+            "POST /tx/submit": 404,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": true,
+          "detail": {
+            "page": {
+              "status": 200,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "foreignPreflight": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "noOrigin": {
+              "status": 200,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": false,
+          "detail": {
+            "statuses": {
+              "200": 450
+            }
+          }
+        },
+        "logs": {
+          "pass": true,
+          "detail": {
+            "found": [],
+            "accessLines": 1024,
+            "errorBytes": 0,
+            "sample": [
+              "2026-10-19T22:31:33+08:00 GET tx 200 601 0.002",
+              "2026-10-19T22:31:33+08:00 GET tx-cbor 200 1457 0.008",
+              "2026-10-19T22:31:33+08:00 GET tx-utxos 200 1071 0.006"
+            ],
+            "statusCounts": {
+              "200": 1005,
+              "204": 1,
+              "400": 2,
+              "403": 2,
+              "404": 12,
+              "405": 2
+            }
+          }
+        }
+      },
+      "failed": [
+        "flood"
+      ],
+      "asExpected": true
+    },
+    "no-origin-list": {
+      "pid": 55738,
+      "checks": {
+        "verification": {
+          "pass": true,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 979
+            },
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 7163
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": true,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 200,
+            "GET /epochs/latest/parameters": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 200,
+            "GET /": 404,
+            "GET /health": 404,
+            "GET /genesis": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 404,
+            "GET /blocks/latest/../../genesis": 404,
+            "GET /blocks/latest%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 404,
+            "POST /tx/submit": 404,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": false,
+          "detail": {
+            "page": {
+              "status": 200,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 200,
+              "allowOrigin": "https://other-site.example",
+              "allowHeaders": "Content-Type"
+            },
+            "foreignPreflight": {
+              "status": 204,
+              "allowOrigin": "https://other-site.example",
+              "allowHeaders": "Content-Type"
+            },
+            "noOrigin": {
+              "status": 200,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": true,
+          "detail": {
+            "statuses": {
+              "200": 51,
+              "429": 399
+            }
+          }
+        },
+        "logs": {
+          "pass": true,
+          "detail": {
+            "found": [],
+            "accessLines": 1024,
+            "errorBytes": 0,
+            "sample": [
+              "2026-10-19T22:31:38+08:00 GET tx 200 601 0.002",
+              "2026-10-19T22:31:38+08:00 GET tx-cbor 200 1457 0.002",
+              "2026-10-19T22:31:38+08:00 GET tx-utxos 200 1071 0.002"
+            ],
+            "statusCounts": {
+              "200": 607,
+              "204": 2,
+              "400": 2,
+              "404": 12,
+              "405": 2,
+              "429": 399
+            }
+          }
+        }
+      },
+      "failed": [
+        "cors"
+      ],
+      "asExpected": true
+    },
+    "request-in-log": {
+      "pid": 56275,
+      "checks": {
+        "verification": {
+          "pass": true,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 325
+            },
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 7827
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": true,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 200,
+            "GET /epochs/latest/parameters": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 200,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 200,
+            "GET /": 404,
+            "GET /health": 404,
+            "GET /genesis": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 404,
+            "GET /blocks/latest/../../genesis": 404,
+            "GET /blocks/latest%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 404,
+            "POST /tx/submit": 404,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": true,
+          "detail": {
+            "page": {
+              "status": 200,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "foreignPreflight": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "noOrigin": {
+              "status": 200,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": true,
+          "detail": {
+            "statuses": {
+              "200": 51,
+              "429": 399
+            }
+          }
+        },
+        "logs": {
+          "pass": false,
+          "detail": {
+            "found": [
+              "leakmarker7q",
+              "127.0.0.1",
+              "d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2",
+              "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+              "addr_test1",
+              "stake_test1",
+              "?",
+              "HTTP/1.1"
+            ],
+            "accessLines": 1024,
+            "errorBytes": 0,
+            "sample": [
+              "127.0.0.1 \"GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2 HTTP/1.1\" 2026-10-19T22:31:48+08:00 GET tx 200 601 0.000",
+              "127.0.0.1 \"GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor HTTP/1.1\" 2026-10-19T22:31:48+08:00 GET tx-cbor 200 1457 0.000",
+              "127.0.0.1 \"GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos HTTP/1.1\" 2026-10-19T22:31:48+08:00 GET tx-utxos 200 1071 0.001"
+            ],
+            "statusCounts": {
+              "HTTP/1.1\"": 1024
+            }
+          }
+        }
+      },
+      "failed": [
+        "logs"
+      ],
+      "asExpected": true
+    },
+    "nodelay": {
+      "pid": 56751,
+      "checks": {
+        "verification": {
+          "pass": false,
+          "detail": [
+            {
+              "status": "FAIL",
+              "requests": 272,
+              "statuses": {
+                "200": 272
+              },
+              "ms": 235
+            },
+            {
+              "status": "FAIL",
+              "requests": 37,
+              "statuses": {
+                "200": 36,
+                "429": 1
+              },
+              "ms": 56
+            }
+          ]
+        },
+        "allowlist": {
+          "pass": false,
+          "detail": {
+            "GET /blocks/latest": 200,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2": 429,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/cbor": 429,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/utxos": 429,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/metadata": 429,
+            "GET /epochs/latest/parameters": 429,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6": 429,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1": 429,
+            "GET /": 404,
+            "GET /health": 404,
+            "GET /genesis": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/utxos": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/addresses?count=100&page=1": 404,
+            "GET /addresses/addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw/transactions?order=asc&count=100&page=1": 404,
+            "GET /accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2/%2e%2e/%2e%2e/genesis": 404,
+            "GET /blocks/latest/../../genesis": 404,
+            "GET /blocks/latest%0A": 404,
+            "GET /txs/d3b18ef345e6b728485c294c76f756a58e4ca4669e26ba7646dc11b116e491a2%0A": 404,
+            "POST /tx/submit": 404,
+            "POST /blocks/latest": 405,
+            "GET /blocks/latest?select=hash": 400
+          }
+        },
+        "cors": {
+          "pass": false,
+          "detail": {
+            "page": {
+              "status": 429,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "pagePreflight": {
+              "status": 204,
+              "allowOrigin": "http://127.0.0.1:4320",
+              "allowHeaders": "Content-Type"
+            },
+            "foreign": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "foreignPreflight": {
+              "status": 403,
+              "allowOrigin": null,
+              "allowHeaders": null
+            },
+            "noOrigin": {
+              "status": 429,
+              "allowOrigin": null,
+              "allowHeaders": null
+            }
+          }
+        },
+        "flood": {
+          "pass": true,
+          "detail": {
+            "statuses": {
+              "200": 1,
+              "429": 449
+            }
+          }
+        },
+        "logs": {
+          "pass": true,
+          "detail": {
+            "found": [],
+            "accessLines": 789,
+            "errorBytes": 0,
+            "sample": [
+              "2026-10-19T22:31:58+08:00 GET tx 200 601 0.001",
+              "2026-10-19T22:31:58+08:00 GET tx-cbor 200 1457 0.000",
+              "2026-10-19T22:31:58+08:00 GET tx-utxos 200 1071 0.002"
+            ],
+            "statusCounts": {
+              "200": 311,
+              "204": 1,
+              "400": 1,
+              "403": 2,
+              "404": 12,
+              "405": 2,
+              "429": 460
+            }
+          }
+        }
+      },
+      "failed": [
+        "verification",
+        "allowlist",
+        "cors"
+      ],
+      "asExpected": null
+    }
+  }
+}

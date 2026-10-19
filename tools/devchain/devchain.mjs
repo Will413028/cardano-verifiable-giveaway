@@ -24,6 +24,8 @@ export const WALLETS = {
   thirdParty: { hex: `00${key(3).hash}${key(2).hash}`, keys: [key(3)] },
   other: base(key(4), key(5)),
   enterprise: enterprise(key(7)),
+  // A base address whose stake key is never registered (plan step 9b: the creation page's setup explanation).
+  unregistered: base(key(8), key(9)),
 };
 export const GENESIS = { 1: enterprise(key(1)), 3: enterprise(key(3)), 4: enterprise(key(4)), 6: enterprise(key(6)) };
 for (const wallet of [...Object.values(WALLETS), ...Object.values(GENESIS)])
@@ -71,8 +73,10 @@ async function fees() {
   return params;
 }
 // A balanced transaction spending `inputs` (from `from`), paying `outputs` ([address hex, lovelace]), returning the
-// rest to `change` (default: `from`). Optional commitment-shaped parts: label metadata, required signers and
-// invalid_hereafter. The fee is the linear minimum for the signed size plus a margin.
+// rest to `change` (default: `from`). Optional commitment-shaped parts: label metadata, required signers,
+// invalid_hereafter and reward withdrawals ([reward account hex, lovelace]; only 0 balances here: the emulator mempool
+// balances inputs against outputs and fee alone, spike-withdrawal.md). The fee is the linear minimum for the signed
+// size plus a margin.
 export async function build({
   from,
   inputs,
@@ -83,6 +87,7 @@ export async function build({
   signers = [],
   witnesses = from.keys,
   invalidHereafter = null,
+  withdrawals = [],
 }) {
   const { a, b } = await fees();
   const total = inputs.reduce((s, u) => s + u.lovelace, 0n);
@@ -95,6 +100,7 @@ export async function build({
       signers,
       witnesses,
       invalidHereafter,
+      withdrawals,
       inputs: inputs.map((u) => [u.txHash, u.index]),
       outputs: [...outputs, ...(change ? [[change, total - paid - fee]] : [])],
       fee,

@@ -6,7 +6,7 @@ const USAGE = 'Usage: node apps/verifier-cli/index.mjs <proof.json> --indexer <B
 const NODE_REQUIREMENTS = [
   '--indexer is required: name a Blockfrost-compatible indexer you trust, such as your own Dolos.',
   'It must be a full archive (not ledger-only or sliding history): a pruned node cannot list old commitments and the verifier cannot tell.',
-  'Its account address list must include addresses whose funds are already spent (Dolos 1.6.1 and Blockfrost RYO do).',
+  'It must record 0 ADA reward withdrawals in /accounts/{stake}/withdrawals (Dolos 1.6.1 does; db-sync needs ioShelley) and honour order=asc there.',
   `Its max_scan_items must be at least ${HISTORY_ROW_LIMIT + 100} (the Dolos default 3000 is enough).`,
   'Use https, or http only for a node on this machine.',
 ].join('\n');

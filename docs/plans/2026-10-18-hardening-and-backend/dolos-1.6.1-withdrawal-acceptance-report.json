@@ -1,0 +1,196 @@
+{
+  "base": "http://127.0.0.1:3010",
+  "version": {
+    "url": "127.0.0.1:3010",
+    "version": "1.6.1"
+  },
+  "registration": {
+    "organizer": {
+      "txHash": "4527798f9bab7f5ebdfe897a7ac5da83c97b3d76d023f4b004bc8039f142a3b4",
+      "account": {
+        "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "active": false,
+        "registered": true,
+        "active_epoch": 0,
+        "controlled_amount": "15249824711",
+        "rewards_sum": "0",
+        "withdrawals_sum": "0",
+        "reserves_sum": "0",
+        "treasury_sum": "0",
+        "withdrawable_amount": "0",
+        "pool_id": null,
+        "drep_id": "drep_always_abstain"
+      }
+    },
+    "other": {
+      "txHash": "311eec9a4100c8aad5794c196a73bcb4fbfe0a27894947b7ca3cf68771461fe1",
+      "account": {
+        "stake_address": "stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3",
+        "active": false,
+        "registered": true,
+        "active_epoch": 0,
+        "controlled_amount": "249824755",
+        "rewards_sum": "0",
+        "withdrawals_sum": "0",
+        "reserves_sum": "0",
+        "treasury_sum": "0",
+        "withdrawable_amount": "0",
+        "pool_id": null,
+        "drep_id": "drep_always_abstain"
+      }
+    }
+  },
+  "enumeration": {
+    "tip": 59,
+    "rows": 261,
+    "pages": 3,
+    "fields": [
+      "amount",
+      "block_height",
+      "block_time",
+      "tx_hash",
+      "tx_slot"
+    ],
+    "sent": 261,
+    "missingSent": 0,
+    "notSent": 0,
+    "sameSetAndOrder": true,
+    "ascending": true,
+    "blocksWithSeveral": 26
+  },
+  "requests": {
+    "organizer": {
+      "n": 261,
+      "status": "PASS",
+      "conflicts": [],
+      "failed": [],
+      "requests": 270,
+      "byEndpoint": {
+        "/txs/{h}": 1,
+        "/txs/{h}/cbor": 2,
+        "/txs/{h}/utxos": 1,
+        "/blocks/latest": 1,
+        "/blocks/56": 1,
+        "/accounts/{a}/withdrawals": 3,
+        "/txs/{h}/metadata": 261
+      },
+      "ms": 528
+    }
+  },
+  "flood": {
+    "outputsPerTx": 248,
+    "transactions": 13,
+    "outputs": 3224,
+    "accountAddressesBefore": 2,
+    "accountAddressesAfter": 3226,
+    "withdrawalRowsBefore": 261,
+    "withdrawalRowsAfter": 261,
+    "verification": {
+      "status": "PASS",
+      "conflicts": [],
+      "failed": [],
+      "requests": 270,
+      "byEndpoint": {
+        "/txs/{h}": 1,
+        "/txs/{h}/cbor": 2,
+        "/txs/{h}/utxos": 1,
+        "/blocks/latest": 1,
+        "/blocks/56": 1,
+        "/accounts/{a}/withdrawals": 3,
+        "/txs/{h}/metadata": 261
+      },
+      "ms": 281
+    }
+  },
+  "cli": {
+    "pass": {
+      "exit": 0,
+      "status": "PASS",
+      "checks": [
+        "Bundle format: pass",
+        "Cardano evidence: pass",
+        "Commitment hash: pass",
+        "Timing and confirmations: pass",
+        "Unique commitment: pass",
+        "drand BLS signature: pass",
+        "Winner recomputation: pass"
+      ]
+    },
+    "tampered": {
+      "exit": 1,
+      "status": "FAIL",
+      "failed": [
+        "Commitment hash: fail"
+      ]
+    },
+    "withoutIndexer": {
+      "exit": 2,
+      "stderr": "Usage: node apps/verifier-cli/index.mjs <proof.json> --indexer <Blockfrost-compatible URL>\n--indexer is required: name a Blockfrost-compatible indexer you trust, such as your own Dolos.\nIt must be a full archive (not ledger-only or sliding history): a pruned node cannot list old commitments and the verifier cannot tell.\nIt must record 0 ADA reward withdrawals in /accounts/{stake}/withdrawals (Dolos 1.6.1 does; db-sync needs ioShelley) and honour order=asc there.\nIts max_scan_items must be at least 3000 (the Dolos default 3000 is enough).\nUse https, or http only for a node on this machine."
+    }
+  },
+  "overlap": {
+    "txHash": "05f747ffcf57601cb8f2a6357ef049d7a925cd43e155a484a083b1d9b4f876a4",
+    "exit": 1,
+    "status": "FAIL",
+    "conflicts": [
+      "05f747ffcf57601cb8f2a6357ef049d7a925cd43e155a484a083b1d9b4f876a4"
+    ],
+    "unique": {
+      "name": "Unique commitment",
+      "result": "fail",
+      "detail": "Overlapping commitments by the same organizer: 05f747ffcf57601cb8f2a6357ef049d7a925cd43e155a484a083b1d9b4f876a4"
+    },
+    "requests": {
+      "status": "FAIL",
+      "conflicts": [
+        "05f747ffcf57601cb8f2a6357ef049d7a925cd43e155a484a083b1d9b4f876a4"
+      ],
+      "failed": [
+        "Unique commitment: Overlapping commitments by the same organizer: 05f747ffcf57601cb8f2a6357ef049d7a925cd43e155a484a083b1d9b4f876a4"
+      ],
+      "requests": 272,
+      "byEndpoint": {
+        "/txs/{h}": 1,
+        "/txs/{h}/cbor": 3,
+        "/txs/{h}/utxos": 1,
+        "/blocks/latest": 1,
+        "/blocks/56": 1,
+        "/accounts/{a}/withdrawals": 3,
+        "/txs/{h}/metadata": 262
+      },
+      "ms": 276
+    }
+  },
+  "enterprise": {
+    "txHash": "dbdf2668572d649ddda24fd526ea20918b0d3471b9ec7385dbb1ccffe050ea02",
+    "exit": 1,
+    "status": "FAIL",
+    "evidence": {
+      "name": "Cardano evidence",
+      "result": "fail",
+      "detail": "Organizer address must be a base address with a stake key: an enterprise address has no reward account, and uniqueness is read from the stake reward account withdrawals (PD10)"
+    },
+    "requests": 0
+  },
+  "other": {
+    "txHash": "c0d306b4ee87f52b752209b8c0ca5e21cc1f7800e63d2dd64cd82dbaeaf0cab1",
+    "exit": 0,
+    "status": "PASS",
+    "requests": {
+      "status": "PASS",
+      "conflicts": [],
+      "failed": [],
+      "requests": 8,
+      "byEndpoint": {
+        "/txs/{h}": 1,
+        "/txs/{h}/cbor": 2,
+        "/txs/{h}/utxos": 1,
+        "/blocks/latest": 1,
+        "/blocks/124": 1,
+        "/accounts/{a}/withdrawals": 1,
+        "/txs/{h}/metadata": 1
+      },
+      "ms": 125
+    }
+  }
+}
