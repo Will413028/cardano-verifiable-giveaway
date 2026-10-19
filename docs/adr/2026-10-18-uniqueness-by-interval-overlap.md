@@ -72,6 +72,11 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 
 - indexer 改為自架 Dolos（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）。Followup 的「確認 Koios 列舉端點」已在步驟 5 對 Koios 完成，改由階段計畫步驟 8b 對 Dolos 的 `/accounts/{stake}/transactions` 與 `/addresses/{addr_vkh}/transactions` 重新確認排序與分頁；Revocation Triggers 第一條的「Koios 或其他可用 indexer」改讀為「Dolos 或使用者自備的 Blockfrost 相容 indexer」。規則與身分不變。
 
+## Amendment (2026-10-19)：stake 身分的列舉改成地址列表＋逐址列舉
+
+- Dolos 穩定版 1.6.1 沒有 `/accounts/{stake}/transactions`。Will 選階段計畫 PD9 的 B：先 `/accounts/{stake}/addresses`，再逐址 `/addresses/{a}/transactions`，依 tx_hash 去重。規則、身分與計數條件不變；上限以 Σ 各地址交易列數計，任一請求非 2xx 判 FAIL。
+- 列舉上限可被第三方便宜灌爆、讓抽獎判 FAIL 的既有弱點另列 PD10。
+
 ## Review Notes
 
 - 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。同日 Will 回覆「都照建議走」，身分改為 `required_signers`＋witness（見 Decision）。

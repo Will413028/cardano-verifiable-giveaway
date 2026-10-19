@@ -11,7 +11,7 @@
 - **會改到或取代的既有部署是否在線：** 無既有部署（README「Status」：No public deployment）。本計畫不部署後端；部署屬 MVP 計畫步驟 10，需要 Will 授權。鏈上沒有任何人依賴的承諾，協定可自由修改；上鏈後不能改的承諾已由 MVP 計畫 I3 規範。
 - 後端範圍、禁止事項、帳號與保存期限依兩份 ADR：`docs/adr/2026-10-18-typescript-convenience-backend.md`、`docs/adr/2026-10-18-wallet-auth-and-bounded-retention.md`（來源：Will，2026-10-18；已確認）。
 - indexer：不再使用 koios.rest。條款字面禁止系統性擷取、自動化使用與轉發（2026-10-19 步驟 9 重查，見進度表），Will 2026-10-19 決定不取得同意，改採 Blockfrost 形狀介面卡＋自架 Dolos（full archive），CLI 不設專案預設、必須以 `--indexer` 指定使用者自備的 full-archive Blockfrost 相容節點（PD7，ADR `docs/adr/2026-10-19-self-hosted-dolos-indexer.md`；已確認）。
-- Dolos 的 MiniBF（Blockfrost 相容 API）事實（2026-10-19 讀 Dolos 原始碼與 `minibf.mdx`，未在本機實跑）：不需要 API key；`permissive_cors` 預設 true；`/addresses/{a}/transactions` 接受 `addr_vkh`（payment credential）；有 `/accounts/{stake}/transactions`（stake credential）；page×count 超過 `max_scan_items`（預設 3000）時拒絕，營運者可調高；有 Ledger-only、Sliding history、Full archive 三種儲存模式，非 full archive 的節點列舉不出舊承諾、verifier 察覺不到；不能跑在 Workers，需要一台有狀態的 VM。
+- Dolos 的 MiniBF（Blockfrost 相容 API）事實（2026-10-19 讀 Dolos 原始碼與 `minibf.mdx`，未在本機實跑）：不需要 API key；`permissive_cors` 預設 true；`/addresses/{a}/transactions` 接受 `addr_vkh`（payment credential）；穩定版 1.6.1 沒有 `/accounts/{stake}/transactions`（只有 pre-release 1.7.0-alpha.1、2.0.0-alpha.0 與 main 有，步驟 8b 實測 404），stake credential 改用 `/accounts/{stake}/addresses`＋逐址 `/addresses/{a}/transactions`（PD9）；page×count 超過 `max_scan_items`（預設 3000）時拒絕，營運者可調高；有 Ledger-only、Sliding history、Full archive 三種儲存模式，非 full archive 的節點列舉不出舊承諾、verifier 察覺不到；不能跑在 Workers，需要一台有狀態的 VM。
 - Dolos 的未知（未確認；Dolos 程式本身的行為由步驟 8b 在本機 emulator 開發鏈上量，preprod 規模與資源由步驟 8c 在 VM 上量）：preprod full archive 的磁碟與同步時間；`addr_vkh` 與 stake 帳戶列舉的分頁與排序是否穩定（同一區塊多筆時的次序）；stake 帳戶列舉是否列出 stake 只出現在 input 的交易；剛上鏈交易的 `/txs/{h}/cbor` 回 404 還是空值；主網 RAM（調查寫 < 2 GB，沒有出處）；verifier 如何偵測使用者節點的歷史不完整。
 - 公開部署 Dolos 與後端需要 Will 授權（MVP 計畫步驟 10）。本機不跑 preprod Dolos：TxPipe 的 preprod full 快照壓縮後 10.17 GB（2026-10-19 實測 HTTP `content-length`，`dolos-snapshots.txpipe.cloud/v3/1/full/latest.tar.gz`，最後更新 2026-06-11），Mithril 的 preprod 節點資料解壓後 20.04 GB（同日查 Mithril aggregator），Will 2026-10-19 決定本機不佔這個空間。本機只跑 Dolos 的 emulator 模式（`upstream` 設為 Emulator，從 mempool 自行產生區塊、沒有既有鏈歷史，v1.6.1 原始碼 `src/sync/emulator.rs`）；preprod Dolos 改在 VM 上量（步驟 8c，開 VM 需要 Will 授權）（已確認）。
 - 真錢包仍延後（MVP 計畫前提 P2）：自動化測試用測試內產生的金鑰與 mock CIP-30，不使用任何個人錢包或助記詞；preprod 上尚無自己的承諾交易（MVP 附件 `spike-a.md`「鏈上樣本 0」），需要真承諾的驗收標為「等真錢包」（已確認）。
@@ -157,16 +157,17 @@
   - 2026-10-19 修訂（Will）：本機不跑 preprod Dolos（數字見前提）。原本對 preprod 量的項目拆開：Dolos 程式本身的行為（分頁、排序、同區塊次序、`max_scan_items`、剛上鏈交易的 CBOR）在本機 emulator 開發鏈上量；preprod 的磁碟、同步時間、RAM 與步驟 5 兩個真實地址的列舉移到步驟 8c。
   - 範圍：
     - 先確認開發鏈可用（產出附件 `spike-dolos.md`，每項附重現指令與 Dolos 版本）：下載 Dolos 執行檔，以 emulator 模式起一條本機鏈，確認 MiniBF 開著、能送出交易並被打包；記錄磁碟用量。開發鏈要能讓測試內產生的金鑰有資金（自訂 genesis 的 `initialFunds` 或 Dolos 提供的等價機制）。磁碟用量超過 5 GB 就停。emulator 不能送交易或沒有資金機制時，改用 Yaci DevKit（Docker，同樣提供 Blockfrost 形狀 API）並在 `spike-dolos.md` 記下原因；兩者都不行就停下回報。
-    - 在開發鏈上量 Dolos 的行為（記入 `spike-dolos.md`）：由測試金鑰送出足以跨多頁的承諾與一般交易（同一身分不少於 250 筆，含同一區塊多筆；emulator 每塊最多 10 筆，v1.6.1 `src/sync/emulator.rs`），測 `/accounts/{stake}/transactions` 與 `/addresses/{addr_vkh}/transactions`：`order=asc` 時重複查詢的集合與順序、同一區塊多筆的次序、跨頁是否重複或遺漏、超過 `max_scan_items` 的回應；stake 只出現在 input 的交易是否被列出；剛上鏈交易的 `/txs/{h}/cbor` 是 404、空值還是延遲出現；Dolos 是否提供可查的儲存模式或最早區塊。開發鏈用的是 Yaci DevKit 時，這些只代表 Yaci，Dolos 的行為留給步驟 8c。
-    - 以 Blockfrost 形狀的介面卡取代 `packages/chain` 的 `KoiosChain`：列舉用上述兩個端點（page／count 分頁、穩定排序；超過上限或回 `max_scan_items` 錯誤時判 FAIL，不當成列表結束）；讀承諾用 `/txs/{h}/cbor`（CBOR 自驗不變）、`/txs/{h}`（收錄區塊與時間）、`/txs/{h}/utxos`（主辦者 input）；列舉中挑選 label 改為每筆 `/txs/{h}/metadata`（Blockfrost 形狀沒有批次查詢）；確認數用 `/blocks/latest`。依實測決定剛上鏈交易沒有 CBOR 時對應 `NotIndexedError` 或 `CborPendingError`。新的列舉上限依 `max_scan_items` 與量到的請求數定，寫進協定文件。
-    - `packages/verifier` 移除預設 indexer（`DEFAULT_INDEXER` 與 `KoiosChain` 預設）；CLI 必須給 `--indexer`，沒給時以非零 exit code 結束並說明節點要求（Blockfrost 相容、full archive、`max_scan_items` 夠大）。
+    - 在開發鏈上量 Dolos 的行為（記入 `spike-dolos.md`）：由測試金鑰送出足以跨多頁的承諾與一般交易（同一身分不少於 250 筆，含同一區塊多筆；emulator 每塊最多 10 筆，v1.6.1 `src/sync/emulator.rs`），測 stake 帳戶列舉（2026-10-19 起依 PD9 為 `/accounts/{stake}/addresses`＋逐址 `/addresses/{a}/transactions`）與 `/addresses/{addr_vkh}/transactions`：`order=asc` 時重複查詢的集合與順序、同一區塊多筆的次序、跨頁是否重複或遺漏、超過 `max_scan_items` 的回應；stake 只出現在 input 的交易是否被列出；剛上鏈交易的 `/txs/{h}/cbor` 是 404、空值還是延遲出現；Dolos 是否提供可查的儲存模式或最早區塊。開發鏈用的是 Yaci DevKit 時，這些只代表 Yaci，Dolos 的行為留給步驟 8c。
+    - 以 Blockfrost 形狀的介面卡取代 `packages/chain` 的 `KoiosChain`：stake 身分的列舉依 PD9 用 `/accounts/{stake}/addresses` 列出地址，再逐址 `/addresses/{a}/transactions`，依 tx_hash 去重合併（page／count 分頁、穩定排序）。列舉上限 L 以 Σ（各地址的交易列數）在客戶端累計，不依賴節點的 `max_scan_items`；地址數已超過 L 時不再逐址查詢、直接判 FAIL。兩段列舉中任一請求回非 2xx（包括 400 掃描上限、逐址 404、5xx）整個唯一性檢查判 FAIL，只有 200 `[]` 或回傳筆數少於 count 才代表列表結束；回應本文的形狀只用來挑錯誤訊息（例如路由不存在的 404 空本文提示「節點缺端點」）。讀承諾用 `/txs/{h}/cbor`（CBOR 自驗不變）、`/txs/{h}`（收錄區塊與時間）、`/txs/{h}/utxos`（主辦者 input）；列舉中挑選 label 改為每筆 `/txs/{h}/metadata`（Blockfrost 形狀沒有批次查詢）；確認數用 `/blocks/latest`。依實測決定剛上鏈交易沒有 CBOR 時對應 `NotIndexedError` 或 `CborPendingError`。新的列舉上限依 `max_scan_items` 與量到的請求數定，寫進協定文件。
+    - `packages/verifier` 移除預設 indexer（`DEFAULT_INDEXER` 與 `KoiosChain` 預設）；CLI 必須給 `--indexer`，沒給時以非零 exit code 結束並說明節點要求（Blockfrost 相容、full archive、帳戶地址列表包含歷史地址〔Dolos 1.6.1 與 Blockfrost RYO 讀碼確認，spec 沒寫明〕、`max_scan_items` 夠大）。
     - 網頁：建立頁的 Evolution 讀取（協定參數、UTxO）改用 Blockfrost 形狀；讀鏈上資料的位址由建置設定指向專案 Dolos（本機 `http://127.0.0.1:<port>` 的開發鏈；是否經 Workers proxy 依 PD8，本步先維持步驟 8 的 `/tip` 路徑並把上游改成 Dolos）；驗證頁可填入使用者自己的 Blockfrost 相容 indexer 網址（BR-16、F13 後半的「可指定 indexer」），未填時用專案 Dolos。送出暫時改走 Dolos 的 submit 端點；Dolos 不支援就把 F14（錢包 `submitTx`）提前到本步。
     - 重量請求數：在開發鏈上量一次完整列舉與驗證的請求數與身分筆數 n 的關係（推論約 ⌈(n+1)/100⌉＋n），記入 `spike-dolos.md` 與進度表，供 PD8；以步驟 5 的 169、1,171 筆代入的數字標為推論，實測留給步驟 8c。
-    - `tools/browser-check.mjs` 與測試的 indexer mock 改成 Blockfrost 形狀；`docs/protocol-development.md` 的 indexer 信任面加上「列舉完整性永遠信任 indexer（Mithril 也不證明）」「使用者節點必須是 full archive」與 CLI 用法。
+    - `tools/browser-check.mjs` 與測試的 indexer mock 改成 Blockfrost 形狀；`docs/protocol-development.md` 的 indexer 信任面加上「列舉完整性永遠信任 indexer（Mithril 也不證明）」「使用者節點必須是 full archive，帳戶地址列表要含歷史地址」、PD9 的兩段列舉與 CLI 用法。
+    - 補測（PD9 審查要求，記入 `spike-dolos.md`）：已花光的地址仍出現在 `/accounts/{stake}/addresses`；一筆交易輸出到 3 個帶同一 stake 的不同地址時，合併去重後只算 1 筆交易、列數計 3。
   - 消費端：`rg -n -i "koios|KoiosChain|DEFAULT_INDEXER|account_txs|credential_txs|tx_cbor|tx_info|tx_metadata|utxo_info|submittx|epoch_params" packages apps tools tests docs`
   - 不能動：CBOR 自驗（tx hash、aux data hash、metadata、`required_signers` witness、`invalid_hereafter`）；PD3 唯一性規則、同一區塊 fail closed、超過上限判 FAIL；`NotIndexedError` 與 `CborPendingError` 的語意（只改對應的 HTTP 回應）；proof 格式與 Demo 模式；B1、B2。
-  - 驗收：`make check` 全綠；步驟 5、7 的回歸劇本改用 Blockfrost 形狀的 mock 全部通過；開發鏈唯讀：對同一身分在同一高度以下列舉兩次，集合與順序相同，筆數等於送出的筆數；開發鏈上由測試金鑰送出的承諾，CLI 以 `--indexer` 指向開發鏈驗證 PASS，竄改 bundle 後 FAIL；CLI 不給 `--indexer` 時 exit code 非零且訊息提到 full archive（Node 測試）；瀏覽器 E2E 通過，且驗證頁填入另一個 indexer 網址後請求只打到該網址；`rg -i koios packages apps tools tests` 0 筆（`spikes/` 除外）。mutation：CLI 加回預設 indexer→測試失敗；列舉只讀第一頁→第二頁才有衝突承諾的劇本由 FAIL 變 PASS、測試失敗；把 `max_scan_items` 錯誤當成列表結束→超過上限的劇本測試失敗；把剛上鏈交易的 CBOR 缺漏當成「不在歷史內」→對應測試失敗。
-  - 停止條件：開發鏈上 Dolos 無法依 payment credential 或 stake 帳戶列舉，或重複查詢的排序不穩定——停下，PD3 身分子題與列舉方式交 Will；emulator 與 Yaci DevKit 都無法在 5 GB 內送交易並查詢——停下回報；`max_scan_items` 調高後仍拒絕深頁——停下。
+  - 驗收：`make check` 全綠；步驟 5、7 的回歸劇本改用 Blockfrost 形狀的 mock 全部通過；開發鏈唯讀：對同一身分在同一高度以下列舉兩次，集合與順序相同，筆數等於送出的筆數；開發鏈上由測試金鑰送出的承諾，CLI 以 `--indexer` 指向開發鏈驗證 PASS，竄改 bundle 後 FAIL；CLI 不給 `--indexer` 時 exit code 非零且訊息提到 full archive（Node 測試）；瀏覽器 E2E 通過，且驗證頁填入另一個 indexer 網址後請求只打到該網址；`rg -i koios packages apps tools tests` 0 筆（`spikes/` 除外）。mutation：CLI 加回預設 indexer→測試失敗；列舉只讀第一頁→第二頁才有衝突承諾的劇本由 FAIL 變 PASS、測試失敗；把 `max_scan_items` 錯誤當成列表結束→超過上限的劇本測試失敗；把剛上鏈交易的 CBOR 缺漏當成「不在歷史內」→對應測試失敗；逐址查詢回 400 被當成空列表→衝突承諾在該地址的劇本由 FAIL 變 PASS、測試失敗；上限改成每個地址各自計算→Σ 超過 L 的劇本測試失敗；去掉 tx_hash 去重→一筆交易碰多個地址的劇本測試失敗。
+  - 停止條件：開發鏈上 Dolos 無法依 payment credential 或 stake 帳戶（PD9 的兩段列舉）列舉、已花光地址不在地址列表，或重複查詢的排序不穩定——停下，PD3 身分子題與列舉方式交 Will；emulator 與 Yaci DevKit 都無法在 5 GB 內送交易並查詢——停下回報；`max_scan_items` 調高後仍拒絕深頁——停下。
   - 需要人做的事：無（下載 Dolos 執行檔或 Yaci DevKit 映像屬下載，版本記入 `spike-dolos.md`）。
   - 完成後的狀態：網頁流程與 indexer 相關驗收需要本機開發鏈執行中；CLI 一律要 `--indexer`；preprod 規模的數字待步驟 8c。
 - [ ] **8c. preprod Dolos 量測（VM）**（被擋於：步驟 8b；Will 授權開 VM）
@@ -261,7 +262,17 @@
   - C：照原 BR-01、BR-02、BR-03 全做，全域預算改成保護 VM 的總量上限——防護最完整；代價：Durable Object 與快取層是為 Koios 額度設計的，對自己的 VM 是否需要沒有證據。
   - 對需求的影響（提案，Will 拍板前不生效）：A 時 BR-01 改寫為「網頁直連專案 Dolos，reverse proxy 只放行 Blockfrost 唯讀端點」、BR-02 刪除、BR-03 的全域預算刪除且 IP 限流移到 reverse proxy；B 時 BR-03 的全域預算刪除、BR-02 的快取二選一；C 不刪。
 
-拍板順序：PD1、PD3、PD4、PD5、PD6、PD7 已決；PD8 在步驟 8b 量到請求數後交 Will；PD2 等步驟 10 的量測。
+- **PD9 stake 身分怎麼列舉**（狀態：已決 2026-10-19，Will：B；擋住步驟：無，步驟 8b 依此繼續；需要的事實：無）
+  - 問題：步驟 8b 實測 Dolos 穩定版 1.6.1 沒有 `/accounts/{stake}/transactions`（Blockfrost OpenAPI v0.1.93 有；Dolos 只有 pre-release 有，1.7 線已被 2.0 取代、沒有公開時程，2.0 是 storage V4、換版要重新 bootstrap）。
+  - 選項：A 標準端點＋2.0 pre-release（使用者也要跑 pre-release 或 db-sync＋RYO）；B 穩定版 1.6.1，`/accounts/{stake}/addresses`＋逐址列舉（建議）；A＋B 兩條都做；C 身分改 payment credential（推翻 PD3）；D 請 TxPipe backport 到 lts/v1（可與 B 疊加）。
+  - 決定：B。理由：基準是 A，但穩定版沒有、pre-release 換版要重新 bootstrap、使用者節點只剩 pre-release 或 db-sync 都是外部 REAL 限制；B 只用穩定版與標準端點。正常情況請求數 A 約 3＋n、B 約 6＋n（n＝265，推論）；撞上限的攻擊成本兩者相同（上限以 Σ 列數計）。B 的完整性依賴節點的帳戶地址列表含歷史地址：Dolos 1.6.1 掃該 stake 的歷史輸出產生地址（`routes/accounts.rs:189-262`），未註冊的 stake 在第一次有輸出時就建帳戶實體（`roll/accounts.rs:87-109`），兩輪獨立審查讀碼確認。
+  - 終局與觸發：Dolos 2.x 穩定版釋出或 TxPipe 接受 lts/v1 backport → 評估改用帳戶交易端點（只動列舉模組）。
+  - 不採：自行 patch 1.6.1（幫不了 CLI 使用者的節點）；8c 檢查 pre-release 能否從快照啟動（只有 A 需要）。
+- **PD10 唯一性列舉上限可被灌爆**（狀態：未決，提案 2026-10-19，交 Will；擋住步驟：無；需要的事實：灌列數的實際成本〔步驟 8b 開發鏈可量〕與業界做法）
+  - 問題：任何人都能造「攻擊者 payment＋主辦者 stake」的地址，一筆交易約 240 個輸出、手續費約 0.88 ADA、資金收得回來；打穿 3000 列約 13 筆、十餘 ADA，打穿 100,000 列約 400 筆、數百 ADA（推論，Conway 參數估）。超過上限判 FAIL，等於第三方能便宜地讓主辦者的抽獎判 FAIL。Koios 時期（5,000 筆上限）就存在，與 PD9 選項無關。
+  - 選項待選項簡報（業界基準、限制分類帳）整理後交 Will。
+
+拍板順序：PD1、PD3、PD4、PD5、PD6、PD7、PD9 已決；PD10 待選項簡報；PD8 在步驟 8b 量到請求數後交 Will；PD2 等步驟 10 的量測。
 
 ## 進度
 

@@ -16,7 +16,7 @@ supersedes-partially: 2026-10-18-typescript-convenience-backend.md（proxy 只�
 - `external` 託管 Blockfrost 的條款是同一範本，範圍寫「the https://blockfrost.io website」，全文沒有提到 API，付費方案賣的本來就是程式存取（[Blockfrost terms](https://blockfrost.io/terms)）。排除它的依據是「沿用 Will 對 Koios 的同一字面標準」，不是條款明文禁止 API。
 - `external` 託管 API 的 key 不能放進瀏覽器或公開的 CLI；Blockfrost 建議由自己的後端保管 `project_id`（[Blockfrost getting started](https://blockfrost.dev/overview/getting-started)）。
 - `external` Maestro 的 API 主機已無法解析（2026-10-19 DNS 實測），Cardanoscan 不提供交易 CBOR 與依身分列舉；兩者不是候選。
-- `external` Dolos 的 MiniBF（Blockfrost 相容 API）：`permissive_cors` 預設 true；`/addresses/{a}/transactions` 接受 `addr_vkh`；有 `/accounts/{stake}/transactions`；不需要 API key。分頁以 page×count 計，超過 `max_scan_items`（預設 3000）就拒絕（`crates/minibf/src/pagination.rs` 的 `enforce_max_scan_limit`），營運者可調高。現行實作的列舉上限是 5,000 筆。來源：Dolos 原始碼與 `minibf.mdx`，2026-10-19 讀碼，未在本機實跑。
+- `external` Dolos 的 MiniBF（Blockfrost 相容 API）：`permissive_cors` 預設 true；`/addresses/{a}/transactions` 接受 `addr_vkh`；有 `/accounts/{stake}/transactions`（2026-10-19 更正：只有 pre-release 有，穩定版 1.6.1 沒有，見下方 Amendment）；不需要 API key。分頁以 page×count 計，超過 `max_scan_items`（預設 3000）就拒絕（`crates/minibf/src/pagination.rs` 的 `enforce_max_scan_limit`），營運者可調高。現行實作的列舉上限是 5,000 筆。來源：Dolos 原始碼與 `minibf.mdx`，2026-10-19 讀碼，未在本機實跑。
 - `external` Dolos 有 Ledger-only、Sliding history、Full archive 三種儲存模式（Dolos README）。指到非 full archive 的節點時，舊承諾列舉不出來，verifier 察覺不到。
 - `external` Dolos 是有狀態的長駐程式，不能跑在 Cloudflare Workers，需要一台 VM；這是部署形態的變更（MVP 計畫步驟 10、D9）。
 - `external` Mithril 交易證明只證明「某筆交易已收錄」，不證明「某身分的交易全部列出」；WASM 客戶端仍需 `unstable: true`。唯一性永遠要信任 indexer 的列舉。
@@ -90,6 +90,12 @@ supersedes-partially: 2026-10-18-typescript-convenience-backend.md（proxy 只�
 - Will 2026-10-19 決定本機不佔 preprod full archive 的空間：TxPipe 的 preprod full 快照壓縮後 10.17 GB（實測 HTTP `content-length`，最後更新 2026-06-11），Mithril 的 preprod 節點資料解壓後 20.04 GB（查 Mithril aggregator）；本機可用約 32 GiB。
 - Decision 第三點「開發期在本機跑 preprod Dolos」改為：本機跑 Dolos 的 emulator 模式開發鏈（沒有既有鏈歷史，交易由測試金鑰送出），Dolos 程式本身的分頁、排序與 CBOR 行為在開發鏈上量（階段計畫步驟 8b）；preprod 規模的磁碟、同步時間、RAM 與真實地址的列舉，改在 VM 上量（步驟 8c，開 VM 需要 Will 授權），VM 可沿用為公開部署的專案 Dolos。Expected Outcome「網頁 preprod 流程在本機對 preprod Dolos 跑通」改讀為「對本機開發鏈跑通，preprod 版本在步驟 8c」。
 - 代價：preprod 規模的列舉排序要到步驟 8c 才實測；若 preprod 上排序不穩定而開發鏈上穩定，唯一性列舉要回頭改。觸發重評：步驟 8c 的排序結果與步驟 8b 不同。
+
+## Amendment (2026-10-19)：Dolos 穩定版沒有帳戶交易端點，stake 列舉改兩段
+
+- 步驟 8b 實測：Dolos 1.6.1 的 `/accounts/{stake}/transactions` 回 404（路由不存在），只有 pre-release 1.7.0-alpha.1、2.0.0-alpha.0 與 main 有；Context 的「有 `/accounts/{stake}/transactions`」對穩定版不成立。
+- Will 2026-10-19 選 PD9 的 B：stake 身分用 `/accounts/{stake}/addresses`＋逐址 `/addresses/{a}/transactions`，留在穩定版。使用者節點要求加上「帳戶地址列表包含歷史地址」。理由與審查見階段計畫 PD9。
+- 觸發重評：Dolos 2.x 穩定版釋出或 lts/v1 backport 帳戶交易端點。
 
 ## Review Notes
 
