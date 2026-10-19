@@ -278,7 +278,8 @@ async function mustFailApi(name, mutate, testName) {
     const result = spawnSync('pnpm', ['--filter', '@giveaway/api', 'exec', 'vitest', 'run', '-t', testName], {
       encoding: 'utf8',
     });
-    const output = result.stdout + result.stderr;
+    // CI colours vitest's summary even through a pipe; drop the escape codes before reading it.
+    const output = (result.stdout + result.stderr).replace(/\x1b\[[0-9;]*m/g, '');
     if (result.status === 0 || !/Tests\s+\d+ failed/.test(output))
       throw new Error(`${name} did not fail the tests (exit ${result.status}):\n${output.slice(-3000)}`);
     const failed = output.split('\n').find((line) => line.includes('FAIL') && line.includes('>'));
