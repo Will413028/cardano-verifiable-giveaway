@@ -61,6 +61,13 @@ tags: [cardano-verifiable-giveaway, decision, protocol]
 - 真錢包驗收顯示主流 CIP-30 錢包不替 `required_signers` 裡的 stake key 簽章 → 退回 payment key，並在驗證邊界文字寫明換地址可繞過。
 - 實際主辦者普遍需要同一錢包同時辦多場抽獎 → 評估在 bundle 內宣告互斥群組，仍不放寬到 B。
 
+## Amendment (2026-10-19)：唯一性計數不再要求 input 帶身分 credential
+
+- Will 2026-10-19 拍板（步驟 7 實作後提出）：列舉到、metadata label 相符的交易，只要交易有效、身分 key 列在 `required_signers` 且 witness 對 tx hash 驗章通過，就算該身分的承諾，不再要求「至少一個 input 來自帶此 credential 的地址」。被驗的那筆承諾仍要求 input 是主辦者地址本身（比原 Decision 嚴）。
+- 理由：input 條件只決定「列舉看不看得到」，放在計數上反而漏算。主辦者從別的地址花費、輸出給帶自己 stake 的地址並以身分 key 簽章時，交易會被列舉到，原規則卻不計入。拿掉後，計數只會比原規則多，多出的都是主辦者自己簽過、本來就無法拿來發布的交易；第三方仍送不出算數的承諾，因為計入必須有身分 key 對該交易 body hash 的有效簽章。步驟 7 的獨立對抗式 review 對三種交易形狀逐一推演，結論相同。
+- 不變的部分：input 與 output 都不碰身分 credential 的交易，依身分的列舉看不到；這屬於 indexer 信任面，寫在 `docs/protocol-development.md`「What the indexer is still trusted for」。Rationale 第二點描述的原理由仍然成立，只是改由「被驗承諾要求 input」與「列舉語意」分別承擔，不再放在計數條件上。
+- 代價：主辦者替別人組的交易簽名時，可能多出自己造成的衝突。觸發重評：真錢包驗收發現錢包會在使用者不知情時替 `required_signers` 裡的 stake key 簽章。
+
 ## Review Notes
 
 - 2026-10-18 design-review：地址的 stake 部分不需要持有者簽章即可放入（[CIP-19](https://cips.cardano.org/cip/CIP-0019)：「it is possible to construct addresses where both parts are owned and managed by separate entities」）。若身分取自地址，第三方可用帶主辦者 stake 部分的地址送一筆區間重疊的承諾，讓主辦者的抽獎被判 FAIL。同日 Will 回覆「都照建議走」，身分改為 `required_signers`＋witness（見 Decision）。
