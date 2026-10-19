@@ -111,16 +111,23 @@ export function bundleShareLink(pageHref: string, link: BundleLink): string {
   return share.toString();
 }
 // The link in a page URL's query, or null when it carries none. The former hosted-proof link (`bundle` = a proof file
-// URL, `hash` = that file's SHA-256) is refused with an explicit error: the proof's hash is on no chain (F9).
+// URL, `hash` = that file's SHA-256, no `tx`) is refused with an explicit error: the proof's hash is on no chain (F9). A
+// link in the current format with a missing or malformed field gets its own message, not the former-format one.
 export function readShareLink(search: string): BundleLink | null {
   const query = new URLSearchParams(search);
   if (!query.has('tx') && !query.has('bundle')) return null;
   const txHash = query.get('tx') ?? '';
   const bundleHash = query.get('bundle') ?? '';
-  if (query.has('hash') || !TX_HASH.test(bundleHash) || !TX_HASH.test(txHash))
+  if (query.has('hash') && !query.has('tx'))
     throw new Error(
       'This link uses the former hosted-proof format, which is no longer supported. A verification link names the commitment transaction (tx) and the bundle hash (bundle); ask the organizer for one, or load the downloaded files.',
     );
+  const ask = 'Check that the whole link was copied, or ask the organizer for it again.';
+  if (!query.has('tx')) throw new Error(`This verification link has no commitment transaction (tx). ${ask}`);
+  if (!TX_HASH.test(txHash))
+    throw new Error(`The commitment transaction (tx) in this link is not a 64-character hex hash. ${ask}`);
+  if (!TX_HASH.test(bundleHash))
+    throw new Error(`The bundle hash (bundle) in this link is missing or not a 64-character hex hash. ${ask}`);
   const source = query.get('source') ?? undefined;
   return { txHash, bundleHash, ...(source ? { source } : {}) };
 }

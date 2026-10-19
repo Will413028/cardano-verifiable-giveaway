@@ -5,7 +5,13 @@
   "bundles": {
     "valid": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-1\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
     "invalid": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-invalid\",\"entrants\":[\"alice\",\"alice\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
-    "quota": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-quota\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}"
+    "quota": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-quota\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
+    "duplicateKey": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-duplicate\",\"entrants\":\"arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content arbitrary content \",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
+    "spaced": "{\n  \"algorithm\": \"sha256-ranking-1\",\n  \"drand\": {\n    \"chainHash\": \"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\n    \"round\": 1000000\n  },\n  \"drawId\": \"hosted-spaced\",\n  \"entrants\": [\n    \"alice\",\n    \"bob\",\n    \"carol\"\n  ],\n  \"rules\": {\n    \"winners\": 1\n  },\n  \"version\": \"development-2\"\n}",
+    "reordered": "{\"version\":\"development-2\",\"algorithm\":\"sha256-ranking-1\",\"drawId\":\"hosted-reordered\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000}}",
+    "bom": "﻿{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-bom\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
+    "roundMismatch": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":1000000},\"drawId\":\"hosted-round\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}",
+    "farRound": "{\"algorithm\":\"sha256-ranking-1\",\"drand\":{\"chainHash\":\"52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971\",\"round\":9007199254740991},\"drawId\":\"hosted-far\",\"entrants\":[\"alice\",\"bob\",\"carol\"],\"rules\":{\"winners\":1},\"version\":\"development-2\"}"
   },
   "owners": {
     "organizer": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
@@ -16,6 +22,12 @@
     "organizer": "982882f106b5e576d515bc2c1c18b6a0e76758ff6b1ecc35935c60434e24965a",
     "other": "90f591dfd107ad654e8432e785e9312b814ec74ca8c568d85035ed1b20deae4b",
     "invalid": "96348ed8d3c702649f83d790de98cd96cb1f3b1fceaafd820eaa22625d1bcf87",
+    "duplicateKey": "3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90",
+    "spaced": "b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93",
+    "reordered": "aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e",
+    "bom": "e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912",
+    "roundMismatch": "dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62",
+    "farRound": "3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01",
     "quota0": "6f8455f18499524f7da4f44f143b0e33ea53903d4c86e26d7ac36a2e9729c8a3",
     "quota1": "cb8a1b65edb82769bd38b863c895cf70d2b8c7744b7d407b716b40354de6d3dd",
     "quota2": "82d0da1212421a0fe583fb6722faca52623656aa18c4c2a219c37ab427b96ea0",
@@ -169,6 +181,246 @@
         "content-type": "application/json"
       },
       "body": "{\"time\":1695802766,\"height\":1016,\"hash\":\"f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8\",\"slot\":1016,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1003,\"block_time\":1695802467,\"slot\":1003,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d9010281825820a0778356caafb2721db549681bba014000dd199030cab6df8eecd25adad01497000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790790007582057de8ef6ac41d64966d9fc00a5c32d04ac4201098e943c97c063476d16cf75f30ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c58406c4c45da0f94be6a52a154821009dc6b0c46a18c781a715c19bc7376c17036250dcf7a612c958e0b0e3bc7b94946a3c2d2e34e00c79c140253841466b24e62078258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b39458406d30cc77dfec6d20f6f61247a255af02e9721ffa99d18bde9af6dde3a933e1e683551b20648a3450d57d88094da095d2fa6366a4b93e184da202e2265b612305f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d326664726177496470686f737465642d6475706c69636174656a62756e646c654861736878403962333633326234323239616662373063653738373734336464643233353239396539643734393037633031333961633962656436303166346634383666663569636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a000f4240\"}"
+    },
+    "/txs/3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"3b52134a702e888b255503e300b4c49856665edd5c22cb37d5bce7031f263f90\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1017": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802767,\"height\":1017,\"hash\":\"f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9\",\"slot\":1017,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1004,\"block_time\":1695802468,\"slot\":1004,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d9010281825820ef49c6d5bfa128049553289064cd2a32f506b28bc485f50b77f3f11540b39cae000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790790007582055569aeaf8177d4480d57185233d1c1729e67958b395b2673d8ca79469926ce40ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c5840b05520bfa21ad5c0f75d3077b84bf780ded493317117f8b90e3f48bcefc37e58e57bf0e775b71adeba70382a0bf50679711617d0f625b93de58eb42cd092f3088258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394584097f3c2d8721c74e0abebe0b3c3d2e0061f03ad35eac473347e65d7144e8d6cc3949032bb0c0ed57728dd1d37e6c90f02421b82d19cdf41b467483fb465dc1800f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d32666472617749646d686f737465642d7370616365646a62756e646c654861736878406166643565653538363930313732646161306330666537626365316664326530663033643135383863633436326139313163623535343464303965326161306369636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a000f4240\"}"
+    },
+    "/txs/b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"b4e12beb18763b2b96918d6908db095f608ee33165a5659fb808ad9ef2df3a93\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1018": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802768,\"height\":1018,\"hash\":\"fafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa\",\"slot\":1018,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1005,\"block_time\":1695802469,\"slot\":1005,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d9010281825820ed7976b9da25e7b8d46ccec0c9b273acc5a9bb14cf729bb244f9d1cf99b53916000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790790007582040e4d5bcad8be4436026696652b3e1a93ed18c2e2fbc6c090498cb4dd32bab3c0ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c584056da16754265daf495d25a3deae032ef9b3bc58e90e36f14017b9cdfdeb76da6b57b4133c71b8ca1aa17bf7ed8c4ed3148fc726e45b63104a07718e34ff6600a8258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b3945840d3992a9a8573ee8814b1a909306b31d952bae0a8c06f8a210aefbecc7076e5f3bd629d0078de3eda2f9f0d4923bf243d9ac4ae84db2d6641b75d06b1320f4507f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d326664726177496470686f737465642d72656f7264657265646a62756e646c654861736878403132323766316635393663646338646362383963646465366233306661383865316532356333393562343266393664353065616231663035653363333139393069636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a000f4240\"}"
+    },
+    "/txs/aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"aae8df3305e4c13a5b600dc990f76df9dc27392acb91a472b83af9581af48b9e\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1019": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802769,\"height\":1019,\"hash\":\"fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb\",\"slot\":1019,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1006,\"block_time\":1695802470,\"slot\":1006,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d901028182582049e61bb80ec46868b21d5853d8ae19a7d03127ed19279e8e656c19ecef7545e1000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad907907900075820ecb8990936653e7d695251d96506d50cbe5b24285db67053b74d31793e68e79c0ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c58408a8f408df73aff31d56f89e98416868ee1968d9ce5328bdf4b5d9ea1510a9af892a10830a66fecec40ba55571242632a971d269e52bce58d346b02a52aa1eb088258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b3945840edbf7cd82e5be82c3b9fc4726de455380a038c20dfd55849608ff0c19dd0952052e908a48c37c4bb7c2d9a481b410d66b967763b0600d90499eb1b6d7da0100ef5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d32666472617749646a686f737465642d626f6d6a62756e646c654861736878406335333237323061633833633632623131636262333136653065656437653463623037336635656432393362376535626331626236313031623734396238363969636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a000f4240\"}"
+    },
+    "/txs/e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"e432ce00d8b6c7b6261bf98851fabb80dc6dc3f7d61285c5f2120c6a38c46912\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1020": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802770,\"height\":1020,\"hash\":\"fcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfc\",\"slot\":1020,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1007,\"block_time\":1695802471,\"slot\":1007,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d9010281825820efaeea8aec84e7c8e2b07336605cd070710c89268a89ef05e0a44bd3a0b1a1da000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079000758201508815a2a20c0dbd4a19a32183fee08be9e0096cc9c8278ae394047e38ed5bb0ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c58403b9db6abddd38b3d01f69ad216beae6a3d93c98e3453c04e0deb4a99bd53e910bc314526659fca7a7ee4ce532710fd28897b40ccbb65c3d8f19f3d96dcad6e0d8258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b39458408f99941e6f9f8629d2fc150e680e3dd8b0db4b5f43e001e02aacf2989171f814e25b652ebea7c66640d281b01e9dbd8c02f5483af27fa86b2db442fa073a6508f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d32666472617749646c686f737465642d726f756e646a62756e646c654861736878403139663062353563626462623731616139343331353665326537653431353965643232616135646632303832663332626134323437636134663961356236313069636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641a00a7d8c0\"}"
+    },
+    "/txs/dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"dcaec3f1abc6d988a7cfb45ca2774f1712e70988bf9faaeefada9940161b0e62\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1021": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802771,\"height\":1021,\"hash\":\"fdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfd\",\"slot\":1021,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
+    },
+    "/txs/3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01\",\"block\":\"6b45ce48205f3e06a0009d977d1cc3e57bda90f594c2440a3dfd35ff278c16ff\",\"block_height\":1008,\"block_time\":1695802472,\"slot\":1008,\"index\":0,\"output_amount\":[{\"unit\":\"lovelace\",\"quantity\":\"49812391\"}],\"fees\":\"187609\",\"deposit\":\"0\",\"size\":686,\"invalid_before\":null,\"invalid_hereafter\":\"200000000\",\"utxo_count\":3,\"withdrawal_count\":0,\"mir_cert_count\":0,\"delegation_count\":0,\"stake_cert_count\":0,\"pool_update_count\":0,\"pool_retire_count\":0,\"asset_mint_or_burn_count\":0,\"redeemer_count\":0,\"valid_contract\":true,\"treasury_donation\":\"0\"}"
+    },
+    "/txs/3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01/cbor": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"cbor\":\"84a700d901028182582058fe1a60c2ff71ed5aab63aaa8e368d301059dbb7224c8fbf3fad58054532bfa000181825839000d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790791a001e8480021a00029810031a02642e3805a1581de0008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad90790790007582079d343b9ca269cbcd2580eb775551106d0c3ca85cb22ef9f52a00982ad3b7c4b0ed9010281581c008b47844d92812fc30d1f0ac9b6fbf38778ccba9db8312ad9079079a100d90102828258208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c5840c73f62563acd8ef48a786696c6bb0ec0b8739ab7ba5e2c8e27337f9816c868fec93e77e561aaedc5052c6c14e99b8df4979b127d6065e2f6b9cf825072ac63008258208139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b39458404925f6c730095ef06d7178f7d32e3733b5997715bbffaf57c173aab9ba09451095e2ec8e7667bd63772426e1a5e113f2ca4329e54d81e49005d4d8e442304e07f5d90103a100a11a0135289aa56870726f746f636f6c6d646576656c6f706d656e742d32666472617749646a686f737465642d6661726a62756e646c654861736878406338613636366461633734656639316535343731383461373539633738653938626261396330326631323130666635643834366263636232646461393065303669636861696e4861736878403532646239626137306530636330663665616637383033646430373434376131663534373737333566643366363631373932626139343630306338346539373165726f756e641b001fffffffffffff\"}"
+    },
+    "/txs/3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01/utxos": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"hash\":\"3079a84e219312da28f5da372420386e110614b5c15e4ee221547ead7d33ab01\",\"inputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"50000000\"}],\"tx_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"reference_script_hash\":null,\"collateral\":false,\"reference\":false}],\"outputs\":[{\"address\":\"addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw\",\"amount\":[{\"unit\":\"lovelace\",\"quantity\":\"2000000\"}],\"output_index\":0,\"data_hash\":null,\"inline_datum\":null,\"collateral\":false,\"reference_script_hash\":null,\"consumed_by_tx\":null}]}"
+    },
+    "/blocks/1022": {
+      "status": 200,
+      "headers": {
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "*",
+        "vary": "origin, access-control-request-method, access-control-request-headers",
+        "content-type": "application/json"
+      },
+      "body": "{\"time\":1695802772,\"height\":1022,\"hash\":\"fefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe\",\"slot\":1022,\"epoch\":0,\"epoch_slot\":105,\"slot_leader\":\"ShelleyGenesis-836cc68931c2e4e3\",\"size\":0,\"tx_count\":1,\"output\":\"49812391\",\"fees\":\"187609\",\"block_vrf\":\"vrf_vk1xrd0ec\",\"op_cert\":\"\",\"op_cert_counter\":\"0\",\"previous_block\":\"45aa36c1f2fdcd8a948436ebcd07fcf7c303049f72c37d6c410236cba46b8f81\",\"next_block\":null,\"confirmations\":0}"
     },
     "/txs/6f8455f18499524f7da4f44f143b0e33ea53903d4c86e26d7ac36a2e9729c8a3": {
       "status": 200,

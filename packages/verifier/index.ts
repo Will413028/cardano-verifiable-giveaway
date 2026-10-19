@@ -2,6 +2,7 @@ import {
   validateBundle,
   validateProof,
   computeCommitment,
+  matchesCommitment,
   roundTime,
   selectWinners,
   checkTiming,
@@ -90,9 +91,7 @@ export async function verifyProof(
       result(
         commitment.txHash === proof.txHash &&
           commitment.owner === proof.owner &&
-          hash === commitment.bundleHash &&
-          proof.bundle.drawId === commitment.drawId &&
-          proof.bundle.drand.round === commitment.round,
+          matchesCommitment(proof.bundle, hash, commitment),
       ),
       'Bundle, drawId and drand round must match the referenced commitment',
     );

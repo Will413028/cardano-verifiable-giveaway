@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-19T15:35:51.102Z",
+  "measuredAt": "2026-10-19T16:06:07.045Z",
   "what": "Upload-gate CPU work in local workerd (Wrangler unstable_dev); see apps/api/bench/cpu.mjs header",
   "machine": {
     "platform": "darwin 25.5.0",
@@ -15,16 +15,16 @@
     "ascii": {
       "bytes": 2030217,
       "inspectMs": {
-        "min": 8,
-        "median": 9,
-        "max": 11
+        "min": 12,
+        "median": 17,
+        "max": 27
       },
-      "processCpuMsPerRequest": 21,
+      "processCpuMsPerRequest": 29,
       "steps": {
         "sha256Ms": {
           "min": 1,
           "median": 2,
-          "max": 2
+          "max": 4
         },
         "decodeMs": {
           "min": 0,
@@ -33,185 +33,215 @@
         },
         "parseMs": {
           "min": 0,
-          "median": 0,
-          "max": 1
+          "median": 1,
+          "max": 6
+        },
+        "canonicalMs": {
+          "min": 2,
+          "median": 3,
+          "max": 22
         },
         "validateMs": {
-          "min": 7,
-          "median": 7,
-          "max": 7
+          "min": 8,
+          "median": 8,
+          "max": 47
         }
       }
     },
     "cjk": {
       "bytes": 6030217,
       "inspectMs": {
-        "min": 37,
-        "median": 42,
-        "max": 46
+        "min": 55,
+        "median": 83,
+        "max": 181
       },
-      "processCpuMsPerRequest": 69,
+      "processCpuMsPerRequest": 82,
       "steps": {
         "sha256Ms": {
           "min": 3,
-          "median": 3,
-          "max": 4
+          "median": 5,
+          "max": 7
         },
         "decodeMs": {
-          "min": 9,
-          "median": 9,
-          "max": 10
+          "min": 10,
+          "median": 14,
+          "max": 20
         },
         "parseMs": {
           "min": 2,
-          "median": 2,
-          "max": 3
+          "median": 3,
+          "max": 8
+        },
+        "canonicalMs": {
+          "min": 16,
+          "median": 22,
+          "max": 55
         },
         "validateMs": {
-          "min": 21,
-          "median": 23,
-          "max": 24
+          "min": 25,
+          "median": 41,
+          "max": 121
         }
       }
     },
     "hangul": {
       "bytes": 6030217,
       "inspectMs": {
-        "min": 37,
-        "median": 39,
-        "max": 47
+        "min": 59,
+        "median": 73,
+        "max": 114
       },
-      "processCpuMsPerRequest": 68,
+      "processCpuMsPerRequest": 89,
       "steps": {
         "sha256Ms": {
           "min": 3,
-          "median": 4,
-          "max": 4
+          "median": 5,
+          "max": 9
         },
         "decodeMs": {
-          "min": 8,
-          "median": 9,
-          "max": 9
+          "min": 9,
+          "median": 16,
+          "max": 51
         },
         "parseMs": {
           "min": 2,
-          "median": 2,
-          "max": 3
+          "median": 3,
+          "max": 8
+        },
+        "canonicalMs": {
+          "min": 17,
+          "median": 22,
+          "max": 68
         },
         "validateMs": {
-          "min": 22,
-          "median": 24,
-          "max": 26
+          "min": 23,
+          "median": 35,
+          "max": 44
         }
       }
     },
     "combining": {
       "bytes": 3000217,
       "inspectMs": {
-        "min": 54,
-        "median": 58,
-        "max": 68
+        "min": 83,
+        "median": 153,
+        "max": 337
       },
-      "processCpuMsPerRequest": 73,
+      "processCpuMsPerRequest": 97,
       "steps": {
         "sha256Ms": {
-          "min": 1,
-          "median": 2,
-          "max": 2
-        },
-        "decodeMs": {
-          "min": 4,
-          "median": 4,
-          "max": 5
-        },
-        "parseMs": {
           "min": 2,
-          "median": 3,
+          "median": 2,
           "max": 3
         },
+        "decodeMs": {
+          "min": 5,
+          "median": 6,
+          "max": 8
+        },
+        "parseMs": {
+          "min": 3,
+          "median": 3,
+          "max": 5
+        },
+        "canonicalMs": {
+          "min": 17,
+          "median": 18,
+          "max": 24
+        },
         "validateMs": {
-          "min": 47,
-          "median": 51,
-          "max": 66
+          "min": 51,
+          "median": 60,
+          "max": 90
         }
       }
     },
     "longCluster": {
       "bytes": 3970217,
       "inspectMs": {
-        "min": 53,
-        "median": 53,
-        "max": 57
+        "min": 78,
+        "median": 97,
+        "max": 113
       },
-      "processCpuMsPerRequest": 73,
+      "processCpuMsPerRequest": 95,
       "steps": {
         "sha256Ms": {
           "min": 2,
-          "median": 3,
-          "max": 3
+          "median": 5,
+          "max": 10
         },
         "decodeMs": {
-          "min": 5,
-          "median": 6,
-          "max": 6
+          "min": 7,
+          "median": 12,
+          "max": 62
         },
         "parseMs": {
           "min": 2,
-          "median": 2,
-          "max": 3
+          "median": 6,
+          "max": 38
+        },
+        "canonicalMs": {
+          "min": 19,
+          "median": 37,
+          "max": 198
         },
         "validateMs": {
-          "min": 42,
-          "median": 42,
-          "max": 43
+          "min": 58,
+          "median": 90,
+          "max": 138
         }
       }
     },
     "emailBacktrack": {
       "bytes": 2030217,
       "inspectMs": {
-        "min": 231,
-        "median": 239,
-        "max": 251
+        "min": 245,
+        "median": 383,
+        "max": 665
       },
-      "processCpuMsPerRequest": 244,
+      "processCpuMsPerRequest": 276,
       "steps": {
         "sha256Ms": {
           "min": 1,
-          "median": 1,
-          "max": 2
+          "median": 2,
+          "max": 3
         },
         "decodeMs": {
           "min": 0,
           "median": 0,
-          "max": 1
+          "max": 4
         },
         "parseMs": {
           "min": 0,
-          "median": 0,
-          "max": 2
+          "median": 2,
+          "max": 6
+        },
+        "canonicalMs": {
+          "min": 3,
+          "median": 10,
+          "max": 18
         },
         "validateMs": {
-          "min": 231,
-          "median": 232,
-          "max": 263
+          "min": 242,
+          "median": 272,
+          "max": 296
         }
       }
     }
   },
   "chainReadsMs": {
     "min": 3,
-    "median": 6,
-    "max": 30
+    "median": 5,
+    "max": 37
   },
   "worst": {
     "variant": "emailBacktrack",
-    "processCpuMsPerRequest": 244,
+    "processCpuMsPerRequest": 276,
     "inspectMs": {
-      "min": 231,
-      "median": 239,
-      "max": 251
+      "min": 245,
+      "median": 383,
+      "max": 665
     },
-    "chainReadsMsMax": 30
+    "chainReadsMsMax": 37
   }
 }

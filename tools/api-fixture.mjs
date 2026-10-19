@@ -35,18 +35,19 @@ const wallet = (payment, stake) => {
 const ORGANIZER = wallet(testKey(1), testKey(2));
 const OTHER = wallet(testKey(4), testKey(5));
 const BUSY = wallet(testKey(8), testKey(9));
-const bundle = (drawId, entrants = ['alice', 'bob', 'carol']) => ({
+const bundle = (drawId, entrants = ['alice', 'bob', 'carol'], round = R) => ({
   version: VERSION,
   algorithm: ALGORITHM,
   drawId,
   entrants,
   rules: { winners: 1 },
-  drand: { chainHash: QUICKNET, round: R },
+  drand: { chainHash: QUICKNET, round },
 });
 // A commitment transaction as the page builds it (stake key the only required signer, 0 ADA withdrawal from its reward
 // account, invalid_hereafter before the round) of whatever bytes `text` is: the chain commits a hash, not a bundle.
-async function commit(from, text, drawId, n) {
-  const metadata = { protocol: VERSION, drawId, bundleHash: await sha256(text), chainHash: QUICKNET, round: R };
+// `round` is the metadata's round, which the organizer writes independently of the bundle's.
+async function commit(from, text, drawId, n, round = R) {
+  const metadata = { protocol: VERSION, drawId, bundleHash: await sha256(text), chainHash: QUICKNET, round };
   const built = buildTransaction({
     label: LABEL,
     metadata,
@@ -65,10 +66,30 @@ export async function generate() {
   // Duplicate labels: validateBundle refuses it, yet its hash is committed on chain like any other bytes.
   const invalid = canonicalize(bundle('hosted-invalid', ['alice', 'alice']));
   const quota = canonicalize(bundle('hosted-quota'));
+  // Bytes that pass validateBundle once parsed but are not the canonical serialization (the wallet-auth ADR hosts
+  // canonical bundle bytes only), each committed on chain so only the canonical check can refuse them. A duplicate key:
+  // JSON.parse keeps the last one, so the first can carry anything.
+  const duplicateKey = canonicalize(bundle('hosted-duplicate')).replace(
+    '"entrants":',
+    `"entrants":"${'arbitrary content '.repeat(64)}","entrants":`,
+  );
+  const spaced = JSON.stringify(JSON.parse(canonicalize(bundle('hosted-spaced'))), null, 2);
+  const reordered = JSON.stringify(bundle('hosted-reordered'));
+  const bom = `\ufeff${canonicalize(bundle('hosted-bom'))}`;
+  // A canonical bundle whose commitment names another round than its own (the metadata round is about a year later),
+  // and one whose round is consistent but too far ahead for any representable expiry.
+  const roundMismatch = canonicalize(bundle('hosted-round'));
+  const farRound = canonicalize(bundle('hosted-far', undefined, Number.MAX_SAFE_INTEGER));
   const txs = {
     organizer: await commit(ORGANIZER, valid, 'hosted-1', 0),
     other: await commit(OTHER, valid, 'hosted-1', 1),
     invalid: await commit(ORGANIZER, invalid, 'hosted-invalid', 2),
+    duplicateKey: await commit(ORGANIZER, duplicateKey, 'hosted-duplicate', 3),
+    spaced: await commit(ORGANIZER, spaced, 'hosted-spaced', 4),
+    reordered: await commit(ORGANIZER, reordered, 'hosted-reordered', 5),
+    bom: await commit(ORGANIZER, bom, 'hosted-bom', 6),
+    roundMismatch: await commit(ORGANIZER, roundMismatch, 'hosted-round', 7, R + 10_000_000),
+    farRound: await commit(ORGANIZER, farRound, 'hosted-far', 8, Number.MAX_SAFE_INTEGER),
   };
   // One more than the 20 bundles an owner may keep hosted (BR-17).
   for (let i = 0; i < 21; i++) txs[`quota${i}`] = await commit(BUSY, quota, 'hosted-quota', 10 + i);
@@ -88,7 +109,7 @@ export async function generate() {
     generatedBy: 'tools/api-fixture.mjs',
     indexer: INDEXER,
     roundTime: T,
-    bundles: { valid, invalid, quota },
+    bundles: { valid, invalid, quota, duplicateKey, spaced, reordered, bom, roundMismatch, farRound },
     owners: {
       organizer: encodeBech32('stake_test', unhex(`e0${ORGANIZER.stake.hash}`)),
       other: encodeBech32('stake_test', unhex(`e0${OTHER.stake.hash}`)),

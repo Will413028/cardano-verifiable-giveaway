@@ -117,7 +117,9 @@ try {
       bytes: runs[0].bytes,
       inspectMs: pick(runs, 'inspectMs'),
       processCpuMsPerRequest: Math.round(((after - before) * 1000) / REPETITIONS),
-      steps: Object.fromEntries(['sha256Ms', 'decodeMs', 'parseMs', 'validateMs'].map((k) => [k, pick(steps, k)])),
+      steps: Object.fromEntries(
+        ['sha256Ms', 'decodeMs', 'parseMs', 'canonicalMs', 'validateMs'].map((k) => [k, pick(steps, k)]),
+      ),
     };
     console.log(name, JSON.stringify(report.variants[name]));
   }

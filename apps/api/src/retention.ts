@@ -10,7 +10,13 @@ export function addMonths(unixSeconds: number, months: number): number {
   date.setUTCMonth(date.getUTCMonth() + months);
   return Math.floor(date.getTime() / 1000);
 }
-export const hostingExpiry = (round: number) => addMonths(roundTime(round), HOSTING_MONTHS);
+// The end of the hosting period of a draw, or null when the round lies so far ahead that no date represents it (a
+// round up to Number.MAX_SAFE_INTEGER passes validateBundle; Date covers ±8.64e15 ms). The upload gate refuses such a
+// draw instead of storing a NaN expiry.
+export function hostingExpiry(round: number): number | null {
+  const expiresAt = addMonths(roundTime(round), HOSTING_MONTHS);
+  return Number.isSafeInteger(expiresAt) ? expiresAt : null;
+}
 // What one Cron run removes at most (D1 deletes in one statement, R2 deletes up to 1,000 keys per call); the rest waits
 // for the next run, and reads refuse an expired record meanwhile (`expires_at` is checked on read).
 export const SWEEP_LIMIT = 500;

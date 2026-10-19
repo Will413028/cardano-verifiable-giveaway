@@ -331,7 +331,7 @@ await mustFailApi(
 const bundles = `${root}apps/api/src/bundles.ts`;
 await mustFailApi(
   'Skipping validateBundle in the upload gate',
-  (text) => text.replace('    validateBundle(value);\n', '    void value;\n'),
+  (text) => text.replace('bundle = validateBundle(value);', 'bundle = value as Bundle;'),
   'refuses bytes that fail validateBundle',
   bundles,
 );
@@ -354,4 +354,35 @@ await mustFailApi(
     ),
   'removing one record keeps bytes another record still names',
   bundles,
+);
+// Step 10 review fixes (H1, M1, M2): one guard per mutation, each against the backend test written for it.
+await mustFailApi(
+  'Accepting bytes that parse to a valid bundle without being its canonical serialization',
+  (text) => text.replace('if (canonical !== text)', 'if (canonical === null)'),
+  'refuses bytes that parse to a valid bundle but are not its canonical serialization',
+  bundles,
+);
+await mustFailApi(
+  'Matching the commitment by bundle hash only (not drawId and drand round)',
+  (text) =>
+    text.replace('if (!matchesCommitment(bundle, bundleHash, committed))', 'if (bundleHash !== committed.bundleHash)'),
+  'refuses a bundle whose drand round is not the round its commitment names',
+  bundles,
+);
+await mustFailApi(
+  'Not re-checking the record after writing its bytes',
+  (text) => text.replace('  if (live) return;\n', '  return;\n'),
+  'a takedown or deletion between the record write and the byte write',
+  bundles,
+);
+await mustFailApi(
+  'Inserting a record while its bytes are claimed for deletion',
+  (text) => text.replace('       AND NOT EXISTS (SELECT 1 FROM collecting WHERE bundle_hash = ?2)\n', ''),
+  'is refused, and hosts them when retried',
+  bundles,
+);
+await mustFailApi(
+  'Not running the reconciliation on the Cron trigger',
+  (text) => text.replace('    await reconcile(env, now);\n', ''),
+  'reclaimed by the Cron reconciliation',
 );

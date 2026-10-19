@@ -7,7 +7,7 @@
 // observability (invocation logs, which record request URLs) disabled.
 
 import { BlockfrostChain } from '@giveaway/chain';
-import { type HostingChain, type HostingEnv, HttpError, read, sweep, upload } from './bundles.ts';
+import { type HostingChain, type HostingEnv, HttpError, read, reconcile, sweep, upload } from './bundles.ts';
 
 export interface Env extends HostingEnv {
   // The one browser origin allowed to call the backend (BR-04): the page's own.
@@ -88,8 +88,11 @@ export async function handle(request: Request, env: Env, deps: Partial<Deps> = {
 
 export default {
   fetch: (request, env) => handle(request, env),
-  // Cron Trigger (wrangler.jsonc): expired records and their unreferenced bytes are removed (BR-08).
+  // Cron Trigger (wrangler.jsonc): expired records and their unreferenced bytes are removed (BR-08), then bytes no
+  // record names are reconciled (apps/api/src/bundles.ts, "Writing and deleting bytes").
   scheduled: async (controller, env) => {
-    await sweep(env, Math.floor(controller.scheduledTime / 1000));
+    const now = Math.floor(controller.scheduledTime / 1000);
+    await sweep(env, now);
+    await reconcile(env, now);
   },
 } satisfies ExportedHandler<Env>;

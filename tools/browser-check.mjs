@@ -181,8 +181,24 @@ try {
   await fresh.waitForFunction(() =>
     document.querySelector('#verification').textContent.includes('former hosted-proof'),
   );
+  // A current-format link with a missing or malformed field is named as such, not as the former format.
+  for (const [drop, set, message] of [
+    ['tx', null, 'has no commitment transaction (tx)'],
+    [null, ['tx', 'not-a-hash'], 'The commitment transaction (tx) in this link is not a 64-character hex hash'],
+    [null, ['bundle', 'ab'], 'The bundle hash (bundle) in this link is missing or not a 64-character hex hash'],
+  ]) {
+    const broken = new URL(hostedLink);
+    if (drop) broken.searchParams.delete(drop);
+    if (set) broken.searchParams.set(...set);
+    await fresh.goto(broken.toString());
+    await fresh.waitForFunction(
+      (expected) => document.querySelector('#verification').textContent.includes(expected),
+      message,
+    );
+    assert.equal((await fresh.locator('#verification').textContent()).includes('former hosted-proof'), false);
+  }
   await fresh.close();
-  passed('link pins the bundle hash; changed content and the former link format are refused');
+  passed('link pins the bundle hash; changed content, the former link format and broken links are refused');
   await page.click('#prepare');
   await page.waitForSelector('#commit');
   await page.click('#commit');

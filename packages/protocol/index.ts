@@ -138,6 +138,20 @@ export function canonicalize(value: unknown): string {
 export async function computeCommitment(bundle: Bundle): Promise<string> {
   return sha256(canonicalize(validateBundle(bundle)));
 }
+// Whether a validated bundle, whose canonical hash is `bundleHash`, is the one a commitment names: hash, drawId and
+// drand round all equal the commitment's metadata. The verifier's "Commitment hash" check and the backend's upload
+// gate both use it, so hosting accepts exactly the bundles a verifier would match to that commitment.
+export function matchesCommitment(
+  bundle: Bundle,
+  bundleHash: string,
+  commitment: Pick<Inclusion, 'bundleHash' | 'drawId' | 'round'>,
+): boolean {
+  return (
+    bundleHash === commitment.bundleHash &&
+    bundle.drawId === commitment.drawId &&
+    bundle.drand.round === commitment.round
+  );
+}
 export function roundTime(round: number): number {
   return GENESIS + (round - 1) * PERIOD;
 }

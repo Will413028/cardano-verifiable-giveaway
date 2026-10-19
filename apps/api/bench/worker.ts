@@ -1,12 +1,13 @@
 // PD2 measurement Worker (apps/api/bench/cpu.mjs starts it in local workerd; never deployed). It times, inside the
 // isolate, the CPU-bound work of the upload gate on the bytes it receives: the production inspectBundleBytes (SHA-256
-// of the bytes, UTF-8 decode, JSON.parse, validateBundle; /inspect), each of those steps alone (/steps), and the gate's
+// of the bytes, UTF-8 decode, JSON.parse, the canonical check, validateBundle; /inspect), each of those steps alone
+// (/steps), and the gate's
 // two chain reads
 // (BlockfrostChain.commitmentOwner and readCommitment: CBOR decoding, blake2b, Ed25519) against recorded answers.
 // Local workerd advances performance.now() during computation; deployed Workers do not (timers move only on I/O), so
 // this Worker is meaningful only locally.
 import { BlockfrostChain } from '@giveaway/chain';
-import { sha256, validateBundle } from '@giveaway/protocol';
+import { canonicalize, sha256, validateBundle } from '@giveaway/protocol';
 import fixture from '../test/chain-fixture.json';
 import { inspectBundleBytes } from '../src/bundles.ts';
 
@@ -43,12 +44,13 @@ export default {
     result.sha256Ms = await timed(() => sha256(bytes));
     let text = '';
     result.decodeMs = await timed(() => {
-      text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes);
+      text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
     });
     let value: unknown;
     result.parseMs = await timed(() => {
       value = JSON.parse(text);
     });
+    result.canonicalMs = await timed(() => canonicalize(value) === text);
     result.validateMs = await timed(() => validateBundle(value));
     return Response.json(result);
   },
