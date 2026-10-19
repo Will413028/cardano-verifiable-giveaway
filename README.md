@@ -37,12 +37,12 @@ Open `http://127.0.0.1:4320/`. Demo mode needs no wallet: preview → commit →
 Verify a downloaded result with:
 
 ```sh
-node apps/verifier-cli/index.mjs draw-example.json
+node apps/verifier-cli/index.mjs draw-example.json --indexer https://your-node.example/api/v0
 ```
 
-The CLI returns exit code 0 for PASS / DEMO PASS and 1 for FAIL. Preprod verification queries a Koios-compatible indexer and may use `--indexer https://host/api/v1`. Browser access to organizer-hosted bundles requires CORS; share links pin the hosted file hash.
+The CLI returns exit code 0 for PASS / DEMO PASS and 1 for FAIL; without `--indexer` it exits with code 2. There is no project default: `--indexer` names a Blockfrost-compatible indexer you trust, such as your own [Dolos](https://github.com/txpipe/dolos). It must be a full archive, its account address list must include addresses whose funds are already spent, and its `max_scan_items` must be at least 3000 (the Dolos default); plain `http` is accepted only for a node on the same machine. A demo result does not read the indexer. Browser access to organizer-hosted bundles requires CORS; share links pin the hosted file hash.
 
-The convenience backend in `apps/api/` is a local walking skeleton: `make api` starts it with Wrangler on `http://127.0.0.1:8787`, where it forwards the read-only Koios `/tip` and nothing else. In preprod mode the page shows that tip. The page reads the backend address from `GIVEAWAY_API_URL` at build time (default `http://127.0.0.1:8787`). Verification does not use the backend, and the CLI still queries the indexer directly. The backend is not deployed.
+The convenience backend in `apps/api/` is a local walking skeleton: `make api` starts it with Wrangler on `http://127.0.0.1:8787`, where `/tip` forwards the indexer's read-only `/blocks/latest` (`INDEXER_URL` in `apps/api/wrangler.jsonc`) and nothing else. In preprod mode the page shows that tip. The page reads the backend address from `GIVEAWAY_API_URL` and the project indexer from `GIVEAWAY_INDEXER_URL` at build time (defaults `http://127.0.0.1:8787` and `http://127.0.0.1:3010`, the local Dolos development chain in `tools/devchain/`). The verification page can use another Blockfrost-compatible indexer instead. Verification does not use the backend, and the CLI still queries the indexer directly. The backend is not deployed.
 
 `make check` runs Biome lint and formatting checks, TypeScript checking, Node tests, the backend tests inside the local Workers runtime, ten independent Python golden vectors and plan consistency checks. The optional browser end-to-end check uses an existing Playwright installation and Chrome, without downloading browsers or using personal profiles:
 

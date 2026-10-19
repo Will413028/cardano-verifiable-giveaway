@@ -22,7 +22,11 @@ const proof = {
   winners: await selectWinners(bundle, FIXTURE.randomness),
 };
 const file = `${root}dist/mutation-proof.json`;
-const cli = () => spawnSync(process.execPath, [`${root}apps/verifier-cli/index.mjs`, file], { encoding: 'utf8' });
+// --indexer is always required (PD7); a demo proof never reads it, and .invalid never resolves.
+const cli = () =>
+  spawnSync(process.execPath, [`${root}apps/verifier-cli/index.mjs`, file, '--indexer', 'https://indexer.invalid'], {
+    encoding: 'utf8',
+  });
 // The unmutated proof must pass, or every mutation below would be "rejected" for the wrong reason.
 await writeFile(file, JSON.stringify(proof));
 const baseline = cli();
@@ -63,21 +67,28 @@ for (const [name, mutate] of [
   console.log(`Mutation rejected by CLI: ${name}`);
 }
 // Each mutation rewrites a file the test runner reads, runs the named test, and restores the file.
-async function mustFail(name, path, mutate, testName) {
+async function mustFail(name, path, mutate, testName, testFile = `${root}tests/core.test.mjs`) {
   const original = await readFile(path, 'utf8');
   const changed = mutate(original);
   if (changed === original) throw new Error(`${name}: mutation target was not located`);
   try {
     await writeFile(path, changed);
-    const result = spawnSync(
-      process.execPath,
-      ['--test', `--test-name-pattern=${testName}`, `${root}tests/core.test.mjs`],
-      {
-        encoding: 'utf8',
-      },
-    );
+    const result = spawnSync(process.execPath, ['--test', `--test-name-pattern=${testName}`, testFile], {
+      encoding: 'utf8',
+    });
     if (result.status !== 1 || !result.stdout.includes(testName)) throw new Error(`${name} did not fail the tests`);
-    console.log(`${name} causes test failure`);
+    // The first failure line the runner printed, so the reason is visible next to the mutation.
+    const lines = result.stdout.split('\n');
+    const at = lines.findIndex((line) => /Error/.test(line));
+    const reason =
+      at < 0
+        ? ''
+        : lines
+            .slice(at, at + 6)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .join(' ');
+    console.log(`${name} causes test failure${reason ? ` (${reason.slice(0, 240)})` : ''}`);
   } finally {
     await writeFile(path, original);
   }
@@ -170,4 +181,61 @@ await mustFail(
   library,
   (text) => text.replace('return checkValidityBound(commitment, round) && ', 'return '),
   'F17: invalid_hereafter',
+);
+// Step 8b: the Blockfrost-shaped adapter (PD7, PD9). One guard per mutation, each against the test written for it.
+await mustFail(
+  'CLI falling back to a default indexer',
+  `${root}apps/verifier-cli/index.mjs`,
+  (text) =>
+    text
+      .replace("if (index < 0 || !args[index + 1] || args[index + 1].startsWith('--')) {", 'if (false) {')
+      .replace(
+        'new BlockfrostChain(args[index + 1])',
+        "new BlockfrostChain(index < 0 ? 'http://127.0.0.1:3010' : args[index + 1])",
+      ),
+  'CLI requires --indexer',
+);
+await mustFail(
+  'Enumerating only the first page of each address',
+  library,
+  (text) => text.replace('if (listed.length < PAGE) break;', 'break;'),
+  'a conflicting commitment on the second page',
+);
+await mustFail(
+  'Taking a max_scan_items 400 as the end of a list',
+  library,
+  (text) =>
+    text.replace(
+      'const rows = await this.json(at, answer);',
+      'const rows = answer.status === 400 && answer.body.includes("scan limit") ? [] : await this.json(at, answer);',
+    ),
+  'a scan-limit 400 is never the end of a list',
+);
+await mustFail(
+  'Skipping an enumerated transaction whose CBOR is not served',
+  library,
+  (text) =>
+    text.replace(
+      'if (raw.status === 404) throw new Error("Organizer history transaction evidence is incomplete");',
+      'if (raw.status === 404) continue;',
+    ),
+  'an enumerated commitment whose CBOR is not served',
+);
+await mustFail(
+  'Taking a non-2xx answer for one address as an empty list',
+  library,
+  (text) => text.replace(/(const listed = await this\.page\([^;]*\));/, '$1.catch(() => []);'),
+  'any non-2xx answer for one of the identity addresses',
+);
+await mustFail(
+  'Counting the enumeration limit per address instead of summed',
+  library,
+  (text) => text.replace('for (const address of lists) {', 'for (const address of lists) { enumerated = 0;'),
+  'history over L enumerated rows fails',
+);
+await mustFail(
+  'Merging the address lists without tx_hash deduplication',
+  library,
+  (text) => text.replace('rows.set(row.tx_hash, row);', 'rows.set(address + row.tx_hash, row);'),
+  'one transaction listed under several identity addresses',
 );

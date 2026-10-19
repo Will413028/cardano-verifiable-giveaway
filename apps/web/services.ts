@@ -1,5 +1,5 @@
 import { fetchBeacon } from '@giveaway/beacon';
-import { DemoChain, KoiosChain } from '@giveaway/chain';
+import { BlockfrostChain, DemoChain } from '@giveaway/chain';
 import {
   ARTIFACT_BYTE_LIMIT,
   type Beacon,
@@ -19,6 +19,10 @@ import {
 
 // Replaced at build time by tools/build.mjs from GIVEAWAY_API_URL (default http://127.0.0.1:8787).
 declare const GIVEAWAY_API_URL: string;
+// Replaced at build time by tools/build.mjs from GIVEAWAY_INDEXER_URL: the project's Blockfrost-compatible indexer
+// (default the local Dolos dev chain, http://127.0.0.1:3010).
+declare const GIVEAWAY_INDEXER_URL: string;
+export const PROJECT_INDEXER = GIVEAWAY_INDEXER_URL;
 
 export interface Tip {
   blockHeight: number;
@@ -27,24 +31,31 @@ export interface Tip {
   blockTime: number;
 }
 
-// The preprod chain tip read through the convenience backend's Koios proxy (BR-01). Display only: no
-// verification step reads it, so the verifier still works when the backend is down (B1).
+// The preprod chain tip read through the convenience backend's proxy (BR-01), which forwards the indexer's
+// /blocks/latest. Display only: no verification step reads it, so the verifier still works when the backend is
+// down (B1).
 export async function fetchTip(): Promise<Tip> {
   const response = await fetch(`${GIVEAWAY_API_URL}/tip`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Proxy /tip: HTTP ${response.status}`);
-  const rows: unknown = await response.json();
-  const row = (Array.isArray(rows) ? rows[0] : undefined) as Record<string, unknown> | undefined;
-  const tip = { blockHeight: row?.block_height, epoch: row?.epoch_no, slot: row?.abs_slot, blockTime: row?.block_time };
+  const block: unknown = await response.json();
+  const row = (block && typeof block === 'object' ? block : undefined) as Record<string, unknown> | undefined;
+  const tip = { blockHeight: row?.height, epoch: row?.epoch, slot: row?.slot, blockTime: row?.time };
   if (!Object.values(tip).every(Number.isSafeInteger)) throw new Error('Proxy /tip: unexpected response');
   return tip as Tip;
 }
 
-// Chain readers are created once per page load and passed to every flow that reads evidence.
+// Chain readers are created once per page load and passed to every flow that reads evidence. `indexer` reads the
+// project's indexer; the verification page may replace it with one the visitor names (`indexerFor`).
 export interface Chains {
   demo: DemoChain;
-  koios: KoiosChain;
+  indexer: BlockfrostChain;
 }
-export const createChains = (): Chains => ({ demo: new DemoChain(), koios: new KoiosChain() });
+export const createChains = (): Chains => ({ demo: new DemoChain(), indexer: new BlockfrostChain(PROJECT_INDEXER) });
+// The indexer the verification page reads: the visitor's own Blockfrost-compatible node when one is given (BR-16),
+// otherwise the project's.
+export function indexerFor(chains: Chains, value: string): BlockfrostChain {
+  return value.trim() ? new BlockfrostChain(value.trim()) : chains.indexer;
+}
 
 export type Artifact = Proof | Pending;
 

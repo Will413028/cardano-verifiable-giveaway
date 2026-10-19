@@ -8,7 +8,7 @@ import * as TransactionInput from '@evolution-sdk/evolution/TransactionInput';
 import * as TransactionMetadatum from '@evolution-sdk/evolution/TransactionMetadatum';
 import { preprod } from '@evolution-sdk/evolution/sdk/client/Chain';
 import { makeTxBuilder } from '@evolution-sdk/evolution/sdk/builders/TransactionBuilder';
-import { Koios } from '@evolution-sdk/evolution/sdk/provider/Koios';
+import { BlockfrostProvider } from '@evolution-sdk/evolution/sdk/provider/Blockfrost';
 import { computeCommitment, hex, unhex, type Bundle } from '@giveaway/protocol';
 import {
   checkCommitmentTransaction,
@@ -16,7 +16,6 @@ import {
   commitmentValidUntil,
   COMMITMENT_TRANSFER,
   decodeCborAll,
-  DEFAULT_INDEXER,
   identityKeyHash,
   isCborArray,
   isCborMap,
@@ -67,14 +66,15 @@ const metadatum = (value: Record<string, string | number>) =>
     Object.entries(value).map(([k, v]) => [k, typeof v === 'number' ? TransactionMetadatum.int(BigInt(v)) : v]),
   );
 
-export async function prepareTransaction(bundle: Bundle, id: string) {
+// `indexer` is the project's Blockfrost-compatible indexer (build setting GIVEAWAY_INDEXER_URL); it needs no key.
+export async function prepareTransaction(bundle: Bundle, id: string, indexer: string) {
   const enable = injected()[id]?.enable;
   if (!id || typeof enable !== 'function')
     throw new Error('Install and enable a CIP-30 wallet in this browser, then refresh wallets');
   const wallet = await enable();
   if ((await wallet.getNetworkId()) !== 0)
     throw new Error('Switch your wallet to preprod. Mainnet is disabled in this development version.');
-  const provider = new Koios(DEFAULT_INDEXER);
+  const provider = new BlockfrostProvider(indexer);
   const params = await provider.getProtocolParameters();
   const candidate = ((await wallet.getUtxos()) ?? []).map(walletUtxo).find((u) => u !== null && u.lovelace >= 5000000n);
   if (!candidate) throw new Error('Need an ADA-only preprod UTxO with at least 5 test ADA');
@@ -135,17 +135,19 @@ export async function prepareTransaction(bundle: Bundle, id: string) {
         fee > 2n * (BigInt(params.minFeeA) * BigInt(signed.length / 2) + BigInt(params.minFeeB))
       )
         throw new Error('Fee exceeds twice the live protocol estimate');
-      // The signed bytes go to Koios unchanged: re-encoding through an SDK could alter them (spike S1).
-      const response = await fetch(`${DEFAULT_INDEXER}/submittx`, {
+      // The signed bytes go to the indexer's submit endpoint unchanged: re-encoding through an SDK could alter them
+      // (spike S1). Step 9 moves submission to the wallet (F14).
+      const response = await fetch(`${indexer}/tx/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/cbor' },
         body: new Uint8Array(unhex(signed)),
         signal: AbortSignal.timeout(20000),
       });
-      if (!response.ok) throw new Error(`Submission failed: HTTP ${response.status} ${await response.text()}`);
-      const txHash = await response.json();
-      if (typeof txHash !== 'string' || !/^[a-f0-9]{64}$/.test(txHash))
-        throw new Error('Unexpected submission response');
+      const body = await response.text();
+      if (!response.ok) throw new Error(`Submission failed: HTTP ${response.status} ${body}`);
+      // Dolos answers the hash as plain text, Blockfrost as a JSON string.
+      const txHash = body.trim().replace(/^"(.*)"$/, '$1');
+      if (txHash !== checked.txHash) throw new Error('Unexpected submission response');
       return txHash;
     },
   };

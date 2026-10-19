@@ -1,0 +1,43 @@
+{
+  "browser": "155.0.8059.82",
+  "indexer": "http://127.0.0.1:3010",
+  "verification": {
+    "enterprise": {
+      "verdict": "PASS",
+      "checks": [
+        "✓ Bundle formatDevelopment protocol; not frozen v1",
+        "✓ Cardano evidenceRead from selected preprod indexer; evidence still depends on that indexer",
+        "✓ Commitment hashBundle, drawId and drand round must match the referenced commitment",
+        "✓ Timing and confirmationsThe transaction validity upper bound (invalid_hereafter), inclusion and the 15th confirmation precede the round",
+        "✓ Unique commitmentNo other commitment by the same organizer is open between this inclusion and the round",
+        "✓ drand BLS signaturePinned quicknet public key; signature and randomness verified",
+        "✓ Winner recomputationRecomputed from signature-derived randomness and the committed bundle"
+      ],
+      "hosts": [
+        "http://127.0.0.1:4320",
+        "http://127.0.0.1:3010"
+      ]
+    },
+    "organizer": {
+      "verdict": "FAIL",
+      "checks": [
+        "✓ Bundle formatDevelopment protocol; not frozen v1",
+        "✓ Cardano evidenceRead from selected preprod indexer; evidence still depends on that indexer",
+        "✓ Commitment hashBundle, drawId and drand round must match the referenced commitment",
+        "✓ Timing and confirmationsThe transaction validity upper bound (invalid_hereafter), inclusion and the 15th confirmation precede the round",
+        "× Unique commitmentOverlapping commitments by the same organizer: f50883ead3035e5575f5de43c2c9d2c04c376cf54a329f961449b69956ce873df50883ead3035e5575f5de43c2c9d2c04c376cf54a329f961449b69956ce873d · drawId devchain-overlap · round 1000000 · included 6/20/2022, 8:00:57 AM",
+        "✓ drand BLS signaturePinned quicknet public key; signature and randomness verified",
+        "✓ Winner recomputationRecomputed from signature-derived randomness and the committed bundle"
+      ],
+      "hosts": [
+        "http://127.0.0.1:4320",
+        "http://127.0.0.1:3010"
+      ]
+    }
+  },
+  "tip": "Preprod tip via the backend proxy: block 94 · epoch 0 · slot 94 · 6/20/2022, 8:01:34 AM",
+  "prepared": "Ready to sign. Estimated fee: 0.186665 test ADA. The transaction returns the transferred ADA to your wallet.",
+  "submitted": "Submitted 927ef7320e0346d21cffcfa1ecf50179af19ef005b9b6911ff159fd08732b53e. Publish the commitment link before the round. Waiting for 15 confirmations.",
+  "confirmed": "Fifteen confirmations verified. Round starts at 10/19/2026, 3:15:06 PM.",
+  "pageErrors": []
+}

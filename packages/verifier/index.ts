@@ -11,7 +11,7 @@ import {
   type Proof,
 } from '@giveaway/protocol';
 import { verifyBeacon } from '@giveaway/beacon';
-import { DemoChain, KoiosChain } from '@giveaway/chain';
+import { type ChainReader, DemoChain } from '@giveaway/chain';
 // A check whose evidence could not be obtained is not evaluated, never passed on the artifact's own word.
 export type CheckResult = 'pass' | 'fail' | 'unevaluated';
 export interface Check {
@@ -39,7 +39,8 @@ const result = (passed: boolean): CheckResult => (passed ? 'pass' : 'fail');
 export async function verifyProof(
   input: unknown,
   options: {
-    chain?: Pick<KoiosChain, 'readCommitment' | 'findCommitments'>;
+    // The indexer the caller selected. There is no default (B1, PD7): preprod evidence without one fails.
+    chain?: ChainReader;
   } = {},
 ): Promise<Verdict> {
   const checks: Check[] = [];
@@ -60,7 +61,8 @@ export async function verifyProof(
   let commitment: Confirmed | undefined, candidates: Inclusion[] | undefined;
   try {
     if (proof.network === 'preprod') {
-      const chain = options.chain ?? new KoiosChain();
+      const chain = options.chain;
+      if (!chain) throw new Error('No indexer selected for preprod evidence');
       commitment = await chain.readCommitment(proof.txHash, proof.owner);
       candidates = await chain.findCommitments(proof.owner);
       add('Cardano evidence', 'pass', 'Read from selected preprod indexer; evidence still depends on that indexer');

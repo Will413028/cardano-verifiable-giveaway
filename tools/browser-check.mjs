@@ -2,11 +2,29 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { commitmentValidUntil, encodeBech32, roundTime, transactionHash } from '@giveaway/verifier-cli/library';
-import { cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
+import {
+  ALGORITHM,
+  commitmentMetadata,
+  commitmentValidUntil,
+  computeCommitment,
+  encodeBech32,
+  FIXTURE,
+  identityKeyHash,
+  LABEL,
+  preprodSlotAt,
+  QUICKNET,
+  roundTime,
+  selectWinners,
+  transactionHash,
+  VERSION,
+} from '@giveaway/verifier-cli/library';
+import { ANSWERS, blockfrostIndexer, SUBMIT_HEADERS } from '../tests/blockfrost-mock.mjs';
+import { buildTransaction, cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Same PORT variable as tools/serve.mjs, so a check can run beside another dev server.
 const origin = `http://127.0.0.1:${process.env.PORT ?? 4320}/`;
+// The project indexer the page was built against (tools/build.mjs GIVEAWAY_INDEXER_URL); every read is mocked here.
+const INDEXER = (process.env.GIVEAWAY_INDEXER_URL ?? 'http://127.0.0.1:3010').replace(/\/$/, '');
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({
   executablePath: process.env.GIVEAWAY_CHROME_PATH,
@@ -59,7 +77,14 @@ try {
   const artifact = JSON.parse(await readFile(path, 'utf8'));
   assert.deepEqual(artifact.bundle.entrants, ['alice', 'bob', 'carol']);
   assert.equal(JSON.stringify(artifact).includes('example.com'), false);
-  const cli = spawnSync(process.execPath, [`${root}apps/verifier-cli/index.mjs`, path], { encoding: 'utf8' });
+  // --indexer is always required; a demo proof never reads it.
+  const cli = spawnSync(
+    process.execPath,
+    [`${root}apps/verifier-cli/index.mjs`, path, '--indexer', 'https://indexer.invalid'],
+    {
+      encoding: 'utf8',
+    },
+  );
   assert.equal(cli.status, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).status, 'DEMO PASS');
   passed('downloaded public bundle strips contacts and independently passes CLI');
@@ -115,7 +140,6 @@ try {
   assert.equal(await mainnet.locator('#commit').isVisible(), false);
   await mainnet.close();
   passed('mock mainnet wallet cannot build or submit');
-  const params = JSON.parse(await readFile(`${root}tests/epoch-params.json`, 'utf8'));
   // Two wallets: an enterprise address that never signs, and a base address whose test keys (tests/cardano.mjs,
   // seeds 1 and 2) sign in Node through an exposed function, so the page gets real vkey witnesses.
   const payment = testKey(1);
@@ -145,45 +169,58 @@ try {
       ),
     );
   };
-  // Koios mock shared by the preprod pages. A submitted transaction is kept and served back from tx_cbor (through
-  // `txCbor`, which may hold or withhold it) and tx_info; `utxoIndex` lets the indexer report another output.
-  const routePreprod = (target, addressHex, { txCbor, utxoIndex = 0 } = {}) => {
+  // Blockfrost-shaped mock of the project indexer shared by the preprod pages (tests/blockfrost-mock.mjs, answers
+  // copied from Dolos 1.6.1). The wallet's UTxO is output 0 of transaction 00…00, which the indexer reports under
+  // `utxoHash` (default the same id). A submitted transaction is
+  // kept but not indexed (/txs/{h} answers 404) unless `onRead` indexes it; `onRead(route, url, ctx)` may answer a
+  // read itself and returns true when it did.
+  const routePreprod = (target, addressHex, { utxoHash = '00'.repeat(32), onRead } = {}) => {
+    const txs = [];
     const submitted = new Map();
-    return target.route('https://preprod.koios.rest/api/v1/**', async (route) => {
-      const path = new URL(route.request().url()).pathname.split('/').at(-1);
-      if (path === 'submittx') {
-        const body = hex(route.request().postDataBuffer());
+    const funding = `/txs/${'00'.repeat(32)}/utxos`;
+    const indexer = blockfrostIndexer({
+      txs,
+      fault: (path) =>
+        path === funding
+          ? ANSWERS.json(200, {
+              hash: utxoHash,
+              inputs: [],
+              outputs: [
+                {
+                  address: bech32(addressHex),
+                  amount: [{ unit: 'lovelace', quantity: '10000000' }],
+                  output_index: 0,
+                  data_hash: null,
+                  inline_datum: null,
+                  collateral: false,
+                  reference_script_hash: null,
+                  consumed_by_tx: null,
+                },
+              ],
+            })
+          : undefined,
+    });
+    // Indexes a submitted transaction in block `height` at `time`, spending from the wallet's address.
+    const index = (txHash, height, time) => {
+      if (!txs.some((t) => t.txHash === txHash))
+        txs.push({
+          txHash,
+          cbor: submitted.get(txHash),
+          blockHeight: height,
+          blockTime: time,
+          inputs: [bech32(addressHex)],
+        });
+    };
+    return target.route(`${INDEXER}/**`, async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST' && new URL(request.url()).pathname === '/tx/submit') {
+        const body = hex(request.postDataBuffer());
         submitted.set(transactionHash(body), body);
-        return route.fulfill({ status: 202, json: transactionHash(body) });
+        return route.fulfill({ status: 200, headers: SUBMIT_HEADERS, body: transactionHash(body) });
       }
-      const asked = route.request().postDataJSON?.()?._tx_hashes ?? [];
-      const known = asked.filter((h) => submitted.has(h)).map((h) => ({ tx_hash: h, cbor: submitted.get(h) }));
-      if (path === 'tx_cbor' && txCbor) return txCbor(route, known);
-      const data =
-        path === 'tip'
-          ? [{ epoch_no: params[0].epoch_no }]
-          : path === 'epoch_params'
-            ? params
-            : path === 'tx_cbor' || path === 'tx_metadata'
-              ? []
-              : path === 'tx_info'
-                ? known.map((t) => ({ tx_hash: t.tx_hash, inputs: [{ payment_addr: { bech32: bech32(addressHex) } }] }))
-                : path === 'utxo_info'
-                  ? [
-                      {
-                        tx_hash: '00'.repeat(32),
-                        tx_index: utxoIndex,
-                        address: bech32(addressHex),
-                        value: '10000000',
-                        asset_list: [],
-                        datum_hash: null,
-                        inline_datum: null,
-                        reference_script: null,
-                      },
-                    ]
-                  : undefined;
-      if (!data) throw new Error(`Unexpected mock preprod request: ${path}`);
-      await route.fulfill({ json: data });
+      if (onRead && (await onRead(route, request.url(), { submitted, index }))) return;
+      const answer = indexer.answer(request.method(), request.url());
+      await route.fulfill({ status: answer.status, headers: answer.headers, body: answer.body });
     });
   };
   // A CIP-30 mock. With `sign` it approves through the exposed `mockSign`; every signTx call is counted.
@@ -230,10 +267,11 @@ try {
     await target.close();
   }
   passed('mock preprod wallet builds unsigned commitment and displays fee');
-  // The indexer reports the wallet's UTxO under another output index; the SDK builds a transaction spending that
-  // output, and the re-read of the unsigned CBOR must stop it before the wallet is asked to sign.
+  // The indexer reports the wallet's UTxO under another transaction id (Evolution takes the id from the answer body);
+  // the SDK builds a transaction spending that output, and the re-read of the unsigned CBOR must stop it before the
+  // wallet is asked to sign.
   {
-    const { target } = await preprodPage({ utxoIndex: 1 });
+    const { target } = await preprodPage({ utxoHash: '11'.repeat(32) });
     await target.click('#prepare');
     await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('unexpected input'));
     assert.equal(await target.locator('#commit').isVisible(), false);
@@ -241,7 +279,7 @@ try {
     await target.close();
   }
   passed('unsigned transaction that differs from the plan is never signed');
-  // The confirmation poll waits on Koios while the draw is reset; the late answer must not reach the page.
+  // The confirmation poll waits on the indexer while the draw is reset; the late answer must not reach the page.
   // `indexed` covers the success path (the commitment is found and confirmed) and the error path (not yet indexed).
   for (const indexed of [false, true]) {
     let release, polled;
@@ -256,18 +294,17 @@ try {
       wallet: 'base',
       sign: true,
       clock: true,
-      txCbor: async (route, known) => {
+      // The poll's first read (/txs/{h}) is held until the draw has been reset; indexed, the rest of the read
+      // (CBOR, inputs, tip, 15th block) follows from the mock.
+      onRead: async (_route, url, { index }) => {
+        const txHash = url.match(/\/txs\/([a-f0-9]{64})$/)?.[1];
+        if (!txHash) return false;
         polled();
         await held;
-        await route.fulfill({
-          json: indexed ? known.map((t) => ({ ...t, block_height: 100, tx_timestamp: included })) : [],
-        });
+        if (indexed) index(txHash, 100, included);
+        return false;
       },
     });
-    // Registered after the shared mock, so it takes precedence for the poll's confirmation read.
-    await stale.route('https://preprod.koios.rest/api/v1/blocks**', (route) =>
-      route.fulfill({ json: [{ block_height: 114, block_time: included + 60 }] }),
-    );
     await stale.click('#prepare');
     await stale.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
     await stale.click('#commit');
@@ -277,8 +314,10 @@ try {
     await pollSeen;
     await stale.selectOption('#network', 'demo');
     const statusAfterReset = await statusText(stale);
-    // The last request of each path: the confirmation block when indexed, the CBOR read otherwise.
-    const lastRead = stale.waitForResponse((r) => r.url().includes(indexed ? '/blocks' : '/tx_cbor'));
+    // The last request of each path: the 15th block when indexed, the transaction read otherwise.
+    const lastRead = stale.waitForResponse((r) =>
+      indexed ? r.url().endsWith(`/blocks/${100 + 14}`) : /\/txs\/[a-f0-9]{64}$/.test(r.url()),
+    );
     release();
     await lastRead;
     await stale.waitForTimeout(500);
@@ -319,9 +358,18 @@ try {
       wallet: 'base',
       sign: true,
       clock: true,
-      txCbor: (route, known) => {
-        polls++;
-        return route.fulfill({ json: known.map((t) => ({ ...t, cbor: null })) });
+      // /txs/{h} answers (indexed in block 100); /txs/{h}/cbor answers 404, as for an unknown transaction.
+      onRead: async (route, url, { index }) => {
+        const [, txHash, part] = url.match(/\/txs\/([a-f0-9]{64})(\/cbor)?$/) ?? [];
+        if (!txHash || txHash === '00'.repeat(32)) return false;
+        if (!part) {
+          polls++;
+          index(txHash, 100, Math.floor(Date.now() / 1000));
+          return false;
+        }
+        const answer = ANSWERS.unknownTransaction();
+        await route.fulfill({ status: answer.status, headers: answer.headers, body: answer.body });
+        return true;
       },
     });
     await target.click('#prepare');
@@ -345,6 +393,90 @@ try {
     await target.close();
   }
   passed('indexed transaction without CBOR keeps polling past invalid_hereafter');
+  // The verification page reads chain evidence from the indexer the visitor names, and from nowhere else (BR-16).
+  // A preprod commitment signed with the test keys is served only by that indexer's mock.
+  {
+    const own = 'https://indexer.example.test';
+    const b = {
+      version: VERSION,
+      algorithm: ALGORITHM,
+      drawId: 'own-indexer',
+      entrants: ['alice', 'bob'],
+      rules: { winners: 1 },
+      drand: { chainHash: QUICKNET, round: FIXTURE.round },
+    };
+    const owner = bech32(wallets.base);
+    const metadata = commitmentMetadata(b, await computeCommitment(b));
+    const tx = buildTransaction({
+      label: LABEL,
+      metadata,
+      signers: [identityKeyHash(owner)],
+      witnesses: [payment, stake],
+      invalidHereafter: preprodSlotAt(commitmentValidUntil(FIXTURE.round)),
+      address: wallets.base,
+    });
+    const record = {
+      ...tx,
+      label: LABEL,
+      metadata,
+      inputs: [owner],
+      blockHeight: 1000,
+      blockTime: roundTime(FIXTURE.round) - 900,
+    };
+    const result = {
+      format: 'giveaway-proof-2',
+      network: 'preprod',
+      bundle: b,
+      txHash: tx.txHash,
+      owner,
+      beacon: FIXTURE,
+      winners: await selectWinners(b, FIXTURE.randomness),
+    };
+    const verifier = await browser.newPage();
+    const ownMock = blockfrostIndexer({ txs: [record] });
+    const projectMock = blockfrostIndexer({ txs: [] });
+    const hosts = [];
+    verifier.on('request', (r) => hosts.push(new URL(r.url()).origin));
+    for (const [base, mock] of [
+      [own, ownMock],
+      [INDEXER, projectMock],
+    ])
+      await verifier.route(`${base}/**`, (route) => {
+        const answer = mock.answer(route.request().method(), route.request().url());
+        return route.fulfill({ status: answer.status, headers: answer.headers, body: answer.body });
+      });
+    await verifier.goto(origin);
+    const load = async () => {
+      hosts.length = 0;
+      await verifier.locator('#proof-file').setInputFiles({
+        name: 'preprod.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(result)),
+      });
+      await verifier.waitForFunction(() => /PASS|FAIL/.test(document.querySelector('#verification').textContent));
+      return verifier.locator('#verification').textContent();
+    };
+    await verifier.locator('#indexer').fill(own);
+    assert.equal(await load(), 'PASS');
+    const indexerHosts = hosts.filter((h) => h !== new URL(origin).origin);
+    assert.ok(indexerHosts.length > 0 && indexerHosts.every((h) => h === own), JSON.stringify(indexerHosts));
+    assert.equal(projectMock.calls.length, 0);
+    assert.ok(ownMock.calls.includes(`/txs/${tx.txHash}/cbor`));
+    // Emptied, the field falls back to the project indexer, which does not know this transaction.
+    await verifier.locator('#indexer').fill('');
+    assert.equal(await load(), 'FAIL');
+    assert.ok(projectMock.calls.includes(`/txs/${tx.txHash}`));
+    // Plain http to another machine is refused before any request.
+    await verifier.locator('#indexer').fill('http://indexer.example.test');
+    projectMock.calls.length = 0;
+    await verifier
+      .locator('#proof-file')
+      .setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(result)) });
+    await verifier.waitForFunction(() => document.querySelector('#verification').textContent.includes('https URL'));
+    assert.equal(projectMock.calls.length, 0);
+    await verifier.close();
+  }
+  passed('verification page reads only the indexer the visitor names');
   await page.selectOption('#network', 'demo');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

@@ -10,6 +10,7 @@ import {
   type Inclusion,
   hex,
   sha256,
+  unhex,
 } from '@giveaway/protocol';
 import {
   auxiliaryDataHash,
@@ -30,16 +31,16 @@ export * from './cbor.ts';
 // Private development label, absent from the CIP-10 registry (checked 2026-10-18 at CIPs commit befcdb7);
 // registration is left to the v1 freeze.
 export const LABEL = 20261018;
-export const DEFAULT_INDEXER = 'https://preprod.koios.rest/api/v1';
 export function commitmentMetadata(bundle: Bundle, bundleHash: string) {
   return { protocol: VERSION, drawId: bundle.drawId, bundleHash, chainHash: QUICKNET, round: bundle.drand.round };
 }
 // The commitment transaction moves this much from the organizer's address back to itself; the rest returns as change.
 export const COMMITMENT_TRANSFER = 2_000_000n;
-// The preprod slot clock, pinned rather than read from an indexer (PD5). Koios /genesis reports system start
-// 1654041600 and Shelley slot length 1 s (read 2026-10-19); Byron ran 4 epochs of 21,600 slots of 20 s, so slot
-// 86,400 began at 1655769600 and every later slot lasts one second. Checked against Koios tx_cbor for preprod
-// transaction 3883c2a9 (absolute_slot 136605785, tx_timestamp 1792288985). Mainnet is not supported.
+// The preprod slot clock, pinned rather than read from an indexer (PD5). The preprod genesis reports system start
+// 1654041600 and Shelley slot length 1 s (read from a public indexer's /genesis on 2026-10-19); Byron ran 4 epochs of
+// 21,600 slots of 20 s, so slot 86,400 began at 1655769600 and every later slot lasts one second. Checked against the
+// slot and time an indexer reported for preprod transaction 3883c2a9 (slot 136605785, time 1792288985). Mainnet is
+// not supported.
 export const PREPROD_SLOTS = { zeroSlot: 86_400, zeroTime: 1_655_769_600, slotLength: 1 } as const;
 export function preprodSlotTime(slot: bigint): number {
   if (slot < BigInt(PREPROD_SLOTS.zeroSlot) || slot > BigInt(Number.MAX_SAFE_INTEGER))
@@ -51,7 +52,7 @@ export function preprodSlotAt(time: number): bigint {
     throw new Error('Time is outside the pinned preprod slot clock');
   return BigInt(PREPROD_SLOTS.zeroSlot + Math.floor((time - PREPROD_SLOTS.zeroTime) / PREPROD_SLOTS.slotLength));
 }
-// Preprod's expected block interval: slot length 1 s over active slot coefficient 0.05 (Koios /genesis).
+// Preprod's expected block interval: slot length 1 s over active slot coefficient 0.05 (preprod genesis).
 const EXPECTED_BLOCK_SECONDS = 20;
 // The validity upper bound the page sets: early enough that the 15 confirmations the verifier requires can be
 // expected before the round. The protocol itself only requires the bound to precede the round.
@@ -314,58 +315,132 @@ export class CborPendingError extends Error {
     super('The indexer lists the transaction but has not served its CBOR yet');
   }
 }
-// biome-ignore lint/suspicious/noExplicitAny: Koios rows are untyped JSON; only inclusion, enumeration and inputs are read from them.
-type Row = Record<string, any>;
-export class KoiosChain {
-  constructor(readonly base = DEFAULT_INDEXER) {
-    const url = new URL(base);
-    if (url.protocol !== 'https:' || url.username || url.password)
-      throw new Error('Indexer must be an HTTPS URL without credentials');
+// The uniqueness enumeration limit L (plan step 8b, docs/protocol-development.md "Uniqueness"): the sum of the rows
+// every enumerated list returns, counted here rather than left to the node's max_scan_items. A history that would
+// need more fails verification. 2,900 is the largest multiple of the page size whose end-detecting page (page 30 of
+// 100) stays within the Dolos default max_scan_items of 3,000, so a default node serves every history accepted here.
+export const HISTORY_ROW_LIMIT = 2_900;
+// Blockfrost's maximum page size; Dolos refuses count > 100 with HTTP 400.
+const PAGE = 100;
+const historyTooLarge = () =>
+  new Error(`Organizer history exceeds ${HISTORY_ROW_LIMIT} enumerated rows; uniqueness cannot be established`);
+// A non-2xx answer. The status decides (any of them fails the read); the body only picks the message.
+export class IndexerError extends Error {
+  constructor(
+    readonly path: string,
+    readonly status: number,
+    body: string,
+  ) {
+    let message: unknown;
+    try {
+      message = JSON.parse(body)?.message;
+    } catch {}
+    super(
+      status === 404 && body === ''
+        ? `Indexer ${path}: HTTP 404 without a body (unknown item, or the node lacks this endpoint)`
+        : `Indexer ${path}: HTTP ${status}${typeof message === 'string' ? ` (${message})` : ''}${
+            status === 400 && typeof message === 'string' && message.includes('scan limit')
+              ? '; the node max_scan_items is too low for this history'
+              : ''
+          }`,
+    );
   }
-  async query(endpoint: string, body?: object): Promise<Row[]> {
-    const response = await fetch(`${this.base.replace(/\/$/, '')}/${endpoint}`, {
-      method: body ? 'POST' : 'GET',
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(20000),
-    });
-    if (!response.ok) throw new Error(`Indexer ${endpoint}: HTTP ${response.status}`);
-    const rows = await response.json();
-    if (!Array.isArray(rows)) throw new Error('Unexpected indexer response');
+}
+// Only hosts on this machine may use plain http (a node the verifier runs itself).
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
+export function indexerUrl(value: string): string {
+  const url = new URL(value);
+  const secure = url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK.has(url.hostname));
+  if (!secure || url.username || url.password || url.search || url.hash)
+    throw new Error('Indexer must be an https URL (http only on this machine) without credentials, query or fragment');
+  return url.href.replace(/\/$/, '');
+}
+export type Fetcher = (input: string, init: RequestInit) => Promise<Response>;
+// biome-ignore lint/suspicious/noExplicitAny: indexer rows are untyped JSON; each field read is checked where it is used.
+type Row = Record<string, any>;
+const isTxHash = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const BECH32_ADDRESS = /^addr_test1[a-z0-9]+$/;
+// What the verifier needs from an indexer: the referenced commitment and every commitment of its identity.
+export type ChainReader = Pick<BlockfrostChain, 'readCommitment' | 'findCommitments'>;
+// Reads a Blockfrost-shaped indexer (Dolos MiniBF, Blockfrost RYO). There is no default: the caller names the node.
+export class BlockfrostChain {
+  readonly base: string;
+  constructor(
+    base: string,
+    private readonly fetcher: Fetcher = (input, init) => fetch(input, init),
+  ) {
+    this.base = indexerUrl(base);
+  }
+  private async get(path: string): Promise<{ status: number; body: string }> {
+    let response: Response;
+    try {
+      response = await this.fetcher(`${this.base}${path}`, { signal: AbortSignal.timeout(20000) });
+    } catch (e) {
+      throw new Error(`Indexer ${path}: unreachable (${(e as Error).message})`);
+    }
+    return { status: response.status, body: await response.text() };
+  }
+  // A 2xx JSON answer, or an IndexerError.
+  private async json(path: string, answer?: { status: number; body: string }): Promise<Row> {
+    const { status, body } = answer ?? (await this.get(path));
+    if (status < 200 || status > 299) throw new IndexerError(path, status, body);
+    try {
+      return JSON.parse(body);
+    } catch {
+      throw new Error(`Indexer ${path}: unexpected response`);
+    }
+  }
+  // One page of a list. Only 200 with fewer than `count` rows (including []) ends a list; anything else is an error.
+  private async page(path: string, page: number): Promise<Row[]> {
+    const at = `${path}${path.includes('?') ? '&' : '?'}count=${PAGE}&page=${page}`;
+    const answer = await this.get(at);
+    // A 400 "pagination scan limit exceeded" is the node refusing to read further, not the end of the list.
+    const rows = await this.json(at, answer);
+    if (!Array.isArray(rows) || rows.length > PAGE) throw new Error(`Indexer ${path}: unexpected list`);
     return rows;
   }
   async readCommitment(txHash: string, owner: string): Promise<Confirmed> {
-    if (!/^[a-f0-9]{64}$/.test(txHash) || !/^addr_test1[a-z0-9]+$/.test(owner))
-      throw new Error('Invalid preprod commitment reference');
+    if (!isTxHash(txHash) || !BECH32_ADDRESS.test(owner)) throw new Error('Invalid preprod commitment reference');
     const identity = identityKeyHash(owner);
-    const rows = await this.query('tx_cbor', { _tx_hashes: [txHash] });
-    const row = rows.find((x) => x.tx_hash === txHash);
-    if (!row) throw new NotIndexedError();
-    if (typeof row.cbor !== 'string') throw new CborPendingError();
-    const tx = readCommitmentTransaction(row.cbor, txHash);
+    // The four transaction reads appear together on Dolos 1.6.1 (spike-dolos.md): 404 here means not indexed yet.
+    const listed = await this.get(`/txs/${txHash}`);
+    if (listed.status === 404) throw new NotIndexedError();
+    const info = await this.json(`/txs/${txHash}`, listed);
+    const raw = await this.get(`/txs/${txHash}/cbor`);
+    // Listed without its bytes: never observed on Dolos, possible on other nodes; it may already be on chain.
+    if (raw.status === 404) throw new CborPendingError();
+    const { cbor } = await this.json(`/txs/${txHash}/cbor`, raw);
+    if (typeof cbor !== 'string') throw new Error('Indexer transaction CBOR: unexpected response');
+    const tx = readCommitmentTransaction(cbor, txHash);
     if (!tx.valid) throw new Error('Invalid transaction');
     if (!tx.signers.has(identity))
       throw new Error(
         'Organizer identity key did not sign the commitment (required signer witness missing or invalid)',
       );
-    // The CBOR holds only input references; which address an input spends from is the indexer's report.
-    const info = await this.query('tx_info', { _tx_hashes: [txHash], _inputs: true });
-    if (!info.find((x) => x.tx_hash === txHash)?.inputs?.some((x: Row) => x.payment_addr?.bech32 === owner))
-      throw new Error('Organizer address is not a transaction input');
-    const inclusion = this.inclusionFrom(txHash, owner, row, tx);
+    // The CBOR holds only input references; which address an input spends from is the indexer's report. Collateral
+    // and reference inputs are not spent by a valid transaction.
+    const utxos = await this.json(`/txs/${txHash}/utxos`);
+    const spent = Array.isArray(utxos.inputs) ? utxos.inputs.filter((x: Row) => !x.collateral && !x.reference) : [];
+    if (!spent.some((x: Row) => x.address === owner)) throw new Error('Organizer address is not a transaction input');
+    if (info.hash !== txHash) throw new Error('Invalid inclusion block');
+    const inclusion = this.inclusionFrom(txHash, owner, info, tx);
+    // The tip says whether the 15th block exists; that block's own time is the confirmation time.
     const height = inclusion.blockHeight + CONFIRMATIONS - 1;
-    const blocks = await this.query(`blocks?block_height=eq.${height}&limit=1`);
-    const block = blocks.find((x) => x.block_height === height);
-    if (!block) throw new Error(`Waiting for ${CONFIRMATIONS} confirmations`);
-    if (!Number.isSafeInteger(block.block_time)) throw new Error('Invalid confirmation block time');
+    const tip = await this.json('/blocks/latest');
+    if (!Number.isSafeInteger(tip.height)) throw new Error('Invalid chain tip');
+    if (tip.height < height) throw new Error(`Waiting for ${CONFIRMATIONS} confirmations`);
+    const block = await this.json(`/blocks/${height}`);
+    if (block.height !== height || !Number.isSafeInteger(block.time))
+      throw new Error('Invalid confirmation block time');
     const slot = tx.invalidHereafter;
-    return { ...inclusion, confirmedAt: block.block_time, validUntil: slot === null ? null : preprodSlotTime(slot) };
+    return { ...inclusion, confirmedAt: block.time, validUntil: slot === null ? null : preprodSlotTime(slot) };
   }
-  // `row` is the indexer's tx_cbor row: its block height and time are indexer evidence; `tx` was read from CBOR.
+  // `row` is the indexer's transaction or list row: its block height and time are indexer evidence; `tx` was read
+  // from CBOR.
   private inclusionFrom(txHash: string, owner: string, row: Row, tx: CommitmentTransaction): Inclusion {
     const m = tx.metadata;
     if (!m) throw new Error('Unsupported commitment metadata');
-    if (!Number.isSafeInteger(row.block_height) || !Number.isSafeInteger(row.tx_timestamp))
+    if (!Number.isSafeInteger(row.block_height) || !Number.isSafeInteger(row.block_time))
       throw new Error('Invalid inclusion block');
     return {
       txHash,
@@ -374,55 +449,79 @@ export class KoiosChain {
       drawId: m.drawId,
       round: m.round,
       blockHeight: row.block_height,
-      blockTime: row.tx_timestamp,
+      blockTime: row.block_time,
     };
+  }
+  // The lists that make up an identity's history (PD9): a payment credential is one list (addr_vkh); a stake
+  // credential is every address the node lists for the account, each enumerated on its own.
+  private async historyLists(owner: string): Promise<string[]> {
+    const identity = identityOf(owner);
+    if (identity.kind === 'payment') return [encodeBech32('addr_vkh', unhex(identity.key))];
+    const addresses: string[] = [];
+    for (let page = 1; ; page++) {
+      const rows = await this.page(`/accounts/${identity.key}/addresses`, page);
+      for (const row of rows) {
+        if (typeof row.address !== 'string' || !BECH32_ADDRESS.test(row.address))
+          throw new Error('Invalid account address list');
+        addresses.push(row.address);
+      }
+      // Every listed address holds at least one row, so more addresses than L already exceed it.
+      if (addresses.length > HISTORY_ROW_LIMIT) throw historyTooLarge();
+      if (rows.length < PAGE) return addresses;
+    }
   }
   // Every commitment of the owner's identity, whatever its drawId or round; uniqueness compares their intervals.
   async findCommitments(owner: string): Promise<Inclusion[]> {
-    if (!/^addr_test1[a-z0-9]+$/.test(owner)) throw new Error('Invalid organizer address');
-    const identity = identityOf(owner);
+    if (!BECH32_ADDRESS.test(owner)) throw new Error('Invalid organizer address');
     const signer = identityKeyHash(owner);
-    const hashes: string[] = [];
-    const pageSize = 1000;
-    // Ordered by height then hash so pages do not shift between requests within one block.
-    const order = `limit=${pageSize}&order=block_height.asc,tx_hash.asc`;
-    for (let offset = 0; ; offset += pageSize) {
-      const page =
-        identity.kind === 'stake'
-          ? await this.query(`account_txs?_stake_address=${identity.key}&${order}&offset=${offset}`)
-          : await this.query(`credential_txs?${order}&offset=${offset}`, { _payment_credentials: [identity.key] });
-      for (const x of page) {
-        if (!/^[a-f0-9]{64}$/.test(x.tx_hash)) throw new Error('Invalid transaction list');
-        hashes.push(x.tx_hash);
+    const lists = await this.historyLists(owner);
+    // One transaction can touch several of the identity's addresses: it is one transaction, but every row it adds
+    // counts toward L, since the node scanned it once per list.
+    const rows = new Map<string, Row>();
+    let enumerated = 0;
+    for (const address of lists) {
+      for (let page = 1; ; page++) {
+        // Any non-2xx answer for one address fails the whole history: that address may hold the conflict.
+        const listed = await this.page(`/addresses/${address}/transactions?order=asc`, page);
+        enumerated += listed.length;
+        if (enumerated > HISTORY_ROW_LIMIT) throw historyTooLarge();
+        for (const row of listed) {
+          if (
+            !isTxHash(row.tx_hash) ||
+            !Number.isSafeInteger(row.block_height) ||
+            !Number.isSafeInteger(row.block_time) ||
+            !Number.isSafeInteger(row.tx_index)
+          )
+            throw new Error('Invalid transaction list');
+          const seen = rows.get(row.tx_hash);
+          if (seen && (seen.block_height !== row.block_height || seen.tx_index !== row.tx_index))
+            throw new Error('Inconsistent transaction list');
+          rows.set(row.tx_hash, row);
+        }
+        if (listed.length < PAGE) break;
       }
-      if (page.length < pageSize) break;
-      if (offset + pageSize >= 5000)
-        throw new Error('Organizer history exceeds development query limit; uniqueness cannot be established');
     }
+    const ordered = [...rows.values()].sort((a, b) => a.block_height - b.block_height || a.tx_index - b.tx_index);
     const found: Inclusion[] = [];
-    // Koios public tier rejects request bodies over 5 KiB with HTTP 413 (75 hashes passed, 76 failed; measured on
-    // preprod 2026-10-19), so batches of 50 hashes leave room.
-    const batch = 50;
-    for (let i = 0; i < hashes.length; i += batch) {
+    for (const row of ordered) {
       // The indexer's metadata JSON only selects which transactions to read as CBOR: hiding a commitment here is
       // no different from leaving it out of the enumeration, and everything counted is read from checked CBOR.
-      const rows = await this.query('tx_metadata', { _tx_hashes: hashes.slice(i, i + batch) });
-      const matching = rows.filter((row) => row.metadata?.[LABEL]?.protocol === VERSION).map((row) => row.tx_hash);
-      if (!matching.length) continue;
-      const transactions = await this.query('tx_cbor', { _tx_hashes: matching });
-      for (const txHash of matching) {
-        const row = transactions.find((x) => x.tx_hash === txHash);
-        if (!row || typeof row.cbor !== 'string')
-          throw new Error('Organizer history transaction evidence is incomplete');
-        const tx = readCommitmentTransaction(row.cbor, txHash);
-        // Only the identity key's verified signature makes a transaction this identity's commitment (PD3): a
-        // third party can put the organizer's stake part in its own address but cannot sign with its key.
-        // Which address the inputs spend from is not consulted, so the same wallet committing from another
-        // payment address is still counted.
-        // A malformed entry in the identity's own signed transaction still fails the history (inclusionFrom).
-        if (!tx.valid || !tx.signers.has(signer) || (!tx.metadata && !tx.malformed)) continue;
-        found.push(this.inclusionFrom(txHash, owner, row, tx));
-      }
+      const metadata = await this.json(`/txs/${row.tx_hash}/metadata`);
+      if (!Array.isArray(metadata)) throw new Error('Indexer transaction metadata: unexpected response');
+      if (metadata.find((x: Row) => x?.label === String(LABEL))?.json_metadata?.protocol !== VERSION) continue;
+      const raw = await this.get(`/txs/${row.tx_hash}/cbor`);
+      // An enumerated transaction whose bytes are not served is missing evidence, never an absent transaction.
+      if (raw.status === 404) throw new Error('Organizer history transaction evidence is incomplete');
+      const { cbor } = await this.json(`/txs/${row.tx_hash}/cbor`, raw);
+      if (typeof cbor !== 'string') throw new Error('Organizer history transaction evidence is incomplete');
+      const tx = readCommitmentTransaction(cbor, row.tx_hash);
+      // Only the identity key's verified signature makes a transaction this identity's commitment (PD3): a
+      // third party can put the organizer's stake part in its own address but cannot sign with its key.
+      // Which address the inputs spend from is not consulted, so the same wallet committing from another
+      // payment address is still counted.
+      // A malformed entry in the identity's own signed transaction still fails the history (inclusionFrom).
+      if (!tx.valid || !tx.signers.has(signer) || (!tx.metadata && !tx.malformed)) continue;
+      found.push(this.inclusionFrom(row.tx_hash, owner, row, tx));
     }
     return found;
   }

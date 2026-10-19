@@ -10,6 +10,8 @@
   "dev": { "ip": "127.0.0.1", "port": 8787 },
   "vars": {
     // The only browser origin allowed to read proxy responses: the local `make dev` server.
-    "ALLOWED_ORIGIN": "http://127.0.0.1:4320"
+    "ALLOWED_ORIGIN": "http://127.0.0.1:4320",
+    // The project's Blockfrost-compatible indexer: the local Dolos dev chain (tools/devchain/dolos.toml).
+    "INDEXER_URL": "http://127.0.0.1:3010"
   }
 }

@@ -5,6 +5,8 @@ import { ENDPOINTS, forward, type Upstream } from './proxy.ts';
 
 export interface Env {
   ALLOWED_ORIGIN?: string;
+  // The project's Blockfrost-compatible indexer (PD7: the project Dolos).
+  INDEXER_URL?: string;
 }
 
 // A missing or malformed origin yields no CORS header, so browsers are refused rather than everyone allowed.
@@ -31,11 +33,11 @@ export async function handle(request: Request, env: Env, upstream: Upstream): Pr
   if (request.method === 'OPTIONS')
     return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET' } });
   if (request.method !== 'GET') return reply(405, 'Method not allowed', { ...cors, Allow: 'GET' });
-  // Koios accepts PostgREST filters in the query string; the skeleton forwards none, so it refuses them.
+  // The skeleton forwards no query parameters (Blockfrost paging, filters), so it refuses them.
   if (url.search) return reply(400, 'Query parameters are not accepted', cors);
   let response: Response;
   try {
-    response = await forward(endpoint, upstream);
+    response = await forward(endpoint, upstream, env.INDEXER_URL ?? '');
   } catch {
     return reply(502, 'Indexer unavailable', cors);
   }

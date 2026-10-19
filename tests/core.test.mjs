@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { ANSWERS, blockfrostIndexer, fillerRows } from './blockfrost-mock.mjs';
 import { buildTransaction, replaceAuxiliary, testKey, unhex } from './cardano.mjs';
 const p = await import('@giveaway/verifier-cli/library');
 const bundle = (entrants = ['alice', 'bob', 'carol', 'dana', 'eli']) => ({
@@ -254,6 +257,8 @@ const wallet = (payment, stakeHash, keys) => ({
 const ORGANIZER = wallet(ORGANIZER_PAYMENT, ORGANIZER_STAKE.hash, [ORGANIZER_PAYMENT, ORGANIZER_STAKE]);
 const ORGANIZER_2 = wallet(ORGANIZER_PAYMENT_2, ORGANIZER_STAKE.hash, [ORGANIZER_PAYMENT_2, ORGANIZER_STAKE]);
 const OTHER_WALLET = wallet(testKey(4), testKey(5).hash, [testKey(4), testKey(5)]);
+const ENTERPRISE_PAYMENT = testKey(7);
+const ENTERPRISE = wallet(ENTERPRISE_PAYMENT, undefined, [ENTERPRISE_PAYMENT]);
 const THIRD_PARTY = wallet(THIRD_PARTY_PAYMENT, ORGANIZER_STAKE.hash, [THIRD_PARTY_PAYMENT]);
 test('identity is the stake credential when present, otherwise the payment credential', () => {
   const real =
@@ -278,47 +283,20 @@ test('identity is the stake credential when present, otherwise the payment crede
   assert.throws(() => p.identityOf(p.encodeBech32('addr', unhex(`01${fill('01')}${fill('02')}`))), /preprod/);
 });
 test('the pinned preprod slot clock matches the indexer for a real transaction', () => {
-  // Koios tx_cbor for 3883c2a9: absolute_slot 136605785, tx_timestamp 1792288985 (read 2026-10-18).
+  // A public indexer reported preprod transaction 3883c2a9 at slot 136605785, time 1792288985 (read 2026-10-18).
   assert.equal(p.preprodSlotTime(136605785n), 1792288985);
   assert.equal(p.preprodSlotAt(1792288985), 136605785n);
   assert.throws(() => p.preprodSlotTime(86399n), /slot clock/);
 });
-// A Koios mock over a fixed set of transactions. Each listed transaction is enumerated for `stake`; its raw CBOR,
-// metadata JSON (`json` overrides what the indexer claims), inputs, inclusion and confirmation time are served
-// from the same record. `tx_info` also answers with inclusion data, as the pre-CBOR implementation read it.
-function chainOf(txs, stake = p.identityOf(ORGANIZER.address).key, calls = []) {
-  const chain = new p.KoiosChain();
-  const byHash = (body) => txs.filter((t) => body._tx_hashes.includes(t.txHash));
-  chain.query = async (endpoint, body) => {
-    calls.push(endpoint);
-    if (endpoint.startsWith('account_txs?')) {
-      const q = new URLSearchParams(endpoint.slice('account_txs?'.length));
-      assert.equal(q.get('_stake_address'), stake);
-      assert.equal(q.get('order'), 'block_height.asc,tx_hash.asc');
-      const offset = Number(q.get('offset')),
-        limit = Number(q.get('limit'));
-      return txs.slice(offset, offset + limit).map((t) => ({ tx_hash: t.txHash, block_height: t.blockHeight }));
-    }
-    if (endpoint === 'tx_metadata' || endpoint === 'tx_cbor') {
-      assert.ok(body._tx_hashes.length <= 50, 'Koios rejects bodies over 5 KiB');
-      return byHash(body).map((t) =>
-        endpoint === 'tx_metadata'
-          ? { tx_hash: t.txHash, metadata: { [t.label ?? p.LABEL]: t.json ?? t.metadata } }
-          : { tx_hash: t.txHash, cbor: t.cbor, block_height: t.blockHeight, tx_timestamp: t.blockTime },
-      );
-    }
-    if (endpoint === 'tx_info')
-      return byHash(body).map((t) => ({
-        tx_hash: t.txHash,
-        // Koios returns no inputs unless they are requested.
-        inputs: body._inputs ? t.inputs.map((bech32) => ({ payment_addr: { bech32 } })) : [],
-        block_height: t.blockHeight,
-        tx_timestamp: t.blockTime,
-      }));
-    const height = Number(endpoint.match(/block_height=eq\.(\d+)/)?.[1]);
-    const t = txs.find((x) => x.blockHeight + p.CONFIRMATIONS - 1 === height);
-    return t ? [{ block_height: height, block_time: t.blockTime + 300 }] : [];
-  };
+// A Blockfrost-shaped indexer over a fixed set of transactions (tests/blockfrost-mock.mjs: status codes, error bodies
+// and headers copied from Dolos 1.6.1). Each transaction's raw CBOR, metadata JSON (`json` overrides what the indexer
+// claims), inputs, inclusion and confirmation time are served from the same record, and it is listed under every
+// address among its inputs and `outputs`. Requests go through the adapter's own HTTP handling; `chain.calls` lists
+// every path it asked for.
+function chainOf(txs, options = {}) {
+  const indexer = blockfrostIndexer({ txs, ...options });
+  const chain = new p.BlockfrostChain('https://indexer.test', indexer.fetch);
+  chain.calls = indexer.calls;
   return chain;
 }
 // One committed draw: its bundle, the proof the organizer publishes and the signed transaction the chain holds.
@@ -369,32 +347,56 @@ async function draw({
   };
   return { tx, proof };
 }
-const verify = (d, txs) => p.verifyProof(d.proof, { chain: chainOf(txs.map((x) => x.tx)) });
+const verify = (d, txs, options) =>
+  p.verifyProof(d.proof, {
+    chain: chainOf(
+      txs.map((x) => x.tx),
+      options,
+    ),
+  });
 const check = (v, name) => v.checks.find((c) => c.name === name);
 const uniqueness = (v) => check(v, 'Unique commitment');
 const target = (options = {}) => draw({ drawId: 'example-1', blockTime: T - 900, blockHeight: 1000, ...options });
-test('Koios reads the transaction CBOR, the historical 15th block and verifies organizer input', async () => {
-  const a = await target(),
-    calls = [];
-  const chain = chainOf([a.tx], undefined, calls);
+test('the adapter reads the transaction CBOR, the historical 15th block and verifies organizer input', async () => {
+  const a = await target();
+  const chain = chainOf([a.tx]);
   const confirmed = await chain.readCommitment(a.tx.txHash, ORGANIZER.address);
   assert.equal(confirmed.confirmedAt, T - 600);
   assert.equal(confirmed.validUntil, T - 300);
   assert.equal(confirmed.bundleHash, a.tx.metadata.bundleHash);
-  assert.ok(calls.includes('tx_cbor') && !calls.includes('tx_metadata'), 'the target is read from CBOR only');
-  assert.ok(calls.includes(`blocks?block_height=eq.${1000 + 14}&limit=1`));
+  assert.ok(chain.calls.includes(`/txs/${a.tx.txHash}/cbor`), 'the target is read from CBOR');
+  assert.ok(!chain.calls.some((c) => c.endsWith('/metadata')), 'the target is read from CBOR only');
+  assert.ok(chain.calls.includes('/blocks/latest') && chain.calls.includes(`/blocks/${1000 + 14}`));
   // Same stake key, so the signature matches, but this address is not where the transaction spends from.
   await assert.rejects(chain.readCommitment(a.tx.txHash, ORGANIZER_2.address), /not a transaction input/);
+  // Dolos answers an unknown transaction 404 with an empty body: not indexed (yet).
   await assert.rejects(chain.readCommitment('cd'.repeat(32), ORGANIZER.address), p.NotIndexedError);
+  // The 15th block not produced yet: the tip says so, and the block itself (400 on Dolos) is not asked for.
+  const early = chainOf([a.tx], { tip: 1000 + 13 });
+  await assert.rejects(early.readCommitment(a.tx.txHash, ORGANIZER.address), /Waiting for 15 confirmations/);
+  assert.ok(!early.calls.includes(`/blocks/${1000 + 14}`));
+  // Collateral and reference inputs are not spent by a valid transaction.
+  const collateral = blockfrostIndexer({ txs: [a.tx] });
+  const marked = new p.BlockfrostChain('https://indexer.test', async (url) => {
+    const response = await collateral.fetch(url);
+    if (!url.endsWith('/utxos')) return response;
+    const body = await response.json();
+    for (const input of body.inputs) input.collateral = true;
+    return Response.json(body);
+  });
+  await assert.rejects(marked.readCommitment(a.tx.txHash, ORGANIZER.address), /not a transaction input/);
 });
 test('a transaction the indexer lists without its CBOR is pending evidence, not absent', async () => {
-  // Koios knows the transaction (the row is there) but has not served its bytes: it may already be on chain, so
-  // this must not read as "not indexed", which past invalid_hereafter the page reports as an expired commitment.
+  // The indexer knows the transaction (/txs/{h} answers) but not its bytes: it may already be on chain, so this must
+  // not read as "not indexed", which past invalid_hereafter the page reports as an expired commitment. Dolos 1.6.1
+  // never answered this way (the four reads appear together, spike-dolos.md); other Blockfrost nodes may.
   const a = await target();
-  const chain = chainOf([{ ...a.tx, cbor: null }]);
+  const chain = chainOf([a.tx], {
+    fault: (path) => (path === `/txs/${a.tx.txHash}/cbor` ? ANSWERS.unknownTransaction() : undefined),
+  });
   await assert.rejects(
     chain.readCommitment(a.tx.txHash, ORGANIZER.address),
-    (e) => !(e instanceof p.NotIndexedError) && /has not served/.test(e.message),
+    (e) => e instanceof p.CborPendingError && !(e instanceof p.NotIndexedError) && /has not served/.test(e.message),
   );
 });
 test('F7: commitments under the CIP-20 message label 674 are not supported', async () => {
@@ -503,34 +505,161 @@ function inclusion(d) {
 test('history enumerates by identity, ignores incoming commitments and does not wait for confirmations', async () => {
   const a = await target();
   const incoming = await draw({ drawId: 'example-1', blockTime: T - 1000, blockHeight: 999, from: OTHER_WALLET });
-  const calls = [];
-  const chain = chainOf([incoming.tx, a.tx], p.identityOf(ORGANIZER.address).key, calls);
+  // Sent by another wallet to the organizer's address, so it is listed in the organizer's history.
+  const chain = chainOf([{ ...incoming.tx, outputs: [ORGANIZER.address] }, a.tx]);
   const candidates = await chain.findCommitments(ORGANIZER.address);
   assert.deepEqual(candidates, [inclusion(a)]);
   assert.ok(
-    calls.every((c) => !c.startsWith('blocks') && c !== 'tx_info'),
+    chain.calls.every((c) => !c.startsWith('/blocks') && !c.endsWith('/utxos')),
     'History needs neither confirmation blocks nor input addresses',
   );
-  // An enterprise address has no stake part and is enumerated by its payment credential.
-  const enterprise = bech32(addressHex('11'.repeat(28)));
-  const credential = new p.KoiosChain();
-  let body;
-  credential.query = async (endpoint, b) => {
-    if (endpoint.startsWith('credential_txs?')) body = b;
-    return [];
-  };
-  assert.deepEqual(await credential.findCommitments(enterprise), []);
-  assert.deepEqual(body, { _payment_credentials: ['11'.repeat(28)] });
+  // PD9: the stake account's addresses first, then each address.
+  assert.equal(chain.calls[0], `/accounts/${p.identityOf(ORGANIZER.address).key}/addresses?count=100&page=1`);
+  // An enterprise address has no stake part and is enumerated by its payment credential (addr_vkh).
+  const e = await draw({ drawId: 'example-1', blockTime: T - 900, blockHeight: 1000, from: ENTERPRISE });
+  const credential = chainOf([e.tx]);
+  assert.deepEqual(await credential.findCommitments(ENTERPRISE.address), [inclusion(e)]);
+  const vkh = p.encodeBech32('addr_vkh', unhex(ENTERPRISE_PAYMENT.hash));
+  assert.equal(credential.calls[0], `/addresses/${vkh}/transactions?order=asc&count=100&page=1`);
+  assert.equal((await verify(e, [e])).status, 'PASS');
 });
-test('history over the development page limit fails instead of truncating', async () => {
-  const calls = [];
-  const chain = new p.KoiosChain();
-  chain.query = async (endpoint) => {
-    calls.push(endpoint);
-    return Array.from({ length: 1000 }, (_, i) => ({ tx_hash: i.toString(16).padStart(64, '0') }));
+// Rows of plain transactions on `count` addresses under the organizer stake, `rows` each.
+const stakeAddresses = (count, from = 100) =>
+  Array.from({ length: count }, (_, i) =>
+    bech32(addressHex((from + i).toString(16).padStart(56, '0'), ORGANIZER_STAKE.hash)),
+  );
+test('history over L enumerated rows fails, counted across addresses, before reading any metadata', async () => {
+  assert.equal(p.HISTORY_ROW_LIMIT, 2900);
+  const a = await target();
+  // 1 + 1,450 + 1,450 = 2,901 rows: no address alone exceeds L, their sum does.
+  const [x, y] = stakeAddresses(2);
+  const extraRows = { [x]: fillerRows(1450, { from: 1 }), [y]: fillerRows(1450, { from: 10_001 }) };
+  const chain = chainOf([a.tx], { extraRows });
+  await assert.rejects(chain.findCommitments(ORGANIZER.address), /exceeds 2900 enumerated rows/);
+  assert.ok(!chain.calls.some((c) => c.endsWith('/metadata')));
+  // One row fewer is accepted, on a node with the Dolos default max_scan_items (3000).
+  const fits = chainOf([a.tx], {
+    extraRows: { [x]: fillerRows(1450, { from: 1 }), [y]: fillerRows(1449, { from: 10_001 }) },
+  });
+  assert.deepEqual(await fits.findCommitments(ORGANIZER.address), [inclusion(a)]);
+});
+test('a history of exactly L rows on one address is read to its end on a default node', async () => {
+  const a = await target();
+  // 2,899 plain transactions and the commitment: 29 full pages, then page 30 (100 × 30 = max_scan_items) is [].
+  const chain = chainOf([a.tx], { extraRows: { [ORGANIZER.address]: fillerRows(2899, { from: 1 }) } });
+  assert.deepEqual(await chain.findCommitments(ORGANIZER.address), [inclusion(a)]);
+  assert.ok(chain.calls.includes(`/addresses/${ORGANIZER.address}/transactions?order=asc&count=100&page=30`));
+});
+test('more account addresses than L fails without enumerating any address', async () => {
+  const a = await target();
+  const extraRows = Object.fromEntries(stakeAddresses(2901).map((x) => [x, []]));
+  const chain = chainOf([a.tx], { extraRows });
+  await assert.rejects(chain.findCommitments(ORGANIZER.address), /exceeds 2900 enumerated rows/);
+  assert.ok(!chain.calls.some((c) => c.startsWith('/addresses/')));
+});
+// Plain transactions before and between, so the target is on page 1 of the organizer's address and `later` on page 2.
+async function secondPage(later = {}) {
+  const a = await target();
+  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100, ...later });
+  const extraRows = {
+    [ORGANIZER.address]: [...fillerRows(50, { from: 1, height: 1 }), ...fillerRows(60, { from: 1001, height: 1001 })],
   };
-  await assert.rejects(chain.findCommitments(ORGANIZER.address), /exceeds development query limit/);
-  assert.equal(calls.length, 5);
+  return { a, b, extraRows };
+}
+test('a conflicting commitment on the second page of an address is found', async () => {
+  const { a, b, extraRows } = await secondPage();
+  const v = await verify(a, [a, b], { extraRows });
+  assert.equal(v.status, 'FAIL');
+  assert.deepEqual(
+    v.conflicts.map((c) => c.txHash),
+    [b.tx.txHash],
+  );
+});
+test('a scan-limit 400 is never the end of a list', async () => {
+  // max_scan_items 100: page 2 (2 × 100) is refused with Dolos's 400 "pagination scan limit exceeded".
+  const { a, b, extraRows } = await secondPage();
+  const v = await verify(a, [a, b], { extraRows, maxScan: 100 });
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /HTTP 400 \(pagination scan limit exceeded.*max_scan_items/);
+});
+test('any non-2xx answer for one of the identity addresses fails the whole history', async () => {
+  const a = await target();
+  // The conflict sits on the organizer's second payment address only.
+  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100, from: ORGANIZER_2 });
+  assert.equal((await verify(a, [a, b])).status, 'FAIL');
+  for (const [name, answer] of [
+    ['scan limit 400', ANSWERS.scanLimit()],
+    ['unknown address 404', ANSWERS.unknownComponent()],
+    ['route missing 404', ANSWERS.routeMissing()],
+    ['server error 500', { status: 500, headers: {}, body: '' }],
+  ]) {
+    const fault = (path) => (path.startsWith(`/addresses/${ORGANIZER_2.address}/`) ? answer : undefined);
+    const v = await verify(a, [a, b], { fault });
+    assert.equal(v.status, 'FAIL', name);
+    assert.equal(check(v, 'Cardano evidence').result, 'fail', name);
+    assert.deepEqual(v.conflicts, [], name);
+  }
+  // The address list itself: a node without the endpoint (404, empty body) is named as such.
+  const missing = (path) => (path.startsWith('/accounts/') ? ANSWERS.routeMissing() : undefined);
+  assert.match(check(await verify(a, [a], { fault: missing }), 'Cardano evidence').detail, /lacks this endpoint/);
+});
+test('an enumerated commitment whose CBOR is not served fails the history', async () => {
+  const a = await target();
+  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100 });
+  const fault = (path) => (path === `/txs/${b.tx.txHash}/cbor` ? ANSWERS.unknownTransaction() : undefined);
+  const v = await verify(a, [a, b], { fault });
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /evidence is incomplete/);
+});
+test('one transaction listed under several identity addresses counts once', async () => {
+  const a = await target();
+  const b = await draw({ drawId: 'example-2', blockTime: T - 600, blockHeight: 1100 });
+  // b pays three addresses that share the organizer stake: three rows, one transaction.
+  const spread = { ...b.tx, outputs: [ORGANIZER.address, ORGANIZER_2.address, THIRD_PARTY.address] };
+  const chain = chainOf([a.tx, spread]);
+  assert.deepEqual(await chain.findCommitments(ORGANIZER.address), [inclusion(a), inclusion(b)]);
+  assert.equal(chain.calls.filter((c) => c === `/txs/${b.tx.txHash}/metadata`).length, 1);
+  const v = await p.verifyProof(a.proof, { chain: chainOf([a.tx, spread]) });
+  assert.deepEqual(
+    v.conflicts.map((c) => c.txHash),
+    [b.tx.txHash],
+  );
+});
+test('preprod evidence without a selected indexer fails; indexer URLs must be https or on this machine', async () => {
+  const a = await target();
+  const v = await p.verifyProof(a.proof);
+  assert.equal(v.status, 'FAIL');
+  assert.match(check(v, 'Cardano evidence').detail, /No indexer selected/);
+  for (const bad of [
+    'http://indexer.example',
+    'https://user:pw@indexer.example',
+    'https://indexer.example/?a=1',
+    'ftp://x',
+  ])
+    assert.throws(() => new p.BlockfrostChain(bad), /https URL/, bad);
+  for (const good of ['https://indexer.example/api/v0/', 'http://127.0.0.1:3010', 'http://localhost:3000'])
+    assert.doesNotThrow(() => new p.BlockfrostChain(good), good);
+});
+test('CLI requires --indexer and states the node requirements', async () => {
+  const file = new URL('../dist/cli-indexer-check.json', import.meta.url);
+  await writeFile(file, JSON.stringify(await proof()));
+  const cli = (...args) =>
+    spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('../apps/verifier-cli/index.mjs', import.meta.url)), fileURLToPath(file), ...args],
+      {
+        encoding: 'utf8',
+      },
+    );
+  const missing = cli();
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /--indexer is required/);
+  assert.match(missing.stderr, /full archive/);
+  assert.equal(missing.stdout, '');
+  // A demo proof never reads the indexer it names.
+  const demo = cli('--indexer', 'https://indexer.invalid');
+  assert.equal(demo.status, 0, demo.stderr);
+  assert.equal(JSON.parse(demo.stdout).status, 'DEMO PASS');
 });
 // A bundle the organizer did not commit, with its winners recomputed so only the chain evidence can expose it.
 async function tampered(d) {

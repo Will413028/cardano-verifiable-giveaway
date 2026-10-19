@@ -29,7 +29,9 @@ import {
   fetchHostedBundle,
   fetchTip,
   hostedShareLink,
+  indexerFor,
   inlineShareLink,
+  PROJECT_INDEXER,
   resolveArtifact,
 } from './services.ts';
 import { type AppState, createState } from './state.ts';
@@ -128,7 +130,7 @@ async function prepare(state: AppState) {
   text('preview-time', isDemo() ? 'Recorded quicknet round · simulated timing' : localTime(roundTime(round)));
   if (!isDemo()) {
     const { prepareTransaction } = await import('./cardano.ts');
-    const transaction = await prepareTransaction(bundle, input('wallet').value);
+    const transaction = await prepareTransaction(bundle, input('wallet').value, PROJECT_INDEXER);
     state.draw.transaction = transaction;
     status(
       `Ready to sign. Estimated fee: ${transaction.fee.toFixed(6)} test ADA. The transaction returns the transferred ADA to your wallet.`,
@@ -194,7 +196,7 @@ async function confirm(state: AppState, chains: Chains, late = false) {
   if (!bundle || !committed) throw new Error('Commit a draw first');
   const confirmed = isDemo()
     ? chains.demo.confirm(committed, late)
-    : await chains.koios.readCommitment(committed.txHash, committed.owner);
+    : await chains.indexer.readCommitment(committed.txHash, committed.owner);
   // Discard a response that arrives after the draw was reset or replaced.
   if (state.draw !== draw) return;
   draw.confirmed = confirmed;
@@ -228,7 +230,7 @@ async function reveal(state: AppState, chains: Chains) {
   const beacon = isDemo() ? FIXTURE : await fetchBeacon(bundle.drand.round);
   if (state.draw !== draw) return;
   const proof = await assembleProof(isDemo() ? 'demo' : 'preprod', bundle, committed, beacon);
-  const verdict = await verifyProof(proof, { chain: chains.koios });
+  const verdict = await verifyProof(proof, { chain: chains.indexer });
   if (state.draw !== draw) return;
   if (verdict.status === 'FAIL')
     throw new Error(
@@ -277,7 +279,8 @@ async function copyShareLink() {
 }
 
 async function renderVerification(state: AppState, chains: Chains, value: unknown) {
-  const verdict = await verifyProof(value, { chain: chains.koios });
+  // Read when a bundle is loaded: an invalid URL fails this verification, not the page.
+  const verdict = await verifyProof(value, { chain: indexerFor(chains, input('indexer').value) });
   state.verifiedBundle = verdict.status === 'FAIL' ? undefined : validateProof(value).bundle;
   renderVerdict(verdict, state.verifiedBundle);
 }
