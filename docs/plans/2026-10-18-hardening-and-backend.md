@@ -200,6 +200,7 @@
     - A：身分 key 列在 `required_signers` 並附 witness——有 stake 部分時用 stake key，否則用 payment key；且承諾交易至少一個 input 來自帶此 credential 的地址，保證列舉看得到。ledger 強制 `required_signers` 的簽章，第三方送不出算數的承諾，也不必回溯前一筆交易。代價：CIP-30 錢包是否會為 `required_signers` 裡的 stake key 簽章尚未驗證（步驟 2 確認 SDK 能組、真錢包驗收確認錢包會簽），不支援時退回 B。（建議）
     - B：payment key 列在 `required_signers`——錢包支援度高；同一 HD 錢包換收款地址就是不同身分，能繞過。
     - C：stake credential 直接取自 input 地址（原選項）——第三方可製造衝突，讓任何主辦者的抽獎作廢。
+  - 2026-10-19 修訂（Will，步驟 7 實作後）：唯一性計數拿掉「至少一個 input 帶此 credential」，只要求身分 key 列在 `required_signers` 且 witness 驗章通過；被驗的承諾仍要求 input 是主辦者地址。理由與代價見 ADR `docs/adr/2026-10-18-uniqueness-by-interval-overlap.md` 的 2026-10-19 Amendment。
   - 對不變量的影響：改寫 MVP 計畫 I5（唯一性規則）與 I7、`BOUNDARY` 常數的驗證邊界文字；提前拍板 MVP 計畫 D3、D7 的唯一性子題，步驟 5 在 MVP 計畫加註。
 - **PD5 承諾交易的時間上限**（狀態：已決 2026-10-18，Will：A；擋住步驟：無；需要的事實：無。ADR：`docs/adr/2026-10-18-commitment-validity-upper-bound.md`）
   - 問題：「承諾在 round 之前收錄」目前完全採信 indexer 的 `tx_timestamp`。
