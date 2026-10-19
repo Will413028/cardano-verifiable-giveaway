@@ -72,6 +72,11 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 - 保存責任（刪除請求、濫用、成本）超過單人維運能力 → 縮回 B，bundle 回到下載與自行託管。
 - 後端功能需要進入驗證路徑才能運作 → 停止並另開決策，不得默默改變 I4。
 
+## Amendment (2026-10-19)：indexer 改為自架 Dolos
+
+- Will 2026-10-19 決定不向 Koios 取得同意，indexer 改為 Blockfrost 形狀介面卡＋自架 Dolos，CLI 不設專案預設；見 [自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)。本 ADR 中「proxy 只放行 Koios 唯讀端點」「CLI 預設直連」由該 ADR 取代；Context 的 Koios CORS 量測保留為當時的事實。
+- Revocation Triggers 第一條的前半（免 key、開放 CORS 的 indexer）已由自架 Dolos 滿足，後半（主辦者不需要託管）未滿足，所以後端本身不撤；唯讀 proxy 的存廢另交階段計畫 PD8。Followup 的「Koios 條款查證」「申請 indexer API key」「量測 Koios 請求數」由該 ADR 的 Followup 取代。
+
 ## Review Notes
 
 ## Related

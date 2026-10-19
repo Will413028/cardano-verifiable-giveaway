@@ -88,6 +88,10 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 - 擁有者刪除只移除自己的紀錄；以 bundleHash 為鍵的 tombstone 只用於營運端下架（檢舉或參加者刪除請求），下架後任何人都不得重傳。
 - 這是對原 Decision 的修正而非新取捨：原意是「擁有者能刪自己的代管、下架後不再出現」，新結構兩者都保住，且不讓他人搶佔。
 
+## Amendment 3 (2026-10-19)：Koios 額度相關的濫用防護待重評
+
+- indexer 改為自架 Dolos（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）。Decision「濫用防護」中的「Koios key 的全域請求預算」與「以（address, offset）快取」、Expected Outcome「無法耗盡 Koios 額度」的前提是 Koios 的 key 與日額度，已不成立；存廢交階段計畫 PD8（未決）。依 IP 與 owner 限流、保存額度、CORS、`Authorization` header 與其餘條目不變。
+
 ## Review Notes
 
 ## Related
