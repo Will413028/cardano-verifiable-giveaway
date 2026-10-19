@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { VERSION, ALGORITHM, QUICKNET, FIXTURE, DemoChain, selectWinners } from '@giveaway/verifier-cli/library';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const bundle = {
@@ -279,7 +280,7 @@ async function mustFailApi(name, mutate, testName) {
       encoding: 'utf8',
     });
     // CI colours vitest's summary even through a pipe; drop the escape codes before reading it.
-    const output = (result.stdout + result.stderr).replace(/\x1b\[[0-9;]*m/g, '');
+    const output = stripVTControlCharacters(result.stdout + result.stderr);
     if (result.status === 0 || !/Tests\s+\d+ failed/.test(output))
       throw new Error(`${name} did not fail the tests (exit ${result.status}):\n${output.slice(-3000)}`);
     const failed = output.split('\n').find((line) => line.includes('FAIL') && line.includes('>'));
