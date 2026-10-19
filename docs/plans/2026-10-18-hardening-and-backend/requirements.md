@@ -21,7 +21,7 @@
 | BR-13 | 流程 | 刪除請求以整份 bundle 下架；介面提醒主辦者保留下載副本 | WA Decision | 11、13 |
 | BR-14 | 文件 | 隱私說明（controller 角色、保存期限、刪除方式）與檢舉、下架流程 | WA Followup | 13 |
 | BR-15 | 流程 | 交易由錢包 CIP-30 `submitTx` 送出，後端不經手交易 | BK Decision | 9 |
-| BR-16 | 流程 | 驗證頁顯示鏈上證據來源（步驟 9），可填入 Blockfrost 相容、full archive 且允許 CORS 的 indexer 網址（步驟 8b）；CLI 沒有專案預設，必須以 `--indexer` 指定（步驟 8b） | BK Decision；DL Decision | 9 |
+| BR-16 | 流程 | 驗證頁顯示鏈上證據來源（步驟 9），可填入 Blockfrost 相容、full archive 且允許 CORS 的 indexer 網址（步驟 8b）；CLI 沒有專案預設，必須以 `--indexer` 指定（步驟 8b） | BK Decision；DL Decision | 8b、9 |
 | BR-17 | 流程 | 每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過 round 後 36 個月 | WA Amendment | 10、11 |
 | BR-18 | 資料實體 | 每個身分最多 5 份伺服器草稿，每份不超過協定 byte 上限；內容存 R2、紀錄存 D1 | WA Amendment；D1 limits | 12 |
 

@@ -13,7 +13,7 @@ inventory = (here / "inventory.md").read_text()
 requirements = (here / "requirements.md").read_text()
 errors = []
 
-step_numbers = set(re.findall(r"^- \[[ x]\] \*\*(\d+)\. ", plan, re.M))
+step_numbers = set(re.findall(r"^- \[[ x]\] \*\*(\d+[a-z]?)\. ", plan, re.M))
 
 
 def rows(text, first_cell):
