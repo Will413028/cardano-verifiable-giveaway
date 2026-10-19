@@ -153,7 +153,7 @@
   - 停止條件：Worker 呼叫 Koios 公開層也被拒——停下回報，需要 Will 先申請 key。
 
 - [ ] **8b. indexer 介面卡改成 Blockfrost 形狀，本機 preprod Dolos**（被擋於：步驟 7、8；PD7 已決）
-  - 編號說明：2026-10-19 依 PD7 插在步驟 9 之前；用 8b 而非重新編號，是為了讓程式註解、ADR 與紀錄中的「步驟 9–14」維持原義。`check_plan.py` 只認整數步驟編號，所以附件的「步驟」欄不列 8b，8b 接手的部分寫在需求與缺陷文字裡。
+  - 編號說明：2026-10-19 依 PD7 插在步驟 9 之前；用 8b 而非重新編號，是為了讓程式註解、ADR 與紀錄中的「步驟 9–14」維持原義。`check_plan.py` 接受 `8b` 這種子步驟編號，附件的「步驟」欄照常列 8b（BR-16、F13）。
   - 範圍：
     - 先量未知（產出附件 `spike-dolos.md`，每項附重現指令）：本機跑 preprod Dolos（full archive、`max_scan_items` 調高到不小於新的列舉上限），記錄版本、磁碟用量與同步時間、RAM；以步驟 5 的兩個 preprod 地址（stake 帳戶 169 筆、payment credential 1,171 筆）測 `/accounts/{stake}/transactions` 與 `/addresses/{addr_vkh}/transactions`：`order=asc` 時重複查詢的集合與順序、同一區塊多筆的次序、跨頁是否重複或遺漏、超過 `max_scan_items` 的回應；stake 只出現在 input 的交易是否被列出；剛上鏈交易的 `/txs/{h}/cbor` 是 404、空值還是延遲出現；Dolos 是否提供可查的儲存模式或最早區塊。
     - 以 Blockfrost 形狀的介面卡取代 `packages/chain` 的 `KoiosChain`：列舉用上述兩個端點（page／count 分頁、穩定排序；超過上限或回 `max_scan_items` 錯誤時判 FAIL，不當成列表結束）；讀承諾用 `/txs/{h}/cbor`（CBOR 自驗不變）、`/txs/{h}`（收錄區塊與時間）、`/txs/{h}/utxos`（主辦者 input）；列舉中挑選 label 改為每筆 `/txs/{h}/metadata`（Blockfrost 形狀沒有批次查詢）；確認數用 `/blocks/latest`。依實測決定剛上鏈交易沒有 CBOR 時對應 `NotIndexedError` 或 `CborPendingError`。新的列舉上限依 `max_scan_items` 與量到的請求數定，寫進協定文件。
