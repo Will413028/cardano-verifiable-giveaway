@@ -279,7 +279,8 @@ async function mustFailApi(name, mutate, testName) {
       encoding: 'utf8',
     });
     const output = result.stdout + result.stderr;
-    if (result.status === 0 || !/Tests\s+\d+ failed/.test(output)) throw new Error(`${name} did not fail the tests`);
+    if (result.status === 0 || !/Tests\s+\d+ failed/.test(output))
+      throw new Error(`${name} did not fail the tests (exit ${result.status}):\n${output.slice(-3000)}`);
     const failed = output.split('\n').find((line) => line.includes('FAIL') && line.includes('>'));
     console.log(`${name} causes backend test failure${failed ? ` (${failed.trim().slice(0, 200)})` : ''}`);
   } finally {
