@@ -85,6 +85,12 @@ supersedes-partially: 2026-10-18-typescript-convenience-backend.md（proxy 只�
 - 使用者普遍無法自備 full-archive 節點，CLI 沒人能用 → 重評 A（CLI 預設專案 Dolos），並在驗證邊界文字寫明 CLI 預設與網頁同一營運者。
 - 出現免 key、條款允許自動化使用的公開 Blockfrost 相容 indexer → 評估作為 F 的第二來源或 CLI 的建議來源。
 
+## Amendment (2026-10-19)：開發期本機不跑 preprod Dolos
+
+- Will 2026-10-19 決定本機不佔 preprod full archive 的空間：TxPipe 的 preprod full 快照壓縮後 10.17 GB（實測 HTTP `content-length`，最後更新 2026-06-11），Mithril 的 preprod 節點資料解壓後 20.04 GB（查 Mithril aggregator）；本機可用約 32 GiB。
+- Decision 第三點「開發期在本機跑 preprod Dolos」改為：本機跑 Dolos 的 emulator 模式開發鏈（沒有既有鏈歷史，交易由測試金鑰送出），Dolos 程式本身的分頁、排序與 CBOR 行為在開發鏈上量（階段計畫步驟 8b）；preprod 規模的磁碟、同步時間、RAM 與真實地址的列舉，改在 VM 上量（步驟 8c，開 VM 需要 Will 授權），VM 可沿用為公開部署的專案 Dolos。Expected Outcome「網頁 preprod 流程在本機對 preprod Dolos 跑通」改讀為「對本機開發鏈跑通，preprod 版本在步驟 8c」。
+- 代價：preprod 規模的列舉排序要到步驟 8c 才實測；若 preprod 上排序不穩定而開發鏈上穩定，唯一性列舉要回頭改。觸發重評：步驟 8c 的排序結果與步驟 8b 不同。
+
 ## Review Notes
 
 - 2026-10-19 獨立審查（v1 退回）：補上 `max_scan_items` 預設 3000、儲存模式造成的唯一性誤判 PASS、A 對 B1 的退步、請求數量化、db-sync 數字屬主網、Blockfrost 條款範圍；新增 A′、E、F 三個選項。v2 已處理全部發現後交 Will 拍板。
@@ -94,5 +100,5 @@ supersedes-partially: 2026-10-18-typescript-convenience-backend.md（proxy 只�
 - 部分取代：[TypeScript 便利層後端](./2026-10-18-typescript-convenience-backend.md) 的「proxy 只放行 Koios 唯讀端點」「CLI 預設直連」；後端本身（bundle 代管、草稿）不受影響。
 - [錢包簽章與限期保存](./2026-10-18-wallet-auth-and-bounded-retention.md) 的 Koios key 全域預算與（address, offset）快取：存廢依 PD8。
 - [唯一性改以時間區間重疊判定](./2026-10-18-uniqueness-by-interval-overlap.md)：列舉端點改由步驟 8b 對 Dolos 確認。
-- 階段計畫：`docs/plans/2026-10-18-hardening-and-backend.md` PD7、PD8、步驟 8b、步驟 9。
+- 階段計畫：`docs/plans/2026-10-18-hardening-and-backend.md` PD7、PD8、步驟 8b、8c、步驟 9。
 - Provenance：2026-10-19 Will 在 coding agent 對話中決定不向 Koios 取得同意、改用其他 indexer，並在選項簡報 v2（經獨立審查修正）中選 A′。
