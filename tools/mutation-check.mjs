@@ -239,3 +239,64 @@ await mustFail(
   (text) => text.replace('rows.set(row.tx_hash, row);', 'rows.set(address + row.tx_hash, row);'),
   'one transaction listed under several identity addresses',
 );
+// The reverse proxy in front of the project Dolos (plan step 9, PD8 A): each guard of the committed config, removed
+// alone, fails its static check. tools/devchain/rproxy-check.mjs removes the same guards in a live nginx.
+const proxyConfig = `${root}deploy/dolos-proxy/nginx.conf`;
+await mustFail(
+  'Opening the reverse proxy allowlist',
+  proxyConfig,
+  (text) => text.replace('map $uri $route {\n    default "";', 'map $uri $route {\n    default any;'),
+  'reverse proxy allowlist admits',
+);
+await mustFail(
+  'Removing the reverse proxy rate limit',
+  proxyConfig,
+  (text) => text.replace('      limit_req zone=dolos_ip burst=350 delay=300;\n', ''),
+  'reverse proxy limits every client',
+);
+await mustFail(
+  'Allowing every origin at the reverse proxy',
+  proxyConfig,
+  (text) => text.replace('default refused;', 'default allowed;'),
+  'reverse proxy limits every client',
+);
+await mustFail(
+  'Logging the request line at the reverse proxy',
+  proxyConfig,
+  (text) =>
+    text.replace("log_format giveaway '$time_iso8601", 'log_format giveaway \'$remote_addr "$request" $time_iso8601'),
+  'reverse proxy limits every client',
+);
+// The backend (apps/api, BR-04, BR-05): the same rewrite-run-restore, with its vitest suite inside workerd.
+async function mustFailApi(name, mutate, testName) {
+  const path = `${root}apps/api/src/index.ts`;
+  const original = await readFile(path, 'utf8');
+  const changed = mutate(original);
+  if (changed === original) throw new Error(`${name}: mutation target was not located`);
+  try {
+    await writeFile(path, changed);
+    const result = spawnSync('pnpm', ['--filter', '@giveaway/api', 'exec', 'vitest', 'run', '-t', testName], {
+      encoding: 'utf8',
+    });
+    const output = result.stdout + result.stderr;
+    if (result.status === 0 || !/Tests\s+\d+ failed/.test(output)) throw new Error(`${name} did not fail the tests`);
+    const failed = output.split('\n').find((line) => line.includes('FAIL') && line.includes('>'));
+    console.log(`${name} causes backend test failure${failed ? ` (${failed.trim().slice(0, 200)})` : ''}`);
+  } finally {
+    await writeFile(path, original);
+  }
+}
+await mustFailApi(
+  'Echoing any Origin from the backend',
+  (text) => text.replace('if (origin !== null && origin !== allowed)', 'if (origin === "never")'),
+  'refuses a page on another origin',
+);
+await mustFailApi(
+  'Logging the request URL in the backend',
+  (text) =>
+    text.replace(
+      'const allowed = allowedOrigin(env);',
+      'const allowed = allowedOrigin(env);\n  console.log(request.url);',
+    ),
+  'writes nothing to the console',
+);

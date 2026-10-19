@@ -1,29 +1,36 @@
-// Plan step 8b: the built page against the real dev chain, nothing mocked except the CIP-30 wallet (test keys).
-// Usage, with Dolos on the dev chain (after tools/devchain/acceptance.mjs), `make dev` on PORT (default 4320) and
-// `make api` on 127.0.0.1:8787:
+// Plan steps 8b and 9: the built page against the real dev chain, nothing mocked except the CIP-30 wallet (test keys).
+// Usage, with Dolos on the dev chain (after tools/devchain/acceptance.mjs) and `make dev` on PORT (default 4320):
 //   GIVEAWAY_PLAYWRIGHT_MODULE=… GIVEAWAY_CHROME_PATH=… node tools/devchain/browser-live.mjs <acceptance out dir>
-// Checks the paths the mocks stand in for: CORS and answer shapes of the real MiniBF in Chrome, Evolution's
-// Blockfrost provider decoding Dolos's /epochs/latest/parameters and /txs/{h}/utxos, submission to /tx/submit, the
-// confirmation poll, and the backend's /tip forwarded to Dolos /blocks/latest.
+// GIVEAWAY_INDEXER_URL names the project indexer the page was built against (default: Dolos itself, DEVCHAIN_URL);
+// step 9 builds it against the reverse proxy (deploy/dolos-proxy/nginx.conf in nginx before Dolos). Checks the paths
+// the mocks stand in for: CORS and answer shapes of the real MiniBF (and proxy) in Chrome, Evolution's Blockfrost
+// provider decoding /epochs/latest/parameters and /txs/{h}/utxos, the tip read from the project indexer, submission by
+// the wallet (submitTx; the mock wallet sends to Dolos directly, as a wallet's own infrastructure would), the
+// confirmation poll, and that the page reads chain data from the project indexer only (PD8 A: no backend in between).
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { transactionHash } from '@giveaway/verifier-cli/library';
 import { cbor, hex, sign, Tag, unhex } from '../../tests/cardano.mjs';
-import { BASE, utxos, WALLETS } from './devchain.mjs';
+import { BASE, submit, utxos, WALLETS } from './devchain.mjs';
 
 const out = process.argv[2];
 if (!out) throw new Error('Usage: node tools/devchain/browser-live.mjs <acceptance out dir>');
 const origin = `http://127.0.0.1:${process.env.PORT ?? 4320}/`;
+const INDEXER = (process.env.GIVEAWAY_INDEXER_URL ?? BASE).replace(/\/$/, '');
 const { chromium } = await import(process.env.GIVEAWAY_PLAYWRIGHT_MODULE);
 const browser = await chromium.launch({ executablePath: process.env.GIVEAWAY_CHROME_PATH, headless: true });
-const report = { browser: browser.version(), indexer: BASE };
+const report = { browser: browser.version(), indexer: INDEXER, dolos: BASE };
 try {
   // 1. Verification page, project indexer (the build default is the dev chain). After acceptance.mjs the enterprise
   // proof passes and the organizer proof fails on the overlapping commitment sent from its second address.
   const verifyPage = async (file) => {
     const page = await browser.newPage();
     const hosts = new Set();
-    page.on('request', (r) => hosts.add(new URL(r.url()).origin));
+    const paths = [];
+    page.on('request', (r) => {
+      hosts.add(new URL(r.url()).origin);
+      if (r.url().startsWith(INDEXER)) paths.push(new URL(r.url()).pathname);
+    });
     await page.goto(origin);
     await page
       .locator('#proof-file')
@@ -34,7 +41,9 @@ try {
     const result = {
       verdict: await page.locator('#verification').textContent(),
       checks: await page.locator('#checks > li').allTextContents(),
+      evidenceSource: await page.locator('#evidence-source').textContent(),
       hosts: [...hosts],
+      paths,
     };
     await page.close();
     return result;
@@ -56,6 +65,16 @@ try {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
+    const requests = [];
+    page.on('request', (r) => requests.push({ method: r.method(), url: r.url() }));
+    // The wallet's own infrastructure: the signed transaction goes to the dev chain directly, not through the page.
+    const walletSubmits = [];
+    await page.exposeFunction('mockSubmit', async (tx) => {
+      const r = await submit(tx);
+      walletSubmits.push(r.status);
+      if (r.status !== 200) throw new Error(`submit rejected: ${r.status} ${r.body}`);
+      return r.body.trim();
+    });
     await page.exposeFunction('mockSign', (unsigned) => {
       const txId = unhex(transactionHash(unsigned));
       return hex(
@@ -84,6 +103,7 @@ try {
               getChangeAddress: async () => address,
               getUtxos: async () => [utxo],
               signTx: async (tx) => window.mockSign(tx),
+              submitTx: async (tx) => window.mockSubmit(tx),
             }),
           },
         };
@@ -111,6 +131,9 @@ try {
     );
     report.confirmed = await page.locator('#draw-status').textContent();
     report.pageErrors = errors;
+    report.walletSubmits = walletSubmits;
+    report.creationHosts = [...new Set(requests.map((r) => new URL(r.url).origin))];
+    report.creationPosts = requests.filter((r) => r.method !== 'GET' && r.method !== 'OPTIONS').map((r) => r.url);
     await page.close();
   }
 } finally {
@@ -118,7 +141,26 @@ try {
 }
 console.log(JSON.stringify(report, null, 2));
 const accepted = JSON.parse(await readFile(`${out}/report.json`, 'utf8'));
+// The page reads chain data only from the project indexer it was built against; nothing else, no backend.
+const allowed = new Set([new URL(origin).origin, new URL(INDEXER).origin]);
+for (const hosts of [report.verification.enterprise.hosts, report.verification.organizer.hosts, report.creationHosts])
+  assert.ok(
+    hosts.every((h) => allowed.has(h)),
+    JSON.stringify(hosts),
+  );
+assert.ok(report.creationHosts.includes(new URL(INDEXER).origin));
+assert.deepEqual(report.creationPosts, []);
+assert.deepEqual(report.walletSubmits, [200]);
+assert.equal(
+  report.verification.enterprise.evidenceSource,
+  `Chain evidence source: ${INDEXER} (the project indexer). The result depends on what this indexer reports.`,
+);
 assert.equal(report.verification.enterprise.verdict, 'PASS');
+// The selected test transaction's metadata, read through the project indexer: its listing's metadata JSON and the
+// CBOR the commitment is decoded from.
+const selected = JSON.parse(await readFile(`${out}/proof-enterprise.json`, 'utf8')).txHash;
+for (const part of ['metadata', 'cbor'])
+  assert.ok(report.verification.enterprise.paths.includes(`/txs/${selected}/${part}`), part);
 assert.equal(report.verification.organizer.verdict, 'FAIL');
 assert.ok(
   report.verification.organizer.checks.some(

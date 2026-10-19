@@ -23,16 +23,9 @@ const PREFLIGHT = Object.fromEntries(
     (h) => [h, SPIKE.preflight.headers[h]],
   ),
 );
-// Dolos answers a submission with the transaction hash as plain text.
-export const SUBMIT_HEADERS = {
-  ...Object.fromEntries(
-    ['access-control-allow-origin', 'access-control-expose-headers', 'vary'].map((h) => [
-      h,
-      SPIKE['tx-submit'].headers[h],
-    ]),
-  ),
-  'content-type': SPIKE['tx-submit'].headers['content-type'],
-};
+// The project indexer sits behind the reverse proxy (deploy/dolos-proxy/nginx.conf, PD8 A), which refuses
+// /tx/submit: the wallet submits (CIP-30 submitTx, BR-15). Answer recorded from nginx by tools/devchain/rproxy-check.mjs.
+const PROXY = recorded('rproxy-nginx-1.30.6-report.json').variants.committed.captures;
 const json = (status, body) => ({
   status,
   headers: { ...COMMON, 'content-type': 'application/json' },
@@ -99,7 +92,7 @@ export function blockfrostIndexer({ txs = [], maxScan = 3000, tip, fault = () =>
     const parts = pathname.split('/').filter(Boolean);
     // CORS preflight (Evolution's provider sends Content-Type on GET): Dolos answers 200 allowing everything.
     if (method === 'OPTIONS') return { status: SPIKE.preflight.status, headers: PREFLIGHT, body: '' };
-    if (method === 'POST' && pathname === '/tx/submit') return undefined;
+    if (method === 'POST' && pathname === '/tx/submit') return PROXY['tx-submit'];
     if (method !== 'GET') return ANSWERS.routeMissing();
     if (parts[0] === 'accounts' && parts[2] === 'addresses' && parts.length === 3) {
       const listed = [

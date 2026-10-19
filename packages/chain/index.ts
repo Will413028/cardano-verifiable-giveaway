@@ -224,7 +224,7 @@ export function encodeBech32(prefix: string, bytes: Uint8Array): string {
 }
 // The uniqueness identity of an organizer address (PD3): its stake credential when the address has one,
 // otherwise its payment credential. Only key credentials are supported; `key` is what the indexer
-// enumerates by and what a proxy cache is keyed on.
+// enumerates by and what any enumeration cache would be keyed on (B6).
 export type Identity = { kind: 'stake'; key: string } | { kind: 'payment'; key: string };
 export function identityOf(owner: string): Identity {
   const { prefix, bytes } = decodeBech32(owner);

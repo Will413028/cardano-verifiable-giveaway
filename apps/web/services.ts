@@ -15,10 +15,8 @@ import {
   validateProof,
 } from '@giveaway/protocol';
 
-// DOM-free work behind the page: share encoding, hosted bundles, the backend proxy and assembling proofs.
+// DOM-free work behind the page: share encoding, hosted bundles, the chain tip and assembling proofs.
 
-// Replaced at build time by tools/build.mjs from GIVEAWAY_API_URL (default http://127.0.0.1:8787).
-declare const GIVEAWAY_API_URL: string;
 // Replaced at build time by tools/build.mjs from GIVEAWAY_INDEXER_URL: the project's Blockfrost-compatible indexer
 // (default the local Dolos dev chain, http://127.0.0.1:3010).
 declare const GIVEAWAY_INDEXER_URL: string;
@@ -31,16 +29,18 @@ export interface Tip {
   blockTime: number;
 }
 
-// The preprod chain tip read through the convenience backend's proxy (BR-01), which forwards the indexer's
-// /blocks/latest. Display only: no verification step reads it, so the verifier still works when the backend is
-// down (B1).
+// The preprod chain tip, read directly from the project indexer's /blocks/latest (PD8 A: no backend proxy; BR-01).
+// Display only: no verification step reads it.
 export async function fetchTip(): Promise<Tip> {
-  const response = await fetch(`${GIVEAWAY_API_URL}/tip`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`Proxy /tip: HTTP ${response.status}`);
+  const response = await fetch(`${PROJECT_INDEXER}/blocks/latest`, {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error(`Indexer /blocks/latest: HTTP ${response.status}`);
   const block: unknown = await response.json();
   const row = (block && typeof block === 'object' ? block : undefined) as Record<string, unknown> | undefined;
   const tip = { blockHeight: row?.height, epoch: row?.epoch, slot: row?.slot, blockTime: row?.time };
-  if (!Object.values(tip).every(Number.isSafeInteger)) throw new Error('Proxy /tip: unexpected response');
+  if (!Object.values(tip).every(Number.isSafeInteger)) throw new Error('Indexer /blocks/latest: unexpected response');
   return tip as Tip;
 }
 

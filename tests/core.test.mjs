@@ -875,3 +875,133 @@ test('unsigned commitment re-read: validity upper bound', async () => {
   const later = { ...base, invalidHereafter: base.invalidHereafter - 1n };
   assert.throws(() => p.checkCommitmentTransaction(UNSIGNED, later), /validity upper bound/);
 });
+
+// The reverse proxy in front of the project Dolos (deploy/dolos-proxy/nginx.conf, plan step 9, PD8 A). These checks
+// read the committed file; tools/devchain/rproxy-check.mjs runs the same file in a real nginx before the dev chain.
+const NGINX = (await readFile(new URL('../deploy/dolos-proxy/nginx.conf', import.meta.url), 'utf8'))
+  .split('\n')
+  .map((line) => line.replace(/(^|\s)#.*$/, ''))
+  .join('\n');
+// The entries of one `map <source> <variable> { … }` block, as [key, value] with the quotes removed.
+const nginxMap = (source, variable) => {
+  const block = NGINX.match(new RegExp(`map \\${source} \\${variable} \\{([^{}]*(?:\\{\\d+\\}[^{}]*)*)\\}`))?.[1];
+  assert.ok(block, `map ${source} ${variable}`);
+  return block
+    .split(';')
+    .map((entry) => entry.trim().match(/^("[^"]*"|\S+)\s+("[^"]*"|\S+)$/))
+    .filter(Boolean)
+    .map(([, key, value]) => [key.replace(/^"|"$/g, ''), value.replace(/^"|"$/g, '')]);
+};
+// nginx's own lookup: exact keys first, then regular expressions (~) in order, else default.
+const nginxLookup = (entries, value) => {
+  const exact = entries.find(([key]) => key === value && key !== 'default' && !key.startsWith('~'));
+  if (exact) return exact[1];
+  // nginx regexes are PCRE: $ also matches before a final newline (JS's does not), \z only at the very end (no JS
+  // spelling). Translate both so this lookup answers what nginx answers.
+  const pcre = (source) =>
+    new RegExp(source.replace(/(?<!\\)\$/g, '(?=\\n?(?![\\s\\S]))').replaceAll('\\z', '(?![\\s\\S])'));
+  const regex = entries.find(([key]) => key.startsWith('~') && pcre(key.slice(1)).test(value));
+  return regex ? regex[1] : entries.find(([key]) => key === 'default')?.[1];
+};
+const proxyRoute = (path) => nginxLookup(nginxMap('$uri', '$route'), path);
+const proxyArgs = (query) => nginxLookup(nginxMap('$args', '$args_ok'), query);
+test('reverse proxy allowlist admits every read the verifier and the page make, and nothing else (BR-01)', async () => {
+  // A stake identity with two payment addresses and an enterprise identity, verified through the Blockfrost mock;
+  // every request path and query the adapter sends is recorded by it.
+  const a = await target();
+  const b = await draw({ drawId: 'example-2', blockTime: T + 60, blockHeight: 1300, from: ORGANIZER_2 });
+  const e = await draw({ drawId: 'example-3', blockTime: T - 900, blockHeight: 1000, from: ENTERPRISE });
+  const stake = chainOf([a.tx, b.tx]);
+  const enterprise = chainOf([e.tx]);
+  assert.equal((await p.verifyProof(a.proof, { chain: stake })).status, 'PASS');
+  assert.equal((await p.verifyProof(e.proof, { chain: enterprise })).status, 'PASS');
+  const read = [
+    ...stake.calls,
+    ...enterprise.calls,
+    // The page's tip (apps/web/services.ts fetchTip) and Evolution 0.6.0 BlockfrostProvider on the creation page:
+    // getProtocolParameters and getUtxosByOutRef (dist/sdk/provider/internal/BlockfrostEffect.js lines 202, 367).
+    '/blocks/latest',
+    '/epochs/latest/parameters',
+    `/txs/${'ab'.repeat(32)}/utxos`,
+  ];
+  for (const name of ['account-addresses', 'address-transactions', 'tx-metadata', 'tx-cbor', 'blocks-height'])
+    assert.ok(
+      read.some((c) => proxyRoute(c.split('?')[0]) === name),
+      `the verification exercises ${name}`,
+    );
+  for (const call of read) {
+    const [path, query = ''] = call.split('?');
+    assert.ok(proxyRoute(path), `allowlisted: ${path}`);
+    assert.equal(proxyArgs(query), '1', `query allowed: ${query}`);
+  }
+  const refused = [
+    '/',
+    '/health',
+    '/genesis',
+    '/tx/submit',
+    '/network/eras',
+    `/addresses/${ORGANIZER.address}/utxos`,
+    `/addresses/${ORGANIZER.address}`,
+    `/accounts/${p.identityOf(ORGANIZER.address).key}`,
+    `/txs/${'ab'.repeat(32)}/redeemers`,
+    `/txs/${'AB'.repeat(32)}`,
+    '/blocks/latest/txs',
+    // A decoded trailing newline (%0A): PCRE's $ would match before it.
+    '/blocks/latest\n',
+    `/txs/${'ab'.repeat(32)}\n`,
+    // Mainnet identifiers: the project Dolos is preprod only.
+    '/addresses/addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x/transactions',
+    `/accounts/stake1${'q'.repeat(53)}/addresses`,
+  ];
+  for (const path of refused) assert.equal(proxyRoute(path), '', `refused: ${path}`);
+  for (const query of ['select=hash', 'page=1&count=100&project_id=x', 'page=1;count=2', 'page=%31'])
+    assert.equal(proxyArgs(query), '0', `query refused: ${query}`);
+});
+test('reverse proxy limits every client, refuses foreign origins and logs no request content (BR-03–BR-05)', () => {
+  // BR-05: the access log names only the time, method, route name, status, size and duration; error-level messages
+  // (which carry the client address and the request line) are not written.
+  const formats = [...NGINX.matchAll(/log_format\s+(\S+)\s+'([^']*)'/g)].map(([, name, format]) => [name, format]);
+  assert.deepEqual(
+    formats.map(([name]) => name),
+    ['giveaway'],
+  );
+  assert.deepEqual(
+    [...formats[0][1].matchAll(/\$\w+/g)].map(([v]) => v),
+    ['$time_iso8601', '$request_method', '$route', '$status', '$body_bytes_sent', '$request_time'],
+  );
+  assert.deepEqual(
+    [...NGINX.matchAll(/^\s*access_log\s+([^;]+);/gm)].map(([, v]) => v.trim().split(/\s+/).at(-1)),
+    ['giveaway'],
+  );
+  assert.deepEqual(
+    [...NGINX.matchAll(/^\s*error_log\s+([^;]+);/gm)].map(([, v]) => v.trim().split(/\s+/).at(-1)),
+    ['crit'],
+  );
+  // BR-03: the proxied location is rate limited, and one full verification of the step 8b identity (n = 265: 276
+  // sequential requests, spike-dolos.md) fits in the undelayed allowance.
+  const location = NGINX.slice(NGINX.indexOf('location / {'));
+  const limit = location.match(/limit_req zone=(\w+) burst=(\d+) delay=(\d+);/);
+  assert.ok(limit, 'limit_req in the proxied location');
+  assert.match(NGINX, new RegExp(`limit_req_zone \\$binary_remote_addr zone=${limit[1]}:\\w+ rate=\\d+r/s;`));
+  assert.ok(Number(limit[3]) >= 276, `delay ${limit[3]} covers one full verification`);
+  assert.ok(Number(limit[2]) > Number(limit[3]), 'burst leaves a queue above the undelayed allowance');
+  assert.match(NGINX, /limit_req_status 429;/);
+  // BR-04: an origin outside the list is refused; the list holds origins, never a wildcard; Dolos's own CORS headers
+  // (permissive_cors answers *) are dropped.
+  const origins = nginxMap('$http_origin', '$cors');
+  assert.equal(nginxLookup(origins, 'https://evil.example'), 'refused');
+  assert.equal(nginxLookup(origins, ''), 'none');
+  assert.ok(origins.every(([key]) => key === 'default' || key === '' || /^https?:\/\/[^*/]+$/.test(key)));
+  assert.match(NGINX, /if \(\$cors = refused\) \{\s*return 403;/);
+  assert.match(location, /proxy_hide_header Access-Control-Allow-Origin;/);
+  assert.match(location, /proxy_pass_request_headers off;/);
+  assert.match(location, /proxy_pass_request_body off;/);
+});
+test('the backend keeps Workers logs off (BR-05)', async () => {
+  const text = await readFile(new URL('../apps/api/wrangler.jsonc', import.meta.url), 'utf8');
+  // JSONC: drop // comments outside strings.
+  const config = JSON.parse(text.replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g, (_, s) => s ?? ''));
+  assert.deepEqual(config.observability, { enabled: false });
+  assert.equal(config.logpush, undefined);
+  assert.equal(config.tail_consumers, undefined);
+});

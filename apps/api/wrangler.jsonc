@@ -6,12 +6,12 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": false,
   "send_metrics": false,
-  // The page is built against http://127.0.0.1:8787 (GIVEAWAY_API_URL default).
   "dev": { "ip": "127.0.0.1", "port": 8787 },
+  // BR-05: Workers Logs record every invocation with its request URL (query included); they stay off. Checked by
+  // tests/core.test.mjs.
+  "observability": { "enabled": false },
   "vars": {
-    // The only browser origin allowed to read proxy responses: the local `make dev` server.
-    "ALLOWED_ORIGIN": "http://127.0.0.1:4320",
-    // The project's Blockfrost-compatible indexer: the local Dolos dev chain (tools/devchain/dolos.toml).
-    "INDEXER_URL": "http://127.0.0.1:3010"
+    // The only browser origin allowed to call the backend (BR-04): the local `make dev` server.
+    "ALLOWED_ORIGIN": "http://127.0.0.1:4320"
   }
 }

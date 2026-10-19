@@ -185,3 +185,8 @@ GIVEAWAY_PLAYWRIGHT_MODULE=… GIVEAWAY_CHROME_PATH=… node tools/devchain/brow
 ```
 
 未量到：rollback 後的頁位移（emulator 不 rollback）；preprod 規模的請求數與時間（步驟 8c）。
+
+## 步驟 9 期間的觀察（2026-10-19）
+
+- emulator 出塊競態（實測，一次）：全新開發鏈（`run-9-acc`）跑完 `acceptance.mjs` 後，經 reverse proxy 連續讀取時，Dolos 1.6.1 在 slot 347 前停頓約 2.5 秒，接著 apply stage 以 `consensus error: block at slot 347 has parent hash … but expected …` 停止、daemon 結束（同一 slot 出了兩個區塊）。停止前的讀取量約 110 r/s；8b 的各輪（最多約 1,080 塊）沒有出現過。同一資料目錄重啟 Dolos 後繼續出塊、讀取正常，重跑的 `rproxy-check.mjs` 與 `browser-live.mjs` 都在重啟後完成。只涉及 emulator 的出塊計時（推論：真實網路的節點不自己出塊）；原因未查，不影響本步的判定。
+- 經 reverse proxy（nginx 1.30.6）與直連 Dolos 的同一次完整驗證，判定、檢查項與衝突清單相同，請求數同為 278（n＝266、k＝2）；原始輸出 `rproxy-nginx-1.30.6-report.json`。
