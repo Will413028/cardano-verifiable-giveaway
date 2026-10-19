@@ -1,0 +1,30 @@
+# Local development chain: Dolos v1.6.1 in emulator mode (plan step 8b, docs/plans/2026-10-18-hardening-and-backend/spike-dolos.md).
+# No peer, no snapshot: blocks are produced from the mempool, at most 10 transactions each (src/sync/emulator.rs).
+# Run from a working directory outside the repository that holds copies of this file and the four genesis files.
+[upstream]
+block_production_interval = 1
+
+[storage]
+version = "v3"
+path = "data"
+
+[genesis]
+byron_path = "byron.json"
+shelley_path = "shelley.json"
+alonzo_path = "alonzo.json"
+conway_path = "conway.json"
+# Start directly in Conway (the emulator only packs Conway transactions); the era starts at slot 0 at the Shelley
+# systemStart, chosen so that time = 1655683200 + slot, the same clock as the pinned preprod one (PREPROD_SLOTS).
+force_protocol = 9
+
+[serve.minibf]
+listen_address = "127.0.0.1:3010"
+max_scan_items = 100000
+
+[chain]
+type = "cardano"
+magic = 42
+is_testnet = true
+
+[logging]
+max_level = "INFO"

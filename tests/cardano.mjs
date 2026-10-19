@@ -57,6 +57,8 @@ export const sign = (key, message) => ed25519.sign(message, key.secret);
 // A signed commitment-shaped transaction. `metadata` is the LABEL entry (object of text/int values) or null;
 // `signers` are hex key hashes for required_signers; `witnesses` are keys that sign the transaction id.
 // `legacy` uses Shelley encodings (plain arrays, a bare metadata map), the default is Conway (tags 258/259).
+// `inputs` ([tx id hex, index] pairs), `outputs` ([address hex, lovelace] pairs) and `fee` replace the default single
+// input, 2 ADA output and fee, for balanced transactions a ledger accepts (tools/devchain).
 export function buildTransaction({
   label,
   metadata,
@@ -65,6 +67,9 @@ export function buildTransaction({
   invalidHereafter = null,
   input = '00'.repeat(32),
   address = `60${'00'.repeat(28)}`,
+  inputs = [[input, 0]],
+  outputs = [[address, 2_000_000n]],
+  fee = 170_000n,
   legacy = false,
   valid = true,
   corruptSignature = false,
@@ -80,9 +85,9 @@ export function buildTransaction({
       )
     : null;
   const body = new Map([
-    [0, set([[unhex(input), 0]])],
-    [1, [[unhex(address), 2_000_000n]]],
-    [2, 170_000n],
+    [0, set(inputs.map(([id, index]) => [unhex(id), index]))],
+    [1, outputs.map(([to, lovelace]) => [unhex(to), BigInt(lovelace)])],
+    [2, BigInt(fee)],
   ]);
   if (invalidHereafter !== null) body.set(3, BigInt(invalidHereafter));
   if (auxiliary) body.set(7, blake2b(auxiliary, { dkLen: 32 }));

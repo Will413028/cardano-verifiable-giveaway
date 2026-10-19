@@ -1,0 +1,749 @@
+{
+  "base": "http://127.0.0.1:3011",
+  "endpoints": {
+    "accounts-transactions": {
+      "status": 200,
+      "items": 100
+    },
+    "addresses-stake-transactions": {
+      "status": 404,
+      "items": null
+    },
+    "accounts-addresses": {
+      "status": 200,
+      "items": 3
+    },
+    "addresses-vkh-transactions": {
+      "status": 200,
+      "items": 100
+    },
+    "addresses-base-transactions": {
+      "status": 200,
+      "items": 100
+    }
+  },
+  "enumeration": [
+    {
+      "label": "payment credential (addr_vkh)",
+      "tip": 74,
+      "errors": [],
+      "submitted": 263,
+      "listed": 263,
+      "missingSubmitted": 0,
+      "requests": {
+        "count100": 3,
+        "count10": 27
+      },
+      "repeat": {
+        "name": "count=100 twice",
+        "lengths": [
+          263,
+          263
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "pageSize": {
+        "name": "count=100 vs count=10",
+        "lengths": [
+          263,
+          263
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "inBlockOrder": true,
+      "blocksWithSeveral": 26,
+      "maxPerBlock": 10,
+      "sample": [
+        {
+          "tx_hash": "b0f3ebde3032587662c30ef003fca154b2065b5e20f7b7649d0b2ac179c0772f",
+          "tx_index": 0,
+          "block_height": 14,
+          "block_time": 1655683214
+        },
+        {
+          "tx_hash": "9aad3f1b65f9b6c9aee84dea7602899e334cd904ef7ec8ff8e31a2ec9e98e129",
+          "tx_index": 0,
+          "block_height": 15,
+          "block_time": 1655683215
+        },
+        {
+          "tx_hash": "3a539be1d8d75e30481f4d850d83cc93ca34b635f1b0d9bf914a6b4b75b6d8e6",
+          "tx_index": 0,
+          "block_height": 16,
+          "block_time": 1655683216
+        }
+      ]
+    },
+    {
+      "label": "organizer base address",
+      "tip": 74,
+      "errors": [],
+      "submitted": 263,
+      "listed": 263,
+      "missingSubmitted": 0,
+      "requests": {
+        "count100": 3,
+        "count10": 27
+      },
+      "repeat": {
+        "name": "count=100 twice",
+        "lengths": [
+          263,
+          263
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "pageSize": {
+        "name": "count=100 vs count=10",
+        "lengths": [
+          263,
+          263
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "inBlockOrder": true,
+      "blocksWithSeveral": 26,
+      "maxPerBlock": 10,
+      "sample": [
+        {
+          "tx_hash": "f26bc0aab1e91fa08373f3d5cfe0612cd6e7d0565ccda09ec0211fb9268e7f02",
+          "tx_index": 0,
+          "block_height": 11,
+          "block_time": 1655683211
+        },
+        {
+          "tx_hash": "3a62ec9e1cbe78b2e08e72698daca12343cbe6c3c13256d73cd7f9e05092011b",
+          "tx_index": 0,
+          "block_height": 12,
+          "block_time": 1655683212
+        },
+        {
+          "tx_hash": "897c35292e473413f6218cec06c80f4fd988dbfc5d0693348b68c6f80edaf5ba",
+          "tx_index": 0,
+          "block_height": 13,
+          "block_time": 1655683213
+        }
+      ]
+    },
+    {
+      "label": "stake account",
+      "tip": 75,
+      "errors": [],
+      "submitted": 263,
+      "listed": 265,
+      "missingSubmitted": 0,
+      "requests": {
+        "count100": 3,
+        "count10": 27
+      },
+      "repeat": {
+        "name": "count=100 twice",
+        "lengths": [
+          265,
+          265
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "pageSize": {
+        "name": "count=100 vs count=10",
+        "lengths": [
+          265,
+          265
+        ],
+        "sameOrder": true,
+        "duplicates": 0
+      },
+      "inBlockOrder": true,
+      "blocksWithSeveral": 26,
+      "maxPerBlock": 10,
+      "sample": [
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "tx_hash": "f26bc0aab1e91fa08373f3d5cfe0612cd6e7d0565ccda09ec0211fb9268e7f02",
+          "tx_index": 0,
+          "block_height": 11,
+          "block_time": 1655683211
+        },
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "tx_hash": "3a62ec9e1cbe78b2e08e72698daca12343cbe6c3c13256d73cd7f9e05092011b",
+          "tx_index": 0,
+          "block_height": 12,
+          "block_time": 1655683212
+        },
+        {
+          "address": "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+          "tx_hash": "897c35292e473413f6218cec06c80f4fd988dbfc5d0693348b68c6f80edaf5ba",
+          "tx_index": 0,
+          "block_height": 13,
+          "block_time": 1655683213
+        }
+      ]
+    }
+  ],
+  "stakeViaAddresses": {
+    "tip": 76,
+    "addresses": 3,
+    "listed": 265,
+    "missingSubmitted": 0,
+    "requests": 6
+  },
+  "enumerationLater": {
+    "label": "payment credential (addr_vkh), 5 s later",
+    "tip": 81,
+    "errors": [],
+    "submitted": 263,
+    "listed": 263,
+    "missingSubmitted": 0,
+    "requests": {
+      "count100": 3,
+      "count10": 27
+    },
+    "repeat": {
+      "name": "count=100 twice",
+      "lengths": [
+        263,
+        263
+      ],
+      "sameOrder": true,
+      "duplicates": 0
+    },
+    "pageSize": {
+      "name": "count=100 vs count=10",
+      "lengths": [
+        263,
+        263
+      ],
+      "sameOrder": true,
+      "duplicates": 0
+    },
+    "inBlockOrder": true,
+    "blocksWithSeveral": 26,
+    "maxPerBlock": 10,
+    "sample": [
+      {
+        "tx_hash": "b0f3ebde3032587662c30ef003fca154b2065b5e20f7b7649d0b2ac179c0772f",
+        "tx_index": 0,
+        "block_height": 14,
+        "block_time": 1655683214
+      },
+      {
+        "tx_hash": "9aad3f1b65f9b6c9aee84dea7602899e334cd904ef7ec8ff8e31a2ec9e98e129",
+        "tx_index": 0,
+        "block_height": 15,
+        "block_time": 1655683215
+      },
+      {
+        "tx_hash": "3a539be1d8d75e30481f4d850d83cc93ca34b635f1b0d9bf914a6b4b75b6d8e6",
+        "tx_index": 0,
+        "block_height": 16,
+        "block_time": 1655683216
+      }
+    ]
+  },
+  "scan": {
+    "scan-at-limit": {
+      "status": 200,
+      "body": "0 items"
+    },
+    "scan-over-limit": {
+      "status": 400,
+      "body": {
+        "error": "Bad Request",
+        "message": "pagination scan limit exceeded, reduce page number or count",
+        "status_code": 400
+      }
+    },
+    "count-over-100": {
+      "status": 400,
+      "body": {
+        "error": "Bad Request",
+        "message": "querystring/count must be <= 100",
+        "status_code": 400
+      }
+    },
+    "page-past-end": {
+      "status": 200,
+      "body": "0 items"
+    }
+  },
+  "inputOnly": {
+    "txHash": "073e46a0a00170231c3eb1537e117535f942424361b8b6a3173c1ab96fac156a",
+    "paymentCredentialListsIt": true,
+    "accountsTransactions": {
+      "status": 200,
+      "listsIt": true
+    }
+  },
+  "fresh": {
+    "samples": [
+      {
+        "txHash": "13c6c49b60a73a6b11cfc1f685a356fa3d238a19ceda0db1e0da3c05dd1f5a15",
+        "timeline": [
+          {
+            "ms": 5,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 845,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "7ddd9f0cd0b526b4aab1952c90ce8df9149402518f9368be7bcde2697007b1bf",
+        "timeline": [
+          {
+            "ms": 18,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 855,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "f37ecf2ede0a9b9cb2e4f2f4c25e68f5af34098e8c348798e1bb1790dada51a4",
+        "timeline": [
+          {
+            "ms": 9,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 989,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "e9431bfe7da9de6320e17696266ca5db80209fbd7e312136511443c14853aaa6",
+        "timeline": [
+          {
+            "ms": 9,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 1000,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "d4ce4337474184d025677c441fbd74fbfddeb50b0fc116e6124e4941d3f4bc38",
+        "timeline": [
+          {
+            "ms": 15,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 969,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "47d43fca119c4e684502cc43ab2124f004d0661312d569eebc4b0be30c222eb1",
+        "timeline": [
+          {
+            "ms": 8,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 1053,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "73d76b042f7e120ce67b8e53e02de829ed191bdb1da5e60a79559c468b3c220b",
+        "timeline": [
+          {
+            "ms": 23,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 894,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "838fcb43c78a8325c279bacfb9451e069415b290400a37fe5309ab07b80676d3",
+        "timeline": [
+          {
+            "ms": 98,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 1034,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "b06b3df903e60ae608d90029128acc1293fcd0ced68ff1149f5687f6fc911cb5",
+        "timeline": [
+          {
+            "ms": 16,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 1018,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "4e0007c8ec76610fe292a9952617f76c565a9ca3fc639902f48a7f55637dc607",
+        "timeline": [
+          {
+            "ms": 48,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 798,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "96b3248426047a919301f912a3e0e6a6ff4a382ec9e277b510b80e4f5c68052e",
+        "timeline": [
+          {
+            "ms": 42,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 997,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "5f9cf771c99f4ed0b63cd5fcfc38d8a7f1588c8484ccabb5cfef3ea2382ba053",
+        "timeline": [
+          {
+            "ms": 40,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 858,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "aaebc2fc76ce3783ec6f475442edadd3c8d0cac43cc1105951f63bc0b6fb6725",
+        "timeline": [
+          {
+            "ms": 25,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 884,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "9c6748e5af329d776947321313164c7e6bc6cf1ef235470a1b384fccd99d2e71",
+        "timeline": [
+          {
+            "ms": 43,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 977,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "4006c01047d0ee748f59428d35d73595eff8370aeaba370c280a21fb15de5e8d",
+        "timeline": [
+          {
+            "ms": 188,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 751,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "8a3884344fb3c12b071bff51eb490fadb74d92453def2ad206995e0e1b06d6ec",
+        "timeline": [
+          {
+            "ms": 130,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 786,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "f601f9ad1bbc9529784c9f0eaf15a8d9fbdfd1e68e0ffa891d141db395f93022",
+        "timeline": [
+          {
+            "ms": 20,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 995,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "7e5073c4d18ce6e58fff36b7950f54f36b335ee1e10a8dcb8ea0878b97379d55",
+        "timeline": [
+          {
+            "ms": 3,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 990,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "cb6812678597aae90751f3a5ec854f8bab6b94b95d2c861b7a9c011d187ec73a",
+        "timeline": [
+          {
+            "ms": 4,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 997,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      },
+      {
+        "txHash": "7a66471a0aab977ab4f9b91d7969ea4ea5775132a342832b7c6cc5b8fd1e5061",
+        "timeline": [
+          {
+            "ms": 2,
+            "statuses": {
+              "/": 404,
+              "/cbor": 404,
+              "/utxos": 404,
+              "/metadata": 404
+            }
+          },
+          {
+            "ms": 998,
+            "statuses": {
+              "/": 200,
+              "/cbor": 200,
+              "/utxos": 200,
+              "/metadata": 200
+            }
+          }
+        ]
+      }
+    ],
+    "listedWithoutCbor": 0
+  },
+  "label": 20261018
+}
