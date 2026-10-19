@@ -265,6 +265,19 @@ await mustFail(
     ),
   'enterprise organizer is refused',
 );
+// Step 10b: the email check runs in linear time. Its differential test cannot see the former pattern (same answers),
+// so putting it back must fail the test that records which patterns label normalization runs.
+await mustFail(
+  'Putting the former backtracking email pattern back',
+  library,
+  (text) =>
+    text.replace(
+      'function emailShaped(label) {\n',
+      'function emailShaped(label) {\n  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(label);\n',
+    ),
+  'label normalization runs no backtracking pattern',
+  `${root}tests/email.test.mjs`,
+);
 // The reverse proxy in front of the project Dolos (plan step 9, PD8 A): each guard of the committed config, removed
 // alone, fails its static check. tools/devchain/rproxy-check.mjs removes the same guards in a live nginx.
 const proxyConfig = `${root}deploy/dolos-proxy/nginx.conf`;
@@ -385,4 +398,11 @@ await mustFailApi(
   'Not running the reconciliation on the Cron trigger',
   (text) => text.replace('    await reconcile(env, now);\n', ''),
   'reclaimed by the Cron reconciliation',
+);
+// Step 10b (ADR Amendment 5): retention counts from the earlier of the round time and the upload.
+await mustFailApi(
+  'Counting retention from the round time only',
+  (text) => text.replace('return Math.min(roundTime(round), uploadedAt);', 'return roundTime(round);'),
+  'a round far after the upload',
+  `${root}apps/api/src/retention.ts`,
 );

@@ -188,8 +188,8 @@ async function confirmStored(env: HostingEnv, txHash: string, bundleHash: string
 // PUT /bundles/{txHash}: host the canonical bundle bytes of an on-chain commitment (BR-06). 201 when hosted, 200 when
 // the record already exists (the bytes are written again, which repairs a lost object).
 //
-// Order (review L2): every check that needs no chain read runs first, validateBundle (up to ~0.25 s CPU on 10,000
-// labels, PD2) included, so the indexer is read only for bytes that are a valid canonical bundle; reading the chain
+// Order (review L2): every check that needs no chain read runs first, validateBundle (about 0.1 s CPU on 10,000
+// labels, PD2 step 10b) included, so the indexer is read only for bytes that are a valid canonical bundle; reading the chain
 // first would let anyone turn each request into indexer reads of the project Dolos instead. The CPU cost per request
 // is bounded by BUNDLE_BYTE_LIMIT; per-IP rate limiting of the backend's write routes comes with the signed owner
 // operations (plan step 11).
@@ -217,8 +217,8 @@ export async function upload(
   }
   if (existing) await release(env, txHash, now);
   const { owner, committed } = await commitment(chain, txHash);
-  // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention is counted from
-  // is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
+  // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention may be counted
+  // from is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
   if (!matchesCommitment(bundle, bundleHash, committed))
     throw new HttpError(
       409,
@@ -227,8 +227,7 @@ export async function upload(
         : 'The bundle drawId or drand round differs from the commitment of this transaction',
     );
   const round = bundle.drand.round;
-  const expiresAt = hostingExpiry(round);
-  if (expiresAt === null) throw new HttpError(422, 'The round of this draw is too far ahead to be hosted');
+  const expiresAt = hostingExpiry(round, now);
   if (expiresAt <= now)
     throw new HttpError(410, 'The hosting period of this draw (12 months after its round) has ended');
   // One statement, so a concurrent takedown, deletion claim or upload by the same owner cannot slip between the checks

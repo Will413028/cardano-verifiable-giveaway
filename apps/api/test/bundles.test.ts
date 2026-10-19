@@ -193,15 +193,6 @@ describe('upload gate (BR-06)', () => {
     ]);
     expect(await records()).toEqual([]);
   });
-
-  it('refuses a draw whose round is too far ahead for any expiry date, instead of failing (review M1)', async () => {
-    const response = await put(txs.farRound, bundles.farRound);
-    expect([response.status, await response.text()]).toEqual([
-      422,
-      'The round of this draw is too far ahead to be hosted',
-    ]);
-    expect(await records()).toEqual([]);
-  });
 });
 
 describe('records keyed by txHash, bytes shared and reference counted (BR-07, B4)', () => {
@@ -280,6 +271,31 @@ describe('retention (BR-08): expires_at on read, Cron sweep (time injected)', ()
     await cron(expiry);
     expect(await records()).toEqual([]);
     expect(await stored(VALID_HASH)).toBe(false);
+  });
+});
+
+describe('retention base time = min(round time, upload time) (BR-08, plan step 10b, ADR Amendment 5)', () => {
+  const hostedUntil = async (response: Response) => {
+    expect(response.status).toBe(201);
+    return ((await response.json()) as { expiresAt: number }).expiresAt;
+  };
+  it('a round far after the upload: the bundle is hosted 12 months from the upload, not from the round', async () => {
+    // The fixture's round is three years after this upload.
+    const uploaded = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, uploaded));
+    expect(expiresAt).toBe(addMonths(uploaded, HOSTING_MONTHS));
+    expect((await get(txs.organizer, expiresAt - 1)).status).toBe(200);
+    expect((await get(txs.organizer, expiresAt)).status).toBe(410);
+    await cron(expiresAt);
+    expect(await records()).toEqual([]);
+    expect(await stored(VALID_HASH)).toBe(false);
+  });
+  it('the largest round validateBundle accepts is hosted 12 months from the upload (formerly refused, review M1)', async () => {
+    expect(await hostedUntil(await put(txs.farRound, bundles.farRound))).toBe(addMonths(T, HOSTING_MONTHS));
+  });
+  it('a round before the upload: the bundle is hosted until 12 months after the round', async () => {
+    const uploaded = addMonths(T, 1);
+    expect(await hostedUntil(await put(txs.organizer, bundles.valid, uploaded))).toBe(addMonths(T, HOSTING_MONTHS));
   });
 });
 
