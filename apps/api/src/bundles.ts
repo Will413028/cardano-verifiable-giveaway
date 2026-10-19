@@ -361,11 +361,13 @@ export async function reconcile(env: HostingEnv, now: number): Promise<void> {
     .all<{ bundle_hash: string; token: string }>();
   if (stale.length) {
     await env.BUNDLES.delete(stale.map((row) => objectKey(row.bundle_hash)));
-    await env.DB.batch(
-      stale.map((row) =>
-        env.DB.prepare('DELETE FROM collecting WHERE bundle_hash = ? AND token = ?').bind(row.bundle_hash, row.token),
-      ),
-    );
+    // One statement, not a batch of up to RECONCILE_LIMIT statements (D1 limits the queries per invocation).
+    await env.DB.prepare(
+      `DELETE FROM collecting WHERE (bundle_hash, token) IN
+         (SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(?))`,
+    )
+      .bind(JSON.stringify(stale.map((row) => [row.bundle_hash, row.token])))
+      .run();
   }
   const cursor = await env.DB.prepare('SELECT after FROM reconcile_cursor WHERE id = 1').first<{ after: string }>();
   const after = cursor?.after ?? '';

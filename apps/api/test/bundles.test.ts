@@ -371,7 +371,8 @@ describe('bytes follow live records under concurrent requests (review M2; interl
     expect((await bindings.BUNDLES.list()).objects.map((o) => o.key)).toEqual([objectKey(VALID_HASH)]);
     const served = await get(txs.organizer);
     expect([served.status, await served.text()]).toEqual([200, bundles.valid]);
-  });
+    // Writing a page and one of orphans one by one takes seconds on a loaded machine; the default 5 s timed out.
+  }, 60_000);
 
   it("an upload while the last record's bytes are being deleted is refused, and hosts them when retried", async () => {
     // (c) The deletion has counted no record and claimed the bytes; the upload arrives before the R2 delete.
