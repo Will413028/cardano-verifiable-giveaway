@@ -1,0 +1,84 @@
+{
+  "spentAddress": {
+    "address": "addr_test1qznus3l70fxhe3vcjl35z3k5ypxuw248hvuqyg5rynfmdhsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusdssm7r",
+    "fundingTx": "378256de41e1767937c8448409b605d40ad9ced112876ed6395a6990211bd0f5",
+    "spendingTx": "ed0d92a602122ce2631da128a3bee0fa3eb556997ea48268b72dc4f8233f700f",
+    "utxosAfter": {
+      "status": 200,
+      "body": []
+    },
+    "listedByAccountAddresses": true,
+    "accountAddresses": [
+      {
+        "address": "addr_test1qznus3l70fxhe3vcjl35z3k5ypxuw248hvuqyg5rynfmdhsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusdssm7r"
+      }
+    ],
+    "addressTransactions": {
+      "status": 200,
+      "hashes": [
+        "378256de41e1767937c8448409b605d40ad9ced112876ed6395a6990211bd0f5",
+        "ed0d92a602122ce2631da128a3bee0fa3eb556997ea48268b72dc4f8233f700f"
+      ]
+    }
+  },
+  "threeAddresses": {
+    "txHash": "cf07bf3b41efd29d58980a7daeb07f75d4710c746b56586122515bc0a4a6fbce",
+    "targets": [
+      "addr_test1qqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpusxyg3jw",
+      "addr_test1qp2pc2rp8swf55vczgmwmj50an0wv8n7fz3t0x2hqz0ggzgq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpus9ewfr5",
+      "addr_test1qqjhzsk56euudsj6cjf8av3q4ph6q0stqlqy6scsjc0vnmqq3drcgnvjsyhuxrglptymd7lnsauvew5ahqcj4kg8jpuskc9ate"
+    ],
+    "rowsForThisTx": 3,
+    "identity": {
+      "addresses": 4,
+      "rows": 5,
+      "distinct": 3
+    }
+  },
+  "pd10": {
+    "params": {
+      "min_fee_a": 44,
+      "min_fee_b": 155381,
+      "max_tx_size": 16384,
+      "coins_per_utxo_size": "4310"
+    },
+    "outputsPerTx": 248,
+    "lovelacePerOutput": 1000000,
+    "transactions": [
+      {
+        "txHash": "798b3411ffb30b27b8875e1d34275d4ccb79261631d1249232e7a731c01bd7ce",
+        "bytes": 16322,
+        "fee": "875549"
+      },
+      {
+        "txHash": "ebf16dc83f42d6cbf70019606ac08ad4ecb0e3f2f7e67994baa8f21931171de5",
+        "bytes": 16323,
+        "fee": "875593"
+      }
+    ],
+    "before": {
+      "addresses": 4,
+      "rows": 5,
+      "distinct": 3,
+      "requests": 5
+    },
+    "after": {
+      "addresses": 500,
+      "rows": 501,
+      "distinct": 5,
+      "requests": 506
+    },
+    "rowsAddedPerTx": 248
+  },
+  "addressListPaging": {
+    "addresses": 500,
+    "distinct": 500,
+    "requests": {
+      "count100": 6,
+      "count10": 51
+    },
+    "repeatSameOrder": true,
+    "count10SameOrder": true,
+    "sortedLexically": false
+  }
+}
