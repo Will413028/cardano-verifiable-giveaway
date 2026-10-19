@@ -188,15 +188,15 @@
   - 停止條件：preprod 上重複查詢的排序不穩定——停下，PD3 身分子題交 Will；磁碟或 RAM 超出 VM 規格——帶數字交 Will 重評 ADR 的 B。
   - 需要人做的事：Will 授權開 VM（費用與帳號）；VM 的登入憑證由 Will 提供。
   - 完成後的狀態：PD2 以外的 indexer 未知全部有實測；MVP 計畫步驟 10 部署 Dolos 時沿用此設定。
-- [ ] **9. 交易改由錢包送出、驗證頁證據來源，與公開讀取路徑（依 PD8）**（被擋於：步驟 8b；PD8 擋住 proxy 與限流部分）
-  - 前提（2026-10-19 依 PD7 重寫）：原本 proxy 存在的四個理由對自架 Dolos 逐條重評——繞過 Koios 擋 CORS：Dolos `permissive_cors` 預設 true，理由消失；藏 key：Dolos 不需要 key，理由消失；Koios 日額度的全域預算（Durable Object）：沒有第三方額度，理由消失，剩下的是保護自己的 VM；B6 依 offset 分頁的快取：Blockfrost 形狀是 page／count，仍會隨 rollback 位移，快取若保留仍須守 B6，但它原本是為了省 Koios 額度。公開讀取路徑仍需要 IP 限流與 CORS 政策，差別在放在 Workers proxy 還是 Dolos 前的 reverse proxy，交 PD8。
+- [ ] **9. 交易改由錢包送出、驗證頁證據來源，與公開讀取路徑（依 PD8）**（被擋於：步驟 8b；PD8 已決 A）
+  - 前提（2026-10-19 依 PD7 重寫）：原本 proxy 存在的四個理由對自架 Dolos 逐條重評——繞過 Koios 擋 CORS：Dolos `permissive_cors` 預設 true，理由消失；藏 key：Dolos 不需要 key，理由消失；Koios 日額度的全域預算（Durable Object）：沒有第三方額度，理由消失，剩下的是保護自己的 VM；B6 依 offset 分頁的快取：Blockfrost 形狀是 page／count，仍會隨 rollback 位移，快取若保留仍須守 B6，但它原本是為了省 Koios 額度。公開讀取路徑仍需要 IP 限流與 CORS 政策，差別在放在 Workers proxy 還是 Dolos 前的 reverse proxy；Will 2026-10-19 選 PD8 的 A（放在 reverse proxy）。
   - 範圍：
-    - 不受 PD8 影響：交易改由 CIP-30 `submitTx` 送出（F14、BR-15）；驗證頁顯示鏈上證據來源（BR-16 的後半；可填 indexer 已由步驟 8b 完成，F13 後半）；新增不 mock 的瀏覽器 E2E，對本機 Dolos 開發鏈讀一筆測試內送出、帶 metadata 的交易（F10、F11；preprod 公開交易的版本在步驟 8c 的 VM 上補跑）；後端既有端點的 CORS 只開放設定的網域、不記錄請求內容（BR-04、BR-05）。一次完整驗證的請求數以 mock indexer 的計數器量測，供限流值使用。
-    - 依 PD8：A（建議）——移除 Workers 的唯讀 proxy（步驟 8 的 `/tip` 路徑），網頁直連專案 Dolos；IP 限流、CORS 網域清單與不記錄請求內容寫成 Dolos 前 reverse proxy 的設定與 runbook，交 MVP 計畫步驟 10 部署；BR-01 改寫、BR-02 與 BR-03 的全域預算刪除。B——保留 Workers proxy 縮成 Blockfrost 端點 allowlist＋IP 限流，不做全域預算；BR-02 的快取刪除或保留並守 B6。C——照原 BR-01、BR-02、BR-03 全做（全域預算改成保護 VM 的總量上限）。
+    - 與 proxy 無關的部分：交易改由 CIP-30 `submitTx` 送出（F14、BR-15）；驗證頁顯示鏈上證據來源（BR-16 的後半；可填 indexer 已由步驟 8b 完成，F13 後半）；新增不 mock 的瀏覽器 E2E，對本機 Dolos 開發鏈讀一筆測試內送出、帶 metadata 的交易（F10、F11；preprod 公開交易的版本在步驟 8c 的 VM 上補跑）；後端既有端點的 CORS 只開放設定的網域、不記錄請求內容（BR-04、BR-05）。一次完整驗證的請求數以 mock indexer 的計數器量測，供限流值使用。
+    - 依 PD8（已決 A）：移除 Workers 的唯讀 proxy（步驟 8 的 `/tip` 路徑，步驟 8b 已改轉發 Dolos `/blocks/latest`），網頁直連專案 Dolos；Blockfrost 唯讀端點 allowlist（加上 `/tx/submit` 是否放行依本步改用錢包送出後的結果，預設不放行）、IP 限流、CORS 網域清單與不記錄請求內容寫成 Dolos 前 reverse proxy 的設定檔（入庫）與 runbook，交 MVP 計畫步驟 10 部署；限流門檻依步驟 8b 量到的單次驗證請求數（5＋列表頁數＋n＋k，n＝265 時 276 次）訂初值並寫明推導。BR-01 改寫、BR-02 刪除、BR-03 的全域預算刪除（requirements.md 已改）。
   - 消費端：`rg -n "submitTx|submit|proxy|GIVEAWAY_API_URL|chain-tip|evidence" apps packages tools tests`
   - 不能動：B1、B2、B6；CLI 沒有專案預設 indexer。
-  - 驗收：mock 錢包記錄 `submitTx` 被呼叫，改回經 indexer 送出時測試要失敗；不 mock 的 E2E 經本機 Dolos 讀到選定交易的 metadata，驗證頁顯示證據來源網址；後端測試涵蓋跨網域 CORS 被拒、請求內容不出現在 log。依 PD8 追加——A：網頁對 Dolos 的請求不經 `apps/api`（E2E 斷言請求主機），reverse proxy 設定在本機對超量請求回 429；B 或 C：allowlist 外端點被拒、超過限流回 429，mutation 拿掉 allowlist、限流或 B6 深度條件各自的測試要失敗（B6：快取含淺層交易的頁後模擬 rollback，唯一性列舉不得漏掉交易）。
-  - 停止條件：PD8 未決時只做「不受 PD8 影響」的部分，proxy 與限流部分不開工；錢包 `submitTx` 在 mock CIP-30 上無法回傳 tx hash——停下回報。
+  - 驗收：mock 錢包記錄 `submitTx` 被呼叫，改回經 indexer 送出時測試要失敗；不 mock 的 E2E 經本機 Dolos 讀到選定交易的 metadata，驗證頁顯示證據來源網址；後端測試涵蓋跨網域 CORS 被拒、請求內容不出現在 log。依 PD8 的 A：網頁對 Dolos 的請求不經 `apps/api`（E2E 斷言請求主機），`apps/api` 不再有轉發 indexer 的路由；reverse proxy 設定在本機以真的 reverse proxy 跑在開發鏈 Dolos 前：allowlist 外端點被拒、超量請求回 429、跨網域 CORS 只放行設定的網域、access log 不含 query 與 body；mutation 拿掉 allowlist 或限流各自讓對應測試失敗；一次完整驗證（n＝265）在限流初值下不被擋。
+  - 停止條件：錢包 `submitTx` 在 mock CIP-30 上無法回傳 tx hash——停下回報；限流初值擋得住灌量卻會擋下一次正常的完整驗證（兩者無法兼顧）——停下，帶數字交 Will。
 
 - [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD2 擋住 CPU 驗收）
   - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、協定的 byte 上限）、代管紀錄以 `txHash` 為主鍵（B4）、bytes 以 bundleHash 定址並參照計數、每個 owner 的保存額度、12 個月保存（Cron 清理，讀取時也檢查 `expires_at`）；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。網頁 `apps/web/services.ts` 的 `assembleProof`（取 beacon 後重算得獎者組成 proof）移到 `packages/verifier`，CLI 的 bundle 模式共用它。
@@ -264,12 +264,12 @@
   - 結論：Blockfrost 形狀介面卡＋自架 Dolos（full archive、調高 `max_scan_items`）供網頁與後端；CLI 不設專案預設，必須以 `--indexer` 指定使用者自備的 full-archive 節點。選項 A、B、C、E、F 與取捨見 ADR。
   - 已知退步：Mithril 不證明列舉完整，唯一性永遠信任 indexer 的列舉；使用者節點必須是 full archive，否則 verifier 察覺不到漏列；請求數由約 26 次升到約 1,183 次（1,171 筆，推論）。
   - 對計畫的影響：前提段、B1、B6、步驟 5–8 段首註記、新增步驟 8b、步驟 9、13、14 改寫；需求 BR-01、BR-02、BR-03、BR-16、X1 與非功能需求的處置見 `requirements.md`。
-- **PD8 後端唯讀 proxy 的存廢**（狀態：未決，提案 2026-10-19，交 Will；擋住步驟：9 的 proxy 與限流部分；需要的事實：步驟 8b 的請求數量測——已量：一次完整驗證 5＋列表頁數＋n＋k 次，stake 身分 n＝265 時 276 次、payment n＝2 時 9 次，見 `spike-dolos.md`）
+- **PD8 後端唯讀 proxy 的存廢**（狀態：已決 2026-10-19，Will：A；擋住步驟：9 的 proxy 與限流部分；需要的事實：步驟 8b 的請求數量測——已量：一次完整驗證 5＋列表頁數＋n＋k 次，stake 身分 n＝265 時 276 次、payment n＝2 時 9 次，見 `spike-dolos.md`）
   - 問題：proxy 的四個理由（Koios CORS、藏 key、Koios 日額度、offset 快取）對自架 Dolos 都已消失或改變（見步驟 9 前提）；公開讀取路徑仍需要 IP 限流與 CORS 政策。後端本身（bundle 代管、草稿）不受影響：後端 ADR 撤銷條件的後半「主辦者不需要託管」未滿足。
   - A：移除 Workers 唯讀 proxy，網頁直連 Dolos，限流與 CORS 放在 Dolos 前的 reverse proxy（Caddy／nginx 的 rate limit，自架 API 的常見做法）——少一跳與一層要維護的程式，驗證頁填使用者 indexer 時本來就不經 proxy；代價：限流不在 edge、VM 的位址公開，濫用防護要在部署時（MVP 計畫步驟 10）以設定與 runbook 驗收。（建議）
   - B：保留 Workers proxy，縮成 Blockfrost 端點 allowlist＋IP 限流，不做全域預算；快取刪除或保留並守 B6——edge 限流、可隱藏 VM 位址；代價：每次讀取多一跳與 Workers subrequest，proxy 程式仍要維護。
   - C：照原 BR-01、BR-02、BR-03 全做，全域預算改成保護 VM 的總量上限——防護最完整；代價：Durable Object 與快取層是為 Koios 額度設計的，對自己的 VM 是否需要沒有證據。
-  - 對需求的影響（提案，Will 拍板前不生效）：A 時 BR-01 改寫為「網頁直連專案 Dolos，reverse proxy 只放行 Blockfrost 唯讀端點」、BR-02 刪除、BR-03 的全域預算刪除且 IP 限流移到 reverse proxy；B 時 BR-03 的全域預算刪除、BR-02 的快取二選一；C 不刪。
+  - 對需求的影響（A 已生效，requirements.md 已改）：A 時 BR-01 改寫為「網頁直連專案 Dolos，reverse proxy 只放行 Blockfrost 唯讀端點」、BR-02 刪除、BR-03 的全域預算刪除且 IP 限流移到 reverse proxy；B 時 BR-03 的全域預算刪除、BR-02 的快取二選一；C 不刪。
 
 - **PD9 stake 身分怎麼列舉**（狀態：已決 2026-10-19，Will：B；擋住步驟：無，步驟 8b 依此繼續；需要的事實：無）
   - 問題：步驟 8b 實測 Dolos 穩定版 1.6.1 沒有 `/accounts/{stake}/transactions`（Blockfrost OpenAPI v0.1.93 有；Dolos 只有 pre-release 有，1.7 線已被 2.0 取代、沒有公開時程，2.0 是 storage V4、換版要重新 bootstrap）。
@@ -282,7 +282,7 @@
   - 步驟 8b 實測（Dolos 1.6.1 開發鏈，費用與大小參數與 preprod 相同）：一筆 16,322 bytes 的交易放 248 個 1 ADA 輸出、手續費約 0.876 ADA，讓 Σ 列數與地址數各 +248；推到 L＝2,900 以上約 12 筆、約 10.5 ADA 手續費，輸出的 ADA 仍屬攻擊者（推論）；500 個地址的身分列舉要 506 次請求，灌列數同時灌請求數。原始輸出 `dolos-1.6.1-pd9-report.json`。
   - 選項待選項簡報（業界基準、限制分類帳）整理後交 Will。
 
-拍板順序：PD1、PD3、PD4、PD5、PD6、PD7、PD9 已決；PD10 待選項簡報（灌列數成本已由步驟 8b 實測）；PD8 的請求數已由步驟 8b 量到，交 Will；PD2 等步驟 10 的量測。
+拍板順序：PD1、PD3、PD4、PD5、PD6、PD7、PD8、PD9 已決；PD10 待選項簡報（灌列數成本已由步驟 8b 實測）；PD8 已決（A）；PD2 等步驟 10 的量測。
 
 ## 進度
 

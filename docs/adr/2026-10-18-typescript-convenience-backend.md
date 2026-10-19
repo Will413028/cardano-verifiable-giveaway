@@ -77,6 +77,12 @@ supersedes-partially: 2026-10-01-mvp-architecture-and-data-ownership.md（D2-A �
 - Will 2026-10-19 決定不向 Koios 取得同意，indexer 改為 Blockfrost 形狀介面卡＋自架 Dolos，CLI 不設專案預設；見 [自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)。本 ADR 中「proxy 只放行 Koios 唯讀端點」「CLI 預設直連」由該 ADR 取代；Context 的 Koios CORS 量測保留為當時的事實。
 - Revocation Triggers 第一條的前半（免 key、開放 CORS 的 indexer）已由自架 Dolos 滿足，後半（主辦者不需要託管）未滿足，所以後端本身不撤；唯讀 proxy 的存廢另交階段計畫 PD8。Followup 的「Koios 條款查證」「申請 indexer API key」「量測 Koios 請求數」由該 ADR 的 Followup 取代。
 
+## Amendment (2026-10-19)：唯讀 proxy 移除（PD8 A）
+
+- Will 2026-10-19 選階段計畫 PD8 的 A：移除 Workers 的唯讀 indexer proxy，網頁直連專案自架的 Dolos；Blockfrost 唯讀端點 allowlist、IP 限流、CORS 網域清單與不記錄請求內容改放在 Dolos 前的 reverse proxy（設定與 runbook 在步驟 9，部署在 MVP 計畫步驟 10）。
+- 理由：proxy 的四個存在理由（Koios CORS、藏 key、Koios 日額度的全域預算、為省額度的 offset 快取）在自架 Dolos 下都已消失（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）；剩下的濫用防護不需要 edge。代價：限流不在 edge、VM 位址公開。
+- 不變：後端的 bundle 代管、伺服器草稿、錢包簽章與 owner 限流。
+
 ## Review Notes
 
 ## Related

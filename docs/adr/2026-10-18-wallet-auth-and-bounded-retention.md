@@ -92,6 +92,12 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 
 - indexer 改為自架 Dolos（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）。Decision「濫用防護」中的「Koios key 的全域請求預算」與「以（address, offset）快取」、Expected Outcome「無法耗盡 Koios 額度」的前提是 Koios 的 key 與日額度，已不成立；存廢交階段計畫 PD8（未決）。依 IP 與 owner 限流、保存額度、CORS、`Authorization` header 與其餘條目不變。
 
+## Amendment 4 (2026-10-19)：全域預算與列舉快取刪除（PD8 A）
+
+- Will 2026-10-19 選階段計畫 PD8 的 A：移除 Workers 的唯讀 indexer proxy，網頁直連專案自架的 Dolos；Blockfrost 唯讀端點 allowlist、IP 限流、CORS 網域清單與不記錄請求內容改放在 Dolos 前的 reverse proxy（設定與 runbook 在步驟 9，部署在 MVP 計畫步驟 10）。
+- 理由：proxy 的四個存在理由（Koios CORS、藏 key、Koios 日額度的全域預算、為省額度的 offset 快取）在自架 Dolos 下都已消失（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）；剩下的濫用防護不需要 edge。代價：限流不在 edge、VM 位址公開。
+- 不變：後端的 bundle 代管、伺服器草稿、錢包簽章與 owner 限流。
+
 ## Review Notes
 
 ## Related
