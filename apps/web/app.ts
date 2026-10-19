@@ -46,6 +46,7 @@ import {
   renderLookup,
   renderMode,
   renderShare,
+  renderEvidenceSource,
   renderTip,
   renderVerdict,
   renderVerificationNote,
@@ -280,9 +281,18 @@ async function copyShareLink() {
 
 async function renderVerification(state: AppState, chains: Chains, value: unknown) {
   // Read when a bundle is loaded: an invalid URL fails this verification, not the page.
-  const verdict = await verifyProof(value, { chain: indexerFor(chains, input('indexer').value) });
+  const chain = indexerFor(chains, input('indexer').value);
+  const verdict = await verifyProof(value, { chain });
   state.verifiedBundle = verdict.status === 'FAIL' ? undefined : validateProof(value).bundle;
   renderVerdict(verdict, state.verifiedBundle);
+  // Only a well-formed artifact reached the evidence step; its network says which source that was.
+  let network: string | undefined;
+  try {
+    network = validateProof(value).network;
+  } catch {}
+  renderEvidenceSource(
+    network === 'preprod' ? { indexer: chain.base, own: chain !== chains.indexer } : network === 'demo' ? 'demo' : null,
+  );
 }
 
 async function load(state: AppState, chains: Chains, read: () => Promise<unknown>) {

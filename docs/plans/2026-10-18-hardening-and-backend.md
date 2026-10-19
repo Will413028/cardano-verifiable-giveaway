@@ -28,11 +28,11 @@
 | 不變量 | 依賴它的機制（新系統先寫預計的模組） |
 |---|---|
 | B1 驗證不依賴後端：verifier 不引用後端模組；CLI 沒有專案預設 indexer，只直連使用者以 `--indexer` 指定的 indexer 與 drand relay（PD7）；後端與專案 Dolos 停擺不影響 PASS 判定 | `packages/verifier/index.ts`（不帶預設 indexer）、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs` 的 `--indexer` 解析、`apps/api/`；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
-| B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/proxy.ts`（預計）、`apps/web/cardano.ts` 的 `submitTx` |
+| B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/index.ts`（步驟 9 起沒有轉發 indexer 或送出交易的路由，`apps/api/test/index.test.ts` 斷言不發出任何請求）、`apps/web/cardano.ts` 的 `submitTx`（錢包送出） |
 | B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；代管紀錄以 `txHash` 為主鍵、owner 由該筆交易推導，bytes 以 bundleHash 定址並以參照計數回收；擁有者刪除只移除自己的紀錄，以 bundleHash 為鍵的 tombstone 只用於營運端下架 | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
 | B5 保存有期限：bundle 到 round 後 12 個月，每次延長 12 個月、總計不超過 round 後 36 個月（PD4）；伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
-| B6 任何列舉頁快取（Workers proxy 或 Dolos 前的 reverse proxy，是否存在依 PD8）不得讓唯一性列舉漏掉交易：Blockfrost 形狀以 page／count 分頁，位置仍隨 rollback 位移，所以列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取）；以 txHash 為鍵的 CBOR 回應可長期快取 | `apps/api/src/proxy.ts` 的快取層（若 PD8 保留）、`packages/chain/index.ts` 的 `findCommitments` |
+| B6 任何列舉頁快取（Workers proxy 或 Dolos 前的 reverse proxy，是否存在依 PD8）不得讓唯一性列舉漏掉交易：Blockfrost 形狀以 page／count 分頁，位置仍隨 rollback 位移，所以列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取）；以 txHash 為鍵的 CBOR 回應可長期快取 | PD8 A 後沒有任何列舉快取（Workers proxy 已移除，`deploy/dolos-proxy/nginx.conf` 不設 `proxy_cache`）；日後加快取時守此規則、`packages/chain/index.ts` 的 `findCommitments` |
 
 ## 範圍
 
@@ -188,7 +188,7 @@
   - 停止條件：preprod 上重複查詢的排序不穩定——停下，PD3 身分子題交 Will；磁碟或 RAM 超出 VM 規格——帶數字交 Will 重評 ADR 的 B。
   - 需要人做的事：Will 授權開 VM（費用與帳號）；VM 的登入憑證由 Will 提供。
   - 完成後的狀態：PD2 以外的 indexer 未知全部有實測；MVP 計畫步驟 10 部署 Dolos 時沿用此設定。
-- [ ] **9. 交易改由錢包送出、驗證頁證據來源，與公開讀取路徑（依 PD8）**（被擋於：步驟 8b；PD8 已決 A）
+- [x] **9. 交易改由錢包送出、驗證頁證據來源，與公開讀取路徑（依 PD8）**（被擋於：步驟 8b；PD8 已決 A）
   - 前提（2026-10-19 依 PD7 重寫）：原本 proxy 存在的四個理由對自架 Dolos 逐條重評——繞過 Koios 擋 CORS：Dolos `permissive_cors` 預設 true，理由消失；藏 key：Dolos 不需要 key，理由消失；Koios 日額度的全域預算（Durable Object）：沒有第三方額度，理由消失，剩下的是保護自己的 VM；B6 依 offset 分頁的快取：Blockfrost 形狀是 page／count，仍會隨 rollback 位移，快取若保留仍須守 B6，但它原本是為了省 Koios 額度。公開讀取路徑仍需要 IP 限流與 CORS 政策，差別在放在 Workers proxy 還是 Dolos 前的 reverse proxy；Will 2026-10-19 選 PD8 的 A（放在 reverse proxy）。
   - 範圍：
     - 與 proxy 無關的部分：交易改由 CIP-30 `submitTx` 送出（F14、BR-15）；驗證頁顯示鏈上證據來源（BR-16 的後半；可填 indexer 已由步驟 8b 完成，F13 後半）；新增不 mock 的瀏覽器 E2E，對本機 Dolos 開發鏈讀一筆測試內送出、帶 metadata 的交易（F10、F11；preprod 公開交易的版本在步驟 8c 的 VM 上補跑）；後端既有端點的 CORS 只開放設定的網域、不記錄請求內容（BR-04、BR-05）。一次完整驗證的請求數以 mock indexer 的計數器量測，供限流值使用。
@@ -197,6 +197,13 @@
   - 不能動：B1、B2、B6；CLI 沒有專案預設 indexer。
   - 驗收：mock 錢包記錄 `submitTx` 被呼叫，改回經 indexer 送出時測試要失敗；不 mock 的 E2E 經本機 Dolos 讀到選定交易的 metadata，驗證頁顯示證據來源網址；後端測試涵蓋跨網域 CORS 被拒、請求內容不出現在 log。依 PD8 的 A：網頁對 Dolos 的請求不經 `apps/api`（E2E 斷言請求主機），`apps/api` 不再有轉發 indexer 的路由；reverse proxy 設定在本機以真的 reverse proxy 跑在開發鏈 Dolos 前：allowlist 外端點被拒、超量請求回 429、跨網域 CORS 只放行設定的網域、access log 不含 query 與 body；mutation 拿掉 allowlist 或限流各自讓對應測試失敗；一次完整驗證（n＝265）在限流初值下不被擋。
   - 停止條件：錢包 `submitTx` 在 mock CIP-30 上無法回傳 tx hash——停下回報；限流初值擋得住灌量卻會擋下一次正常的完整驗證（兩者無法兼顧）——停下，帶數字交 Will。
+  - 完成後的形狀（2026-10-19）：
+    - 送出：`signAndSubmit` 簽完、核對 tx hash 與身分 witness 後呼叫 CIP-30 `submitTx(signed)`，回應必須是字串且等於本機算出的 hash；網頁不再 POST 任何東西給 indexer。reverse proxy 不放行 `/tx/submit`（計畫的預設），錢包走自己的基礎設施。
+    - 證據來源：驗證頁 `#evidence-source` 顯示「Chain evidence source: <網址>（the project indexer／the indexer you named）」，demo 顯示 simulated；顯示的是實際讀取的 `BlockfrostChain.base`。CLI 不變（使用者自己給 `--indexer`）。
+    - PD8 A：`apps/api/src/proxy.ts`、`/tip` 路由、`INDEXER_URL`、`@giveaway/chain` 依賴刪除；`apps/api` 剩 CORS 外殼（請求帶 `Origin` 且不等於 `ALLOWED_ORIGIN` 就 403、不回 CORS 標頭；沒有 `Origin` 的請求不帶 CORS 標頭；其餘 404），等步驟 10 加路由。網頁的 tip 改直接讀專案 indexer 的 `/blocks/latest`；建置設定 `GIVEAWAY_API_URL` 沒有呼叫端，刪除（步驟 10 的第一個後端呼叫端再加回）。`wrangler.jsonc` 明寫 `observability.enabled: false`（Workers Logs 會記錄請求 URL）。
+    - reverse proxy：nginx（`limit_req` 為內建模組；Caddy 2 標準版沒有限流指令，要第三方外掛＋xcaddy），設定 `deploy/dolos-proxy/nginx.conf`、runbook `docs/runbooks/dolos-proxy.md`。allowlist 9 個 Blockfrost 唯讀路由（只收 preprod 識別碼、查詢鍵只收 count／page／order／from／to、只收 GET／OPTIONS，轉給 Dolos 的是比對過的 `$uri`，不轉 client 標頭與本文）；CORS 清單外的 origin 403；access log 只記時間、method、路由名、狀態、大小、耗時，error log 只寫 crit。
+    - 限流初值：`rate=30r/s`、`burst=350`、`delay=300`，推導在 runbook：delay ≥ 276（n＝265 的一次完整驗證，步驟 8b 實測、本步重測），verifier 是循序的，所以超過 delay 的驗證只被放慢不被拒；`nodelay` 版本實測會讓連續第二次驗證收到 429 而判 FAIL，故用 delay。停止條件未觸發。
+    - 檢查：`tests/core.test.mjs` 三支靜態測試（allowlist 涵蓋 verifier 對 mock 實際發出的每個請求與網頁、Evolution 的端點；log 格式、限流位置、origin 清單；wrangler 的 observability）；`tools/mutation-check.mjs` 加 4 個 proxy 設定 mutation 與 2 個後端 mutation；`tools/devchain/rproxy-check.mjs` 在真 nginx＋真開發鏈 Dolos 上跑 committed 與一次拿掉一個防護的 5 個變體；`tools/devchain/browser-live.mjs` 改為網頁經 proxy、錢包 `submitTx` 直送 Dolos。
 
 - [ ] **10. bundle 代管與 CLI 的 bundle 模式**（被擋於：步驟 9；PD2 擋住 CPU 驗收）
   - 範圍：BR-06、BR-07、BR-08、BR-10、BR-17：上傳門檻（hash 對上已上鏈承諾、`validateBundle`、協定的 byte 上限）、代管紀錄以 `txHash` 為主鍵（B4）、bytes 以 bundleHash 定址並參照計數、每個 owner 的保存額度、12 個月保存（Cron 清理，讀取時也檢查 `expires_at`）；驗證連結改為 `txHash`＋bundleHash，網頁以 bundleHash 從代管或其他網址取回並核對（F9）。下載產物改為兩個檔：canonical bundle bytes（`<drawId>.bundle.json`）與 proof。CLI 新增 `node apps/verifier-cli/index.mjs <bundle.json> --tx <txHash>`，自行向 drand relay 取 beacon 並重算；原本的 proof 模式保留。量測 1 萬筆×200 字元 bundle 在 Workers 的 CPU 時間，交 PD2 拍板。網頁 `apps/web/services.ts` 的 `assembleProof`（取 beacon 後重算得獎者組成 proof）移到 `packages/verifier`，CLI 的 bundle 模式共用它。

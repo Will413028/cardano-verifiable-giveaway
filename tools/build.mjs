@@ -2,19 +2,9 @@ import { build } from 'esbuild';
 import { mkdir, copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
-// The convenience backend (apps/api) is reached at an address fixed at build time. An empty or
-// non-HTTP value fails the build instead of shipping a page that requests a broken URL.
-const apiUrl = new URL(process.env.GIVEAWAY_API_URL ?? 'http://127.0.0.1:8787');
-if (
-  !['http:', 'https:'].includes(apiUrl.protocol) ||
-  apiUrl.username ||
-  apiUrl.password ||
-  apiUrl.search ||
-  apiUrl.hash
-)
-  throw new Error('GIVEAWAY_API_URL must be an http(s) URL without credentials, query or fragment');
-// The project's Blockfrost-compatible indexer (PD7: the project Dolos), fixed at build time. The default is the local
-// Dolos dev chain (tools/devchain/dolos.toml). Plain http only for this machine, as the page's indexer reader requires.
+// The project's Blockfrost-compatible indexer (PD7: the project Dolos, reached directly or through the reverse proxy in
+// deploy/dolos-proxy/ per PD8 A), fixed at build time. The default is the local Dolos dev chain
+// (tools/devchain/dolos.toml). Plain http only for this machine, as the page's indexer reader requires.
 const indexerUrl = new URL(process.env.GIVEAWAY_INDEXER_URL ?? 'http://127.0.0.1:3010');
 if (
   !(
@@ -44,7 +34,6 @@ await build({
   sourcemap: false,
   // No Node shims: the page's dependencies (Evolution SDK, noble, @harmoniclabs/crypto) run on browser globals alone.
   define: {
-    GIVEAWAY_API_URL: JSON.stringify(apiUrl.href.replace(/\/$/, '')),
     GIVEAWAY_INDEXER_URL: JSON.stringify(indexerUrl.href.replace(/\/$/, '')),
   },
 });

@@ -62,8 +62,8 @@ export function renderTip(tip: Tip | Error) {
   text(
     'chain-tip',
     tip instanceof Error
-      ? `Preprod tip unavailable through the backend proxy (${tip.message}).`
-      : `Preprod tip via the backend proxy: block ${tip.blockHeight} · epoch ${tip.epoch} · slot ${tip.slot} · ${localTime(tip.blockTime)}`,
+      ? `Preprod tip unavailable from the project indexer (${tip.message}).`
+      : `Preprod tip from the project indexer: block ${tip.blockHeight} · epoch ${tip.epoch} · slot ${tip.slot} · ${localTime(tip.blockTime)}`,
   );
 }
 
@@ -174,8 +174,21 @@ export function renderVerdict(verdict: Verdict, bundle: Bundle | undefined) {
   }
 }
 
+// Where the verdict's chain evidence came from (BR-16): the indexer URL that was read, or that it was simulated.
+export function renderEvidenceSource(source: { indexer: string; own: boolean } | 'demo' | null) {
+  text(
+    'evidence-source',
+    source === null
+      ? ''
+      : source === 'demo'
+        ? 'Chain evidence source: simulated (demo). No indexer was read.'
+        : `Chain evidence source: ${source.indexer} (${source.own ? 'the indexer you named' : 'the project indexer'}). The result depends on what this indexer reports.`,
+  );
+}
+
 export function renderVerificationPending() {
   text('verification', 'Checking…');
+  text('evidence-source', '');
   el('checks').replaceChildren();
   el('verified-result').hidden = true;
   el('verification').classList.remove('error');

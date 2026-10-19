@@ -18,7 +18,7 @@ import {
   transactionHash,
   VERSION,
 } from '@giveaway/verifier-cli/library';
-import { ANSWERS, blockfrostIndexer, SUBMIT_HEADERS } from '../tests/blockfrost-mock.mjs';
+import { ANSWERS, blockfrostIndexer } from '../tests/blockfrost-mock.mjs';
 import { buildTransaction, cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Same PORT variable as tools/serve.mjs, so a check can run beside another dev server.
@@ -64,6 +64,7 @@ try {
   await independent.goto(link);
   await independent.waitForFunction(() => document.querySelector('#verification').textContent === 'DEMO PASS');
   assert.equal(await independent.locator('#checks li').count(), 7);
+  assert.match(await independent.locator('#evidence-source').textContent(), /simulated \(demo\)/);
   assert.equal(await independent.locator('#verified-winners li').count(), 1);
   await independent.locator('#lookup').fill('alice');
   assert.match(await independent.locator('#lookup-result').textContent(), /is in this bundle/);
@@ -170,13 +171,13 @@ try {
     );
   };
   // Blockfrost-shaped mock of the project indexer shared by the preprod pages (tests/blockfrost-mock.mjs, answers
-  // copied from Dolos 1.6.1). The wallet's UTxO is output 0 of transaction 00…00, which the indexer reports under
-  // `utxoHash` (default the same id). A submitted transaction is
-  // kept but not indexed (/txs/{h} answers 404) unless `onRead` indexes it; `onRead(route, url, ctx)` may answer a
-  // read itself and returns true when it did.
-  const routePreprod = (target, addressHex, { utxoHash = '00'.repeat(32), onRead } = {}) => {
+  // copied from Dolos 1.6.1 and, for /tx/submit, from the reverse proxy in front of it). The wallet's UTxO is output 0
+  // of transaction 00…00, which the indexer reports under `utxoHash` (default the same id). A transaction the wallet
+  // submitted (`submitted`, filled by the mock wallet's submitTx) is not indexed (/txs/{h} answers 404) unless
+  // `onRead` indexes it; `onRead(route, url, ctx)` may answer a read itself and returns true when it did. Every
+  // request that reaches the indexer is in `indexer.calls`.
+  const routePreprod = async (target, addressHex, submitted, { utxoHash = '00'.repeat(32), onRead } = {}) => {
     const txs = [];
-    const submitted = new Map();
     const funding = `/txs/${'00'.repeat(32)}/utxos`;
     const indexer = blockfrostIndexer({
       txs,
@@ -211,21 +212,20 @@ try {
           inputs: [bech32(addressHex)],
         });
     };
-    return target.route(`${INDEXER}/**`, async (route) => {
+    await target.route(`${INDEXER}/**`, async (route) => {
       const request = route.request();
-      if (request.method() === 'POST' && new URL(request.url()).pathname === '/tx/submit') {
-        const body = hex(request.postDataBuffer());
-        submitted.set(transactionHash(body), body);
-        return route.fulfill({ status: 200, headers: SUBMIT_HEADERS, body: transactionHash(body) });
-      }
       if (onRead && (await onRead(route, request.url(), { submitted, index }))) return;
       const answer = indexer.answer(request.method(), request.url());
       await route.fulfill({ status: answer.status, headers: answer.headers, body: answer.body });
     });
+    return indexer;
   };
-  // A CIP-30 mock. With `sign` it approves through the exposed `mockSign`; every signTx call is counted.
+  // A CIP-30 mock. With `sign` it approves through the exposed `mockSign`; every signTx call is counted. submitTx
+  // hands the signed transaction to the exposed `mockSubmit` (the wallet's own infrastructure, not the project
+  // indexer) and answers its id; every call is counted.
   const mockWallet = ({ utxo, address, sign }) => {
     window.signCalls = 0;
+    window.submitCalls = 0;
     window.cardano = {
       mock: {
         name: 'Mock preprod',
@@ -240,6 +240,10 @@ try {
             if (sign) return window.mockSign(tx);
             throw new Error('No signing allowed in automated browser checks');
           },
+          submitTx: async (tx) => {
+            window.submitCalls++;
+            return window.mockSubmit(tx);
+          },
         }),
       },
     };
@@ -250,12 +254,17 @@ try {
     target.on('pageerror', (e) => pageErrors.push(e.message));
     if (clock) await target.clock.install();
     await target.exposeFunction('mockSign', witnessSet);
-    await routePreprod(target, wallets[wallet], route);
+    const submitted = new Map();
+    await target.exposeFunction('mockSubmit', (tx) => {
+      submitted.set(transactionHash(tx), tx);
+      return transactionHash(tx);
+    });
+    const indexer = await routePreprod(target, wallets[wallet], submitted, route);
     await target.addInitScript(mockWallet, { utxo: utxoOf(wallets[wallet]), address: wallets[wallet], sign });
     await target.goto(origin);
     await target.selectOption('#network', 'preprod');
     await target.waitForSelector('#wallet option', { state: 'attached' });
-    return { target, pageErrors };
+    return { target, pageErrors, indexer, submitted };
   };
   const statusText = (target) => target.locator('#draw-status').textContent();
   {
@@ -290,7 +299,12 @@ try {
       polled = resolve;
     });
     const included = Math.floor(Date.now() / 1000);
-    const { target: stale, pageErrors: staleErrors } = await preprodPage({
+    const {
+      target: stale,
+      pageErrors: staleErrors,
+      indexer: staleIndexer,
+      submitted,
+    } = await preprodPage({
       wallet: 'base',
       sign: true,
       clock: true,
@@ -310,6 +324,13 @@ try {
     await stale.click('#commit');
     await stale.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Submitted'));
     assert.equal(await stale.evaluate(() => window.signCalls), 1);
+    // BR-15, F14: the wallet submitted the signed transaction; nothing was posted to the project indexer.
+    assert.equal(await stale.evaluate(() => window.submitCalls), 1);
+    assert.equal(submitted.size, 1);
+    assert.deepEqual(
+      staleIndexer.calls.filter((c) => c.startsWith('/tx/')),
+      [],
+    );
     await stale.clock.fastForward(31000);
     await pollSeen;
     await stale.selectOption('#network', 'demo');
@@ -327,6 +348,7 @@ try {
     await stale.close();
   }
   passed('confirmation response after a reset is discarded');
+  passed('the wallet submits the signed commitment (CIP-30 submitTx); the indexer receives no submission');
   // A signed commitment the indexer never sees: once its invalid_hereafter has passed, the page says it expired
   // and asks for a later round instead of waiting for the round.
   {
@@ -458,6 +480,16 @@ try {
     };
     await verifier.locator('#indexer').fill(own);
     assert.equal(await load(), 'PASS');
+    // BR-16: the page names the indexer the evidence came from.
+    assert.equal(
+      await verifier.locator('#evidence-source').textContent(),
+      `Chain evidence source: ${own} (the indexer you named). The result depends on what this indexer reports.`,
+    );
+    // The requests of one full verification, counted by the mock (plan step 9, for the reverse proxy's rate limit):
+    // reading the commitment 5 (/txs/{h}, /cbor, /utxos, /blocks/latest, /blocks/{h+14}), the account's address list
+    // 1 page, its one address 1 page, metadata of the n = 1 listed transaction, CBOR of the k = 1 label match.
+    report.verificationRequests = [...ownMock.calls];
+    assert.equal(ownMock.calls.length, 5 + 1 + 1 + 1 + 1, JSON.stringify(ownMock.calls));
     const indexerHosts = hosts.filter((h) => h !== new URL(origin).origin);
     assert.ok(indexerHosts.length > 0 && indexerHosts.every((h) => h === own), JSON.stringify(indexerHosts));
     assert.equal(projectMock.calls.length, 0);
@@ -465,6 +497,10 @@ try {
     // Emptied, the field falls back to the project indexer, which does not know this transaction.
     await verifier.locator('#indexer').fill('');
     assert.equal(await load(), 'FAIL');
+    assert.match(
+      await verifier.locator('#evidence-source').textContent(),
+      new RegExp(`${INDEXER} \\(the project indexer\\)`),
+    );
     assert.ok(projectMock.calls.includes(`/txs/${tx.txHash}`));
     // Plain http to another machine is refused before any request.
     await verifier.locator('#indexer').fill('http://indexer.example.test');

@@ -32,6 +32,8 @@ interface Cip30Api {
   getChangeAddress(): Promise<string>;
   getUtxos(): Promise<string[] | null>;
   signTx(tx: string, partialSign?: boolean): Promise<string>;
+  // Submits a signed transaction through the wallet's own infrastructure and answers its id (BR-15, F14).
+  submitTx(tx: string): Promise<string>;
 }
 interface Cip30Wallet {
   name?: string;
@@ -66,7 +68,8 @@ const metadatum = (value: Record<string, string | number>) =>
     Object.entries(value).map(([k, v]) => [k, typeof v === 'number' ? TransactionMetadatum.int(BigInt(v)) : v]),
   );
 
-// `indexer` is the project's Blockfrost-compatible indexer (build setting GIVEAWAY_INDEXER_URL); it needs no key.
+// `indexer` is the project's Blockfrost-compatible indexer (build setting GIVEAWAY_INDEXER_URL); it needs no key and
+// is only read here: protocol parameters and the wallet UTxO.
 export async function prepareTransaction(bundle: Bundle, id: string, indexer: string) {
   const enable = injected()[id]?.enable;
   if (!id || typeof enable !== 'function')
@@ -135,20 +138,14 @@ export async function prepareTransaction(bundle: Bundle, id: string, indexer: st
         fee > 2n * (BigInt(params.minFeeA) * BigInt(signed.length / 2) + BigInt(params.minFeeB))
       )
         throw new Error('Fee exceeds twice the live protocol estimate');
-      // The signed bytes go to the indexer's submit endpoint unchanged: re-encoding through an SDK could alter them
-      // (spike S1). Step 9 moves submission to the wallet (F14).
-      const response = await fetch(`${indexer}/tx/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/cbor' },
-        body: new Uint8Array(unhex(signed)),
-        signal: AbortSignal.timeout(20000),
-      });
-      const body = await response.text();
-      if (!response.ok) throw new Error(`Submission failed: HTTP ${response.status} ${body}`);
-      // Dolos answers the hash as plain text, Blockfrost as a JSON string.
-      const txHash = body.trim().replace(/^"(.*)"$/, '$1');
-      if (txHash !== checked.txHash) throw new Error('Unexpected submission response');
-      return txHash;
+      // The wallet submits through its own infrastructure (CIP-30 submitTx; BR-15, F14): neither the backend nor the
+      // project indexer handles transactions, and the indexer's reverse proxy refuses /tx/submit. The signed bytes go
+      // to the wallet unchanged, since re-encoding through an SDK could alter them (spike S1).
+      const reported: unknown = await wallet.submitTx(signed);
+      // CIP-30 answers the transaction id as hex; anything else is not evidence that this transaction was sent.
+      if (typeof reported !== 'string' || reported.toLowerCase() !== checked.txHash)
+        throw new Error('The wallet reported another transaction id after submitting');
+      return checked.txHash;
     },
   };
 }
