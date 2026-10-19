@@ -1,0 +1,154 @@
+{
+  "sdk": "@evolution-sdk/evolution@0.6.0",
+  "address": "addr_test1qrfzhlvxqed9kkpemm6xrlwqtd2s2urls32ety7fu3hemsqynaghrt8y5sg0e9lnch0yt5v7lrhx907l2ejc75w2a8hsdku5qz",
+  "steps": {
+    "registerDelegateWithdrawBuild": {
+      "built": true,
+      "bodyKeys": [
+        0,
+        1,
+        2,
+        4,
+        5
+      ],
+      "withdrawals": [
+        [
+          "e0049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef",
+          "0"
+        ]
+      ],
+      "certificates": {
+        "tag": 258,
+        "value": [
+          [
+            "12",
+            [
+              "0",
+              "049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef"
+            ],
+            [
+              "2"
+            ],
+            "2000000"
+          ]
+        ],
+        "span": [
+          120,
+          162
+        ]
+      },
+      "requiredSigners": null,
+      "invalidHereafter": null
+    },
+    "registerAndDelegate": {
+      "bodyKeys": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "withdrawals": null,
+      "certificates": {
+        "tag": 258,
+        "value": [
+          [
+            "12",
+            [
+              "0",
+              "049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef"
+            ],
+            [
+              "2"
+            ],
+            "2000000"
+          ]
+        ],
+        "span": [
+          120,
+          162
+        ]
+      },
+      "requiredSigners": null,
+      "invalidHereafter": null,
+      "txHash": "d63465b5dc66cbca86c66a5ff9047251972ea3c1b22cb3eb610c93383d5aa2f7",
+      "sameBody": true,
+      "fee": "171749",
+      "linearMinFeeOfSigned": "171749",
+      "status": 202,
+      "body": "\"d63465b5dc66cbca86c66a5ff9047251972ea3c1b22cb3eb610c93383d5aa2f7\"",
+      "included": true
+    },
+    "commitmentWithWithdrawal": {
+      "bodyKeys": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        7,
+        14
+      ],
+      "withdrawals": [
+        [
+          "e0049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef",
+          "0"
+        ]
+      ],
+      "certificates": null,
+      "requiredSigners": {
+        "tag": 258,
+        "value": [
+          "049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef"
+        ],
+        "span": [
+          260,
+          291
+        ]
+      },
+      "invalidHereafter": "136819248",
+      "currentCheck": "refused: Unsigned transaction has unexpected body field 5",
+      "txHash": "700ae224362a8bdeb9354140e2e5a308e984ef460791a5bceec9282f6c985462",
+      "sameBody": true,
+      "fee": "183673",
+      "linearMinFeeOfSigned": "183673",
+      "status": 202,
+      "body": "\"700ae224362a8bdeb9354140e2e5a308e984ef460791a5bceec9282f6c985462\"",
+      "readerSigners": [
+        "049f5171ace4a410fc97f3c5de45d19ef8ee62bfdf56658f51cae9ef"
+      ],
+      "included": true
+    }
+  },
+  "params": {
+    "minFeeA": "44",
+    "minFeeB": "155381",
+    "keyDeposit": "2000000"
+  },
+  "providerOutRef": {
+    "error": "Blockfrost getUtxosByOutRef failed",
+    "storeOutputFields": [
+      "tx_hash",
+      "output_index",
+      "address",
+      "stake_address",
+      "amount",
+      "data_hash",
+      "inline_datum",
+      "script_ref",
+      "reference_script_hash",
+      "inline_datum_json"
+    ],
+    "storeInputFields": [
+      "tx_hash",
+      "output_index",
+      "address",
+      "stake_address",
+      "amount",
+      "data_hash",
+      "inline_datum",
+      "script_ref",
+      "reference_script_hash",
+      "inline_datum_json"
+    ]
+  }
+}

@@ -1,0 +1,3728 @@
+[
+  {
+    "path": "/epochs/latest/parameters",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "28476",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "epoch": 0,
+      "min_fee_a": 44,
+      "min_fee_b": 155381,
+      "max_block_size": 65536,
+      "max_tx_size": 16384,
+      "max_block_header_size": 1100,
+      "key_deposit": "2000000",
+      "pool_deposit": "500000000",
+      "e_max": 18,
+      "n_opt": 150,
+      "a0": 0.3,
+      "rho": 0.003,
+      "tau": 0.2,
+      "decentralisation_param": 1,
+      "extra_entropy": null,
+      "protocol_major_ver": 9,
+      "protocol_minor_ver": 0,
+      "min_utxo": "4310",
+      "min_pool_cost": "340000000",
+      "nonce": "0b31d914a3b20af13681793790e127fe61b102f8f05ecb2808f9380cadb34fec",
+      "cost_models": {
+        "PlutusV1": {
+          "addInteger-cpu-arguments-intercept": 197209,
+          "addInteger-cpu-arguments-slope": 0,
+          "addInteger-memory-arguments-intercept": 1,
+          "addInteger-memory-arguments-slope": 1,
+          "appendByteString-cpu-arguments-intercept": 396231,
+          "appendByteString-cpu-arguments-slope": 621,
+          "appendByteString-memory-arguments-intercept": 0,
+          "appendByteString-memory-arguments-slope": 1,
+          "appendString-cpu-arguments-intercept": 150000,
+          "appendString-cpu-arguments-slope": 1000,
+          "appendString-memory-arguments-intercept": 0,
+          "appendString-memory-arguments-slope": 1,
+          "bData-cpu-arguments": 150000,
+          "bData-memory-arguments": 32,
+          "blake2b_256-cpu-arguments-intercept": 2477736,
+          "blake2b_256-cpu-arguments-slope": 29175,
+          "blake2b_256-memory-arguments": 4,
+          "cekApplyCost-exBudgetCPU": 29773,
+          "cekApplyCost-exBudgetMemory": 100,
+          "cekBuiltinCost-exBudgetCPU": 29773,
+          "cekBuiltinCost-exBudgetMemory": 100,
+          "cekConstCost-exBudgetCPU": 29773,
+          "cekConstCost-exBudgetMemory": 100,
+          "cekDelayCost-exBudgetCPU": 29773,
+          "cekDelayCost-exBudgetMemory": 100,
+          "cekForceCost-exBudgetCPU": 29773,
+          "cekForceCost-exBudgetMemory": 100,
+          "cekLamCost-exBudgetCPU": 29773,
+          "cekLamCost-exBudgetMemory": 100,
+          "cekStartupCost-exBudgetCPU": 100,
+          "cekStartupCost-exBudgetMemory": 100,
+          "cekVarCost-exBudgetCPU": 29773,
+          "cekVarCost-exBudgetMemory": 100,
+          "chooseData-cpu-arguments": 150000,
+          "chooseData-memory-arguments": 32,
+          "chooseList-cpu-arguments": 150000,
+          "chooseList-memory-arguments": 32,
+          "chooseUnit-cpu-arguments": 150000,
+          "chooseUnit-memory-arguments": 32,
+          "consByteString-cpu-arguments-intercept": 150000,
+          "consByteString-cpu-arguments-slope": 1000,
+          "consByteString-memory-arguments-intercept": 0,
+          "consByteString-memory-arguments-slope": 1,
+          "constrData-cpu-arguments": 150000,
+          "constrData-memory-arguments": 32,
+          "decodeUtf8-cpu-arguments-intercept": 150000,
+          "decodeUtf8-cpu-arguments-slope": 1000,
+          "decodeUtf8-memory-arguments-intercept": 0,
+          "decodeUtf8-memory-arguments-slope": 8,
+          "divideInteger-cpu-arguments-constant": 148000,
+          "divideInteger-cpu-arguments-model-arguments-intercept": 425507,
+          "divideInteger-cpu-arguments-model-arguments-slope": 118,
+          "divideInteger-memory-arguments-intercept": 0,
+          "divideInteger-memory-arguments-minimum": 1,
+          "divideInteger-memory-arguments-slope": 1,
+          "encodeUtf8-cpu-arguments-intercept": 150000,
+          "encodeUtf8-cpu-arguments-slope": 1000,
+          "encodeUtf8-memory-arguments-intercept": 0,
+          "encodeUtf8-memory-arguments-slope": 8,
+          "equalsByteString-cpu-arguments-constant": 150000,
+          "equalsByteString-cpu-arguments-intercept": 112536,
+          "equalsByteString-cpu-arguments-slope": 247,
+          "equalsByteString-memory-arguments": 1,
+          "equalsData-cpu-arguments-intercept": 150000,
+          "equalsData-cpu-arguments-slope": 10000,
+          "equalsData-memory-arguments": 1,
+          "equalsInteger-cpu-arguments-intercept": 136542,
+          "equalsInteger-cpu-arguments-slope": 1326,
+          "equalsInteger-memory-arguments": 1,
+          "equalsString-cpu-arguments-constant": 1000,
+          "equalsString-cpu-arguments-intercept": 150000,
+          "equalsString-cpu-arguments-slope": 1000,
+          "equalsString-memory-arguments": 1,
+          "fstPair-cpu-arguments": 150000,
+          "fstPair-memory-arguments": 32,
+          "headList-cpu-arguments": 150000,
+          "headList-memory-arguments": 32,
+          "iData-cpu-arguments": 150000,
+          "iData-memory-arguments": 32,
+          "ifThenElse-cpu-arguments": 1,
+          "ifThenElse-memory-arguments": 1,
+          "indexByteString-cpu-arguments": 150000,
+          "indexByteString-memory-arguments": 1,
+          "lengthOfByteString-cpu-arguments": 150000,
+          "lengthOfByteString-memory-arguments": 4,
+          "lessThanByteString-cpu-arguments-intercept": 103599,
+          "lessThanByteString-cpu-arguments-slope": 248,
+          "lessThanByteString-memory-arguments": 1,
+          "lessThanEqualsByteString-cpu-arguments-intercept": 103599,
+          "lessThanEqualsByteString-cpu-arguments-slope": 248,
+          "lessThanEqualsByteString-memory-arguments": 1,
+          "lessThanEqualsInteger-cpu-arguments-intercept": 145276,
+          "lessThanEqualsInteger-cpu-arguments-slope": 1366,
+          "lessThanEqualsInteger-memory-arguments": 1,
+          "lessThanInteger-cpu-arguments-intercept": 179690,
+          "lessThanInteger-cpu-arguments-slope": 497,
+          "lessThanInteger-memory-arguments": 1,
+          "listData-cpu-arguments": 150000,
+          "listData-memory-arguments": 32,
+          "mapData-cpu-arguments": 150000,
+          "mapData-memory-arguments": 32,
+          "mkCons-cpu-arguments": 150000,
+          "mkCons-memory-arguments": 32,
+          "mkNilData-cpu-arguments": 150000,
+          "mkNilData-memory-arguments": 32,
+          "mkNilPairData-cpu-arguments": 150000,
+          "mkNilPairData-memory-arguments": 32,
+          "mkPairData-cpu-arguments": 150000,
+          "mkPairData-memory-arguments": 32,
+          "modInteger-cpu-arguments-constant": 148000,
+          "modInteger-cpu-arguments-model-arguments-intercept": 425507,
+          "modInteger-cpu-arguments-model-arguments-slope": 118,
+          "modInteger-memory-arguments-intercept": 0,
+          "modInteger-memory-arguments-minimum": 1,
+          "modInteger-memory-arguments-slope": 1,
+          "multiplyInteger-cpu-arguments-intercept": 61516,
+          "multiplyInteger-cpu-arguments-slope": 11218,
+          "multiplyInteger-memory-arguments-intercept": 0,
+          "multiplyInteger-memory-arguments-slope": 1,
+          "nullList-cpu-arguments": 150000,
+          "nullList-memory-arguments": 32,
+          "quotientInteger-cpu-arguments-constant": 148000,
+          "quotientInteger-cpu-arguments-model-arguments-intercept": 425507,
+          "quotientInteger-cpu-arguments-model-arguments-slope": 118,
+          "quotientInteger-memory-arguments-intercept": 0,
+          "quotientInteger-memory-arguments-minimum": 1,
+          "quotientInteger-memory-arguments-slope": 1,
+          "remainderInteger-cpu-arguments-constant": 148000,
+          "remainderInteger-cpu-arguments-model-arguments-intercept": 425507,
+          "remainderInteger-cpu-arguments-model-arguments-slope": 118,
+          "remainderInteger-memory-arguments-intercept": 0,
+          "remainderInteger-memory-arguments-minimum": 1,
+          "remainderInteger-memory-arguments-slope": 1,
+          "sha2_256-cpu-arguments-intercept": 2477736,
+          "sha2_256-cpu-arguments-slope": 29175,
+          "sha2_256-memory-arguments": 4,
+          "sha3_256-cpu-arguments-intercept": 0,
+          "sha3_256-cpu-arguments-slope": 82363,
+          "sha3_256-memory-arguments": 4,
+          "sliceByteString-cpu-arguments-intercept": 150000,
+          "sliceByteString-cpu-arguments-slope": 5000,
+          "sliceByteString-memory-arguments-intercept": 0,
+          "sliceByteString-memory-arguments-slope": 1,
+          "sndPair-cpu-arguments": 150000,
+          "sndPair-memory-arguments": 32,
+          "subtractInteger-cpu-arguments-intercept": 197209,
+          "subtractInteger-cpu-arguments-slope": 0,
+          "subtractInteger-memory-arguments-intercept": 1,
+          "subtractInteger-memory-arguments-slope": 1,
+          "tailList-cpu-arguments": 150000,
+          "tailList-memory-arguments": 32,
+          "trace-cpu-arguments": 150000,
+          "trace-memory-arguments": 32,
+          "unBData-cpu-arguments": 150000,
+          "unBData-memory-arguments": 32,
+          "unConstrData-cpu-arguments": 150000,
+          "unConstrData-memory-arguments": 32,
+          "unIData-cpu-arguments": 150000,
+          "unIData-memory-arguments": 32,
+          "unListData-cpu-arguments": 150000,
+          "unListData-memory-arguments": 32,
+          "unMapData-cpu-arguments": 150000,
+          "unMapData-memory-arguments": 32,
+          "verifyEd25519Signature-cpu-arguments-intercept": 3345831,
+          "verifyEd25519Signature-cpu-arguments-slope": 1,
+          "verifyEd25519Signature-memory-arguments": 1
+        },
+        "PlutusV3": {
+          "addInteger-cpu-arguments-intercept": 100788,
+          "addInteger-cpu-arguments-slope": 420,
+          "addInteger-memory-arguments-intercept": 1,
+          "addInteger-memory-arguments-slope": 1,
+          "appendByteString-cpu-arguments-intercept": 1000,
+          "appendByteString-cpu-arguments-slope": 173,
+          "appendByteString-memory-arguments-intercept": 0,
+          "appendByteString-memory-arguments-slope": 1,
+          "appendString-cpu-arguments-intercept": 1000,
+          "appendString-cpu-arguments-slope": 59957,
+          "appendString-memory-arguments-intercept": 4,
+          "appendString-memory-arguments-slope": 1,
+          "bData-cpu-arguments": 11183,
+          "bData-memory-arguments": 32,
+          "blake2b_224-cpu-arguments-intercept": 207616,
+          "blake2b_224-cpu-arguments-slope": 8310,
+          "blake2b_224-memory-arguments": 4,
+          "blake2b_256-cpu-arguments-intercept": 201305,
+          "blake2b_256-cpu-arguments-slope": 8356,
+          "blake2b_256-memory-arguments": 4,
+          "bls12_381_G1_add-cpu-arguments": 962335,
+          "bls12_381_G1_add-memory-arguments": 18,
+          "bls12_381_G1_compress-cpu-arguments": 2780678,
+          "bls12_381_G1_compress-memory-arguments": 6,
+          "bls12_381_G1_equal-cpu-arguments": 442008,
+          "bls12_381_G1_equal-memory-arguments": 1,
+          "bls12_381_G1_hashToGroup-cpu-arguments-intercept": 52538055,
+          "bls12_381_G1_hashToGroup-cpu-arguments-slope": 3756,
+          "bls12_381_G1_hashToGroup-memory-arguments": 18,
+          "bls12_381_G1_neg-cpu-arguments": 267929,
+          "bls12_381_G1_neg-memory-arguments": 18,
+          "bls12_381_G1_scalarMul-cpu-arguments-intercept": 76433006,
+          "bls12_381_G1_scalarMul-cpu-arguments-slope": 8868,
+          "bls12_381_G1_scalarMul-memory-arguments": 18,
+          "bls12_381_G1_uncompress-cpu-arguments": 52948122,
+          "bls12_381_G1_uncompress-memory-arguments": 18,
+          "bls12_381_G2_add-cpu-arguments": 1995836,
+          "bls12_381_G2_add-memory-arguments": 36,
+          "bls12_381_G2_compress-cpu-arguments": 3227919,
+          "bls12_381_G2_compress-memory-arguments": 12,
+          "bls12_381_G2_equal-cpu-arguments": 901022,
+          "bls12_381_G2_equal-memory-arguments": 1,
+          "bls12_381_G2_hashToGroup-cpu-arguments-intercept": 166917843,
+          "bls12_381_G2_hashToGroup-cpu-arguments-slope": 4307,
+          "bls12_381_G2_hashToGroup-memory-arguments": 36,
+          "bls12_381_G2_neg-cpu-arguments": 284546,
+          "bls12_381_G2_neg-memory-arguments": 36,
+          "bls12_381_G2_scalarMul-cpu-arguments-intercept": 158221314,
+          "bls12_381_G2_scalarMul-cpu-arguments-slope": 26549,
+          "bls12_381_G2_scalarMul-memory-arguments": 36,
+          "bls12_381_G2_uncompress-cpu-arguments": 74698472,
+          "bls12_381_G2_uncompress-memory-arguments": 36,
+          "bls12_381_finalVerify-cpu-arguments": 333849714,
+          "bls12_381_finalVerify-memory-arguments": 1,
+          "bls12_381_millerLoop-cpu-arguments": 254006273,
+          "bls12_381_millerLoop-memory-arguments": 72,
+          "bls12_381_mulMlResult-cpu-arguments": 2174038,
+          "bls12_381_mulMlResult-memory-arguments": 72,
+          "byteStringToInteger-cpu-arguments-c0": 1006041,
+          "byteStringToInteger-cpu-arguments-c1": 43623,
+          "byteStringToInteger-cpu-arguments-c2": 251,
+          "byteStringToInteger-memory-arguments-intercept": 0,
+          "byteStringToInteger-memory-arguments-slope": 1,
+          "cekApplyCost-exBudgetCPU": 16000,
+          "cekApplyCost-exBudgetMemory": 100,
+          "cekBuiltinCost-exBudgetCPU": 16000,
+          "cekBuiltinCost-exBudgetMemory": 100,
+          "cekCaseCost-exBudgetCPU": 16000,
+          "cekCaseCost-exBudgetMemory": 100,
+          "cekConstCost-exBudgetCPU": 16000,
+          "cekConstCost-exBudgetMemory": 100,
+          "cekConstrCost-exBudgetCPU": 16000,
+          "cekConstrCost-exBudgetMemory": 100,
+          "cekDelayCost-exBudgetCPU": 16000,
+          "cekDelayCost-exBudgetMemory": 100,
+          "cekForceCost-exBudgetCPU": 16000,
+          "cekForceCost-exBudgetMemory": 100,
+          "cekLamCost-exBudgetCPU": 16000,
+          "cekLamCost-exBudgetMemory": 100,
+          "cekStartupCost-exBudgetCPU": 100,
+          "cekStartupCost-exBudgetMemory": 100,
+          "cekVarCost-exBudgetCPU": 16000,
+          "cekVarCost-exBudgetMemory": 100,
+          "chooseData-cpu-arguments": 94375,
+          "chooseData-memory-arguments": 32,
+          "chooseList-cpu-arguments": 132994,
+          "chooseList-memory-arguments": 32,
+          "chooseUnit-cpu-arguments": 61462,
+          "chooseUnit-memory-arguments": 4,
+          "consByteString-cpu-arguments-intercept": 72010,
+          "consByteString-cpu-arguments-slope": 178,
+          "consByteString-memory-arguments-intercept": 0,
+          "consByteString-memory-arguments-slope": 1,
+          "constrData-cpu-arguments": 22151,
+          "constrData-memory-arguments": 32,
+          "decodeUtf8-cpu-arguments-intercept": 91189,
+          "decodeUtf8-cpu-arguments-slope": 769,
+          "decodeUtf8-memory-arguments-intercept": 4,
+          "decodeUtf8-memory-arguments-slope": 2,
+          "divideInteger-cpu-arguments-constant": 85848,
+          "divideInteger-cpu-arguments-model-arguments-c00": 123203,
+          "divideInteger-cpu-arguments-model-arguments-c01": 7305,
+          "divideInteger-cpu-arguments-model-arguments-c02": -900,
+          "divideInteger-cpu-arguments-model-arguments-c10": 1716,
+          "divideInteger-cpu-arguments-model-arguments-c11": 549,
+          "divideInteger-cpu-arguments-model-arguments-c20": 57,
+          "divideInteger-cpu-arguments-model-arguments-minimum": 85848,
+          "divideInteger-memory-arguments-intercept": 0,
+          "divideInteger-memory-arguments-minimum": 1,
+          "divideInteger-memory-arguments-slope": 1,
+          "encodeUtf8-cpu-arguments-intercept": 1000,
+          "encodeUtf8-cpu-arguments-slope": 42921,
+          "encodeUtf8-memory-arguments-intercept": 4,
+          "encodeUtf8-memory-arguments-slope": 2,
+          "equalsByteString-cpu-arguments-constant": 24548,
+          "equalsByteString-cpu-arguments-intercept": 29498,
+          "equalsByteString-cpu-arguments-slope": 38,
+          "equalsByteString-memory-arguments": 1,
+          "equalsData-cpu-arguments-intercept": 898148,
+          "equalsData-cpu-arguments-slope": 27279,
+          "equalsData-memory-arguments": 1,
+          "equalsInteger-cpu-arguments-intercept": 51775,
+          "equalsInteger-cpu-arguments-slope": 558,
+          "equalsInteger-memory-arguments": 1,
+          "equalsString-cpu-arguments-constant": 39184,
+          "equalsString-cpu-arguments-intercept": 1000,
+          "equalsString-cpu-arguments-slope": 60594,
+          "equalsString-memory-arguments": 1,
+          "fstPair-cpu-arguments": 141895,
+          "fstPair-memory-arguments": 32,
+          "headList-cpu-arguments": 83150,
+          "headList-memory-arguments": 32,
+          "iData-cpu-arguments": 15299,
+          "iData-memory-arguments": 32,
+          "ifThenElse-cpu-arguments": 76049,
+          "ifThenElse-memory-arguments": 1,
+          "indexByteString-cpu-arguments": 13169,
+          "indexByteString-memory-arguments": 4,
+          "integerToByteString-cpu-arguments-c0": 1293828,
+          "integerToByteString-cpu-arguments-c1": 28716,
+          "integerToByteString-cpu-arguments-c2": 63,
+          "integerToByteString-memory-arguments-intercept": 0,
+          "integerToByteString-memory-arguments-slope": 1,
+          "keccak_256-cpu-arguments-intercept": 2261318,
+          "keccak_256-cpu-arguments-slope": 64571,
+          "keccak_256-memory-arguments": 4,
+          "lengthOfByteString-cpu-arguments": 22100,
+          "lengthOfByteString-memory-arguments": 10,
+          "lessThanByteString-cpu-arguments-intercept": 28999,
+          "lessThanByteString-cpu-arguments-slope": 74,
+          "lessThanByteString-memory-arguments": 1,
+          "lessThanEqualsByteString-cpu-arguments-intercept": 28999,
+          "lessThanEqualsByteString-cpu-arguments-slope": 74,
+          "lessThanEqualsByteString-memory-arguments": 1,
+          "lessThanEqualsInteger-cpu-arguments-intercept": 43285,
+          "lessThanEqualsInteger-cpu-arguments-slope": 552,
+          "lessThanEqualsInteger-memory-arguments": 1,
+          "lessThanInteger-cpu-arguments-intercept": 44749,
+          "lessThanInteger-cpu-arguments-slope": 541,
+          "lessThanInteger-memory-arguments": 1,
+          "listData-cpu-arguments": 33852,
+          "listData-memory-arguments": 32,
+          "mapData-cpu-arguments": 68246,
+          "mapData-memory-arguments": 32,
+          "mkCons-cpu-arguments": 72362,
+          "mkCons-memory-arguments": 32,
+          "mkNilData-cpu-arguments": 7243,
+          "mkNilData-memory-arguments": 32,
+          "mkNilPairData-cpu-arguments": 7391,
+          "mkNilPairData-memory-arguments": 32,
+          "mkPairData-cpu-arguments": 11546,
+          "mkPairData-memory-arguments": 32,
+          "modInteger-cpu-arguments-constant": 85848,
+          "modInteger-cpu-arguments-model-arguments-c00": 123203,
+          "modInteger-cpu-arguments-model-arguments-c01": 7305,
+          "modInteger-cpu-arguments-model-arguments-c02": -900,
+          "modInteger-cpu-arguments-model-arguments-c10": 1716,
+          "modInteger-cpu-arguments-model-arguments-c11": 549,
+          "modInteger-cpu-arguments-model-arguments-c20": 57,
+          "modInteger-cpu-arguments-model-arguments-minimum": 85848,
+          "modInteger-memory-arguments-intercept": 0,
+          "modInteger-memory-arguments-slope": 1,
+          "multiplyInteger-cpu-arguments-intercept": 90434,
+          "multiplyInteger-cpu-arguments-slope": 519,
+          "multiplyInteger-memory-arguments-intercept": 0,
+          "multiplyInteger-memory-arguments-slope": 1,
+          "nullList-cpu-arguments": 74433,
+          "nullList-memory-arguments": 32,
+          "quotientInteger-cpu-arguments-constant": 85848,
+          "quotientInteger-cpu-arguments-model-arguments-c00": 123203,
+          "quotientInteger-cpu-arguments-model-arguments-c01": 7305,
+          "quotientInteger-cpu-arguments-model-arguments-c02": -900,
+          "quotientInteger-cpu-arguments-model-arguments-c10": 1716,
+          "quotientInteger-cpu-arguments-model-arguments-c11": 549,
+          "quotientInteger-cpu-arguments-model-arguments-c20": 57,
+          "quotientInteger-cpu-arguments-model-arguments-minimum": 85848,
+          "quotientInteger-memory-arguments-intercept": 0,
+          "quotientInteger-memory-arguments-slope": 1,
+          "remainderInteger-cpu-arguments-constant": 1,
+          "remainderInteger-cpu-arguments-model-arguments-c00": 85848,
+          "remainderInteger-cpu-arguments-model-arguments-c01": 123203,
+          "remainderInteger-cpu-arguments-model-arguments-c02": 7305,
+          "remainderInteger-cpu-arguments-model-arguments-c10": -900,
+          "remainderInteger-cpu-arguments-model-arguments-c11": 1716,
+          "remainderInteger-cpu-arguments-model-arguments-c20": 549,
+          "remainderInteger-cpu-arguments-model-arguments-minimum": 57,
+          "remainderInteger-memory-arguments-intercept": 85848,
+          "remainderInteger-memory-arguments-minimum": 0,
+          "remainderInteger-memory-arguments-slope": 1,
+          "serialiseData-cpu-arguments-intercept": 955506,
+          "serialiseData-cpu-arguments-slope": 213312,
+          "serialiseData-memory-arguments-intercept": 0,
+          "serialiseData-memory-arguments-slope": 2,
+          "sha2_256-cpu-arguments-intercept": 270652,
+          "sha2_256-cpu-arguments-slope": 22588,
+          "sha2_256-memory-arguments": 4,
+          "sha3_256-cpu-arguments-intercept": 1457325,
+          "sha3_256-cpu-arguments-slope": 64566,
+          "sha3_256-memory-arguments": 4,
+          "sliceByteString-cpu-arguments-intercept": 20467,
+          "sliceByteString-cpu-arguments-slope": 1,
+          "sliceByteString-memory-arguments-intercept": 4,
+          "sliceByteString-memory-arguments-slope": 0,
+          "sndPair-cpu-arguments": 141992,
+          "sndPair-memory-arguments": 32,
+          "subtractInteger-cpu-arguments-intercept": 100788,
+          "subtractInteger-cpu-arguments-slope": 420,
+          "subtractInteger-memory-arguments-intercept": 1,
+          "subtractInteger-memory-arguments-slope": 1,
+          "tailList-cpu-arguments": 81663,
+          "tailList-memory-arguments": 32,
+          "trace-cpu-arguments": 59498,
+          "trace-memory-arguments": 32,
+          "unBData-cpu-arguments": 20142,
+          "unBData-memory-arguments": 32,
+          "unConstrData-cpu-arguments": 24588,
+          "unConstrData-memory-arguments": 32,
+          "unIData-cpu-arguments": 20744,
+          "unIData-memory-arguments": 32,
+          "unListData-cpu-arguments": 25933,
+          "unListData-memory-arguments": 32,
+          "unMapData-cpu-arguments": 24623,
+          "unMapData-memory-arguments": 32,
+          "verifyEcdsaSecp256k1Signature-cpu-arguments": 43053543,
+          "verifyEcdsaSecp256k1Signature-memory-arguments": 10,
+          "verifyEd25519Signature-cpu-arguments-intercept": 53384111,
+          "verifyEd25519Signature-cpu-arguments-slope": 14333,
+          "verifyEd25519Signature-memory-arguments": 10,
+          "verifySchnorrSecp256k1Signature-cpu-arguments-intercept": 43574283,
+          "verifySchnorrSecp256k1Signature-cpu-arguments-slope": 26308,
+          "verifySchnorrSecp256k1Signature-memory-arguments": 10
+        },
+        "PlutusV2": {
+          "addInteger-cpu-arguments-intercept": 205665,
+          "addInteger-cpu-arguments-slope": 812,
+          "addInteger-memory-arguments-intercept": 1,
+          "addInteger-memory-arguments-slope": 1,
+          "appendByteString-cpu-arguments-intercept": 1000,
+          "appendByteString-cpu-arguments-slope": 571,
+          "appendByteString-memory-arguments-intercept": 0,
+          "appendByteString-memory-arguments-slope": 1,
+          "appendString-cpu-arguments-intercept": 1000,
+          "appendString-cpu-arguments-slope": 24177,
+          "appendString-memory-arguments-intercept": 4,
+          "appendString-memory-arguments-slope": 1,
+          "bData-cpu-arguments": 1000,
+          "bData-memory-arguments": 32,
+          "blake2b_256-cpu-arguments-intercept": 117366,
+          "blake2b_256-cpu-arguments-slope": 10475,
+          "blake2b_256-memory-arguments": 4,
+          "cekApplyCost-exBudgetCPU": 23000,
+          "cekApplyCost-exBudgetMemory": 100,
+          "cekBuiltinCost-exBudgetCPU": 23000,
+          "cekBuiltinCost-exBudgetMemory": 100,
+          "cekConstCost-exBudgetCPU": 23000,
+          "cekConstCost-exBudgetMemory": 100,
+          "cekDelayCost-exBudgetCPU": 23000,
+          "cekDelayCost-exBudgetMemory": 100,
+          "cekForceCost-exBudgetCPU": 23000,
+          "cekForceCost-exBudgetMemory": 100,
+          "cekLamCost-exBudgetCPU": 23000,
+          "cekLamCost-exBudgetMemory": 100,
+          "cekStartupCost-exBudgetCPU": 100,
+          "cekStartupCost-exBudgetMemory": 100,
+          "cekVarCost-exBudgetCPU": 23000,
+          "cekVarCost-exBudgetMemory": 100,
+          "chooseData-cpu-arguments": 19537,
+          "chooseData-memory-arguments": 32,
+          "chooseList-cpu-arguments": 175354,
+          "chooseList-memory-arguments": 32,
+          "chooseUnit-cpu-arguments": 46417,
+          "chooseUnit-memory-arguments": 4,
+          "consByteString-cpu-arguments-intercept": 221973,
+          "consByteString-cpu-arguments-slope": 511,
+          "consByteString-memory-arguments-intercept": 0,
+          "consByteString-memory-arguments-slope": 1,
+          "constrData-cpu-arguments": 89141,
+          "constrData-memory-arguments": 32,
+          "decodeUtf8-cpu-arguments-intercept": 497525,
+          "decodeUtf8-cpu-arguments-slope": 14068,
+          "decodeUtf8-memory-arguments-intercept": 4,
+          "decodeUtf8-memory-arguments-slope": 2,
+          "divideInteger-cpu-arguments-constant": 196500,
+          "divideInteger-cpu-arguments-model-arguments-intercept": 453240,
+          "divideInteger-cpu-arguments-model-arguments-slope": 220,
+          "divideInteger-memory-arguments-intercept": 0,
+          "divideInteger-memory-arguments-minimum": 1,
+          "divideInteger-memory-arguments-slope": 1,
+          "encodeUtf8-cpu-arguments-intercept": 1000,
+          "encodeUtf8-cpu-arguments-slope": 28662,
+          "encodeUtf8-memory-arguments-intercept": 4,
+          "encodeUtf8-memory-arguments-slope": 2,
+          "equalsByteString-cpu-arguments-constant": 245000,
+          "equalsByteString-cpu-arguments-intercept": 216773,
+          "equalsByteString-cpu-arguments-slope": 62,
+          "equalsByteString-memory-arguments": 1,
+          "equalsData-cpu-arguments-intercept": 1060367,
+          "equalsData-cpu-arguments-slope": 12586,
+          "equalsData-memory-arguments": 1,
+          "equalsInteger-cpu-arguments-intercept": 208512,
+          "equalsInteger-cpu-arguments-slope": 421,
+          "equalsInteger-memory-arguments": 1,
+          "equalsString-cpu-arguments-constant": 187000,
+          "equalsString-cpu-arguments-intercept": 1000,
+          "equalsString-cpu-arguments-slope": 52998,
+          "equalsString-memory-arguments": 1,
+          "fstPair-cpu-arguments": 80436,
+          "fstPair-memory-arguments": 32,
+          "headList-cpu-arguments": 43249,
+          "headList-memory-arguments": 32,
+          "iData-cpu-arguments": 1000,
+          "iData-memory-arguments": 32,
+          "ifThenElse-cpu-arguments": 80556,
+          "ifThenElse-memory-arguments": 1,
+          "indexByteString-cpu-arguments": 57667,
+          "indexByteString-memory-arguments": 4,
+          "lengthOfByteString-cpu-arguments": 1000,
+          "lengthOfByteString-memory-arguments": 10,
+          "lessThanByteString-cpu-arguments-intercept": 197145,
+          "lessThanByteString-cpu-arguments-slope": 156,
+          "lessThanByteString-memory-arguments": 1,
+          "lessThanEqualsByteString-cpu-arguments-intercept": 197145,
+          "lessThanEqualsByteString-cpu-arguments-slope": 156,
+          "lessThanEqualsByteString-memory-arguments": 1,
+          "lessThanEqualsInteger-cpu-arguments-intercept": 204924,
+          "lessThanEqualsInteger-cpu-arguments-slope": 473,
+          "lessThanEqualsInteger-memory-arguments": 1,
+          "lessThanInteger-cpu-arguments-intercept": 208896,
+          "lessThanInteger-cpu-arguments-slope": 511,
+          "lessThanInteger-memory-arguments": 1,
+          "listData-cpu-arguments": 52467,
+          "listData-memory-arguments": 32,
+          "mapData-cpu-arguments": 64832,
+          "mapData-memory-arguments": 32,
+          "mkCons-cpu-arguments": 65493,
+          "mkCons-memory-arguments": 32,
+          "mkNilData-cpu-arguments": 22558,
+          "mkNilData-memory-arguments": 32,
+          "mkNilPairData-cpu-arguments": 16563,
+          "mkNilPairData-memory-arguments": 32,
+          "mkPairData-cpu-arguments": 76511,
+          "mkPairData-memory-arguments": 32,
+          "modInteger-cpu-arguments-constant": 196500,
+          "modInteger-cpu-arguments-model-arguments-intercept": 453240,
+          "modInteger-cpu-arguments-model-arguments-slope": 220,
+          "modInteger-memory-arguments-intercept": 0,
+          "modInteger-memory-arguments-minimum": 1,
+          "modInteger-memory-arguments-slope": 1,
+          "multiplyInteger-cpu-arguments-intercept": 69522,
+          "multiplyInteger-cpu-arguments-slope": 11687,
+          "multiplyInteger-memory-arguments-intercept": 0,
+          "multiplyInteger-memory-arguments-slope": 1,
+          "nullList-cpu-arguments": 60091,
+          "nullList-memory-arguments": 32,
+          "quotientInteger-cpu-arguments-constant": 196500,
+          "quotientInteger-cpu-arguments-model-arguments-intercept": 453240,
+          "quotientInteger-cpu-arguments-model-arguments-slope": 220,
+          "quotientInteger-memory-arguments-intercept": 0,
+          "quotientInteger-memory-arguments-minimum": 1,
+          "quotientInteger-memory-arguments-slope": 1,
+          "remainderInteger-cpu-arguments-constant": 196500,
+          "remainderInteger-cpu-arguments-model-arguments-intercept": 453240,
+          "remainderInteger-cpu-arguments-model-arguments-slope": 220,
+          "remainderInteger-memory-arguments-intercept": 0,
+          "remainderInteger-memory-arguments-minimum": 1,
+          "remainderInteger-memory-arguments-slope": 1,
+          "serialiseData-cpu-arguments-intercept": 1159724,
+          "serialiseData-cpu-arguments-slope": 392670,
+          "serialiseData-memory-arguments-intercept": 0,
+          "serialiseData-memory-arguments-slope": 2,
+          "sha2_256-cpu-arguments-intercept": 806990,
+          "sha2_256-cpu-arguments-slope": 30482,
+          "sha2_256-memory-arguments": 4,
+          "sha3_256-cpu-arguments-intercept": 1927926,
+          "sha3_256-cpu-arguments-slope": 82523,
+          "sha3_256-memory-arguments": 4,
+          "sliceByteString-cpu-arguments-intercept": 265318,
+          "sliceByteString-cpu-arguments-slope": 0,
+          "sliceByteString-memory-arguments-intercept": 4,
+          "sliceByteString-memory-arguments-slope": 0,
+          "sndPair-cpu-arguments": 85931,
+          "sndPair-memory-arguments": 32,
+          "subtractInteger-cpu-arguments-intercept": 205665,
+          "subtractInteger-cpu-arguments-slope": 812,
+          "subtractInteger-memory-arguments-intercept": 1,
+          "subtractInteger-memory-arguments-slope": 1,
+          "tailList-cpu-arguments": 41182,
+          "tailList-memory-arguments": 32,
+          "trace-cpu-arguments": 212342,
+          "trace-memory-arguments": 32,
+          "unBData-cpu-arguments": 31220,
+          "unBData-memory-arguments": 32,
+          "unConstrData-cpu-arguments": 32696,
+          "unConstrData-memory-arguments": 32,
+          "unIData-cpu-arguments": 43357,
+          "unIData-memory-arguments": 32,
+          "unListData-cpu-arguments": 32247,
+          "unListData-memory-arguments": 32,
+          "unMapData-cpu-arguments": 38314,
+          "unMapData-memory-arguments": 32,
+          "verifyEcdsaSecp256k1Signature-cpu-arguments": 20000000000,
+          "verifyEcdsaSecp256k1Signature-memory-arguments": 20000000000,
+          "verifyEd25519Signature-cpu-arguments-intercept": 9462713,
+          "verifyEd25519Signature-cpu-arguments-slope": 1021,
+          "verifyEd25519Signature-memory-arguments": 10,
+          "verifySchnorrSecp256k1Signature-cpu-arguments-intercept": 20000000000,
+          "verifySchnorrSecp256k1Signature-cpu-arguments-slope": 0,
+          "verifySchnorrSecp256k1Signature-memory-arguments": 20000000000
+        }
+      },
+      "cost_models_raw": {
+        "PlutusV2": [
+          205665,
+          812,
+          1,
+          1,
+          1000,
+          571,
+          0,
+          1,
+          1000,
+          24177,
+          4,
+          1,
+          1000,
+          32,
+          117366,
+          10475,
+          4,
+          23000,
+          100,
+          23000,
+          100,
+          23000,
+          100,
+          23000,
+          100,
+          23000,
+          100,
+          23000,
+          100,
+          100,
+          100,
+          23000,
+          100,
+          19537,
+          32,
+          175354,
+          32,
+          46417,
+          4,
+          221973,
+          511,
+          0,
+          1,
+          89141,
+          32,
+          497525,
+          14068,
+          4,
+          2,
+          196500,
+          453240,
+          220,
+          0,
+          1,
+          1,
+          1000,
+          28662,
+          4,
+          2,
+          245000,
+          216773,
+          62,
+          1,
+          1060367,
+          12586,
+          1,
+          208512,
+          421,
+          1,
+          187000,
+          1000,
+          52998,
+          1,
+          80436,
+          32,
+          43249,
+          32,
+          1000,
+          32,
+          80556,
+          1,
+          57667,
+          4,
+          1000,
+          10,
+          197145,
+          156,
+          1,
+          197145,
+          156,
+          1,
+          204924,
+          473,
+          1,
+          208896,
+          511,
+          1,
+          52467,
+          32,
+          64832,
+          32,
+          65493,
+          32,
+          22558,
+          32,
+          16563,
+          32,
+          76511,
+          32,
+          196500,
+          453240,
+          220,
+          0,
+          1,
+          1,
+          69522,
+          11687,
+          0,
+          1,
+          60091,
+          32,
+          196500,
+          453240,
+          220,
+          0,
+          1,
+          1,
+          196500,
+          453240,
+          220,
+          0,
+          1,
+          1,
+          1159724,
+          392670,
+          0,
+          2,
+          806990,
+          30482,
+          4,
+          1927926,
+          82523,
+          4,
+          265318,
+          0,
+          4,
+          0,
+          85931,
+          32,
+          205665,
+          812,
+          1,
+          1,
+          41182,
+          32,
+          212342,
+          32,
+          31220,
+          32,
+          32696,
+          32,
+          43357,
+          32,
+          32247,
+          32,
+          38314,
+          32,
+          20000000000,
+          20000000000,
+          9462713,
+          1021,
+          10,
+          20000000000,
+          0,
+          20000000000
+        ],
+        "PlutusV3": [
+          100788,
+          420,
+          1,
+          1,
+          1000,
+          173,
+          0,
+          1,
+          1000,
+          59957,
+          4,
+          1,
+          11183,
+          32,
+          201305,
+          8356,
+          4,
+          16000,
+          100,
+          16000,
+          100,
+          16000,
+          100,
+          16000,
+          100,
+          16000,
+          100,
+          16000,
+          100,
+          100,
+          100,
+          16000,
+          100,
+          94375,
+          32,
+          132994,
+          32,
+          61462,
+          4,
+          72010,
+          178,
+          0,
+          1,
+          22151,
+          32,
+          91189,
+          769,
+          4,
+          2,
+          85848,
+          123203,
+          7305,
+          -900,
+          1716,
+          549,
+          57,
+          85848,
+          0,
+          1,
+          1,
+          1000,
+          42921,
+          4,
+          2,
+          24548,
+          29498,
+          38,
+          1,
+          898148,
+          27279,
+          1,
+          51775,
+          558,
+          1,
+          39184,
+          1000,
+          60594,
+          1,
+          141895,
+          32,
+          83150,
+          32,
+          15299,
+          32,
+          76049,
+          1,
+          13169,
+          4,
+          22100,
+          10,
+          28999,
+          74,
+          1,
+          28999,
+          74,
+          1,
+          43285,
+          552,
+          1,
+          44749,
+          541,
+          1,
+          33852,
+          32,
+          68246,
+          32,
+          72362,
+          32,
+          7243,
+          32,
+          7391,
+          32,
+          11546,
+          32,
+          85848,
+          123203,
+          7305,
+          -900,
+          1716,
+          549,
+          57,
+          85848,
+          0,
+          1,
+          90434,
+          519,
+          0,
+          1,
+          74433,
+          32,
+          85848,
+          123203,
+          7305,
+          -900,
+          1716,
+          549,
+          57,
+          85848,
+          0,
+          1,
+          1,
+          85848,
+          123203,
+          7305,
+          -900,
+          1716,
+          549,
+          57,
+          85848,
+          0,
+          1,
+          955506,
+          213312,
+          0,
+          2,
+          270652,
+          22588,
+          4,
+          1457325,
+          64566,
+          4,
+          20467,
+          1,
+          4,
+          0,
+          141992,
+          32,
+          100788,
+          420,
+          1,
+          1,
+          81663,
+          32,
+          59498,
+          32,
+          20142,
+          32,
+          24588,
+          32,
+          20744,
+          32,
+          25933,
+          32,
+          24623,
+          32,
+          43053543,
+          10,
+          53384111,
+          14333,
+          10,
+          43574283,
+          26308,
+          10,
+          16000,
+          100,
+          16000,
+          100,
+          962335,
+          18,
+          2780678,
+          6,
+          442008,
+          1,
+          52538055,
+          3756,
+          18,
+          267929,
+          18,
+          76433006,
+          8868,
+          18,
+          52948122,
+          18,
+          1995836,
+          36,
+          3227919,
+          12,
+          901022,
+          1,
+          166917843,
+          4307,
+          36,
+          284546,
+          36,
+          158221314,
+          26549,
+          36,
+          74698472,
+          36,
+          333849714,
+          1,
+          254006273,
+          72,
+          2174038,
+          72,
+          2261318,
+          64571,
+          4,
+          207616,
+          8310,
+          4,
+          1293828,
+          28716,
+          63,
+          0,
+          1,
+          1006041,
+          43623,
+          251,
+          0,
+          1
+        ],
+        "PlutusV1": [
+          197209,
+          0,
+          1,
+          1,
+          396231,
+          621,
+          0,
+          1,
+          150000,
+          1000,
+          0,
+          1,
+          150000,
+          32,
+          2477736,
+          29175,
+          4,
+          29773,
+          100,
+          29773,
+          100,
+          29773,
+          100,
+          29773,
+          100,
+          29773,
+          100,
+          29773,
+          100,
+          100,
+          100,
+          29773,
+          100,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          1000,
+          0,
+          1,
+          150000,
+          32,
+          150000,
+          1000,
+          0,
+          8,
+          148000,
+          425507,
+          118,
+          0,
+          1,
+          1,
+          150000,
+          1000,
+          0,
+          8,
+          150000,
+          112536,
+          247,
+          1,
+          150000,
+          10000,
+          1,
+          136542,
+          1326,
+          1,
+          1000,
+          150000,
+          1000,
+          1,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          1,
+          1,
+          150000,
+          1,
+          150000,
+          4,
+          103599,
+          248,
+          1,
+          103599,
+          248,
+          1,
+          145276,
+          1366,
+          1,
+          179690,
+          497,
+          1,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          148000,
+          425507,
+          118,
+          0,
+          1,
+          1,
+          61516,
+          11218,
+          0,
+          1,
+          150000,
+          32,
+          148000,
+          425507,
+          118,
+          0,
+          1,
+          1,
+          148000,
+          425507,
+          118,
+          0,
+          1,
+          1,
+          2477736,
+          29175,
+          4,
+          0,
+          82363,
+          4,
+          150000,
+          5000,
+          0,
+          1,
+          150000,
+          32,
+          197209,
+          0,
+          1,
+          1,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          150000,
+          32,
+          3345831,
+          1,
+          1
+        ]
+      },
+      "price_mem": 0.0577,
+      "price_step": 0.0000721,
+      "max_tx_ex_mem": "10000000",
+      "max_tx_ex_steps": "10000000000",
+      "max_block_ex_mem": "50000000",
+      "max_block_ex_steps": "40000000000",
+      "max_val_size": "5000",
+      "collateral_percent": 150,
+      "max_collateral_inputs": 3,
+      "coins_per_utxo_size": "4310",
+      "coins_per_utxo_word": "4310",
+      "pvt_motion_no_confidence": 0.51,
+      "pvt_committee_normal": 0.51,
+      "pvt_committee_no_confidence": 0.51,
+      "pvt_hard_fork_initiation": 0.51,
+      "dvt_motion_no_confidence": 0.67,
+      "dvt_committee_normal": 0.67,
+      "dvt_committee_no_confidence": 0.6,
+      "dvt_update_to_constitution": 0.75,
+      "dvt_hard_fork_initiation": 0.6,
+      "dvt_p_p_network_group": 0.67,
+      "dvt_p_p_economic_group": 0.67,
+      "dvt_p_p_technical_group": 0.67,
+      "dvt_p_p_gov_group": 0.75,
+      "dvt_treasury_withdrawal": 0.67,
+      "committee_min_size": "7",
+      "committee_max_term_length": "146",
+      "gov_action_lifetime": "6",
+      "gov_action_deposit": "100000000000",
+      "drep_deposit": "500000000",
+      "drep_activity": "20",
+      "pvtpp_security_group": 0.51,
+      "pvt_p_p_security_group": 0.51,
+      "min_fee_ref_script_cost_per_byte": 15
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals",
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "95",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "status_code": 404,
+      "error": "Not Found",
+      "message": "The requested component has not been found."
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqjhzsk56euudsj6cjf8av3q4ph6q0stqlqy6scsjc0vnmqhspkrk/withdrawals",
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "95",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "status_code": 404,
+      "error": "Not Found",
+      "message": "The requested component has not been found."
+    }
+  },
+  {
+    "path": "/accounts/stake_test1notbech32/withdrawals",
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "0",
+      "date": "Mon, 19 Oct 2026 13:15:42 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": ""
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "305",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:45 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+      "active": false,
+      "registered": false,
+      "active_epoch": null,
+      "controlled_amount": "2000000000",
+      "rewards_sum": "0",
+      "withdrawals_sum": "0",
+      "reserves_sum": "0",
+      "treasury_sum": "0",
+      "withdrawable_amount": "0",
+      "pool_id": null,
+      "drep_id": null
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:45 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": []
+  },
+  {
+    "path": "POST /tx/submit (other stake 5, not registered, 0 ADA)",
+    "label": "other stake 5, not registered, 0 ADA",
+    "txHash": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd",
+    "status": 200,
+    "body": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd"
+  },
+  {
+    "path": "POST /tx/submit (register stake 2 + vote deleg abstain (ledger balance))",
+    "label": "register stake 2 + vote deleg abstain (ledger balance)",
+    "txHash": "ad80ef48efd5c9a79fa60c9f352f9f0e1e506857ff9c55aed2f1baca36cdf5b2",
+    "status": 400,
+    "body": ""
+  },
+  {
+    "path": "POST /tx/submit (register stake 2 + vote deleg abstain (pallas balance))",
+    "label": "register stake 2 + vote deleg abstain (pallas balance)",
+    "txHash": "c7d96a6c2e3095ef125472eaa237302eebd8eeb6c8850da1730fa295d0271377",
+    "status": 200,
+    "body": "c7d96a6c2e3095ef125472eaa237302eebd8eeb6c8850da1730fa295d0271377"
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "318",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:47 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+      "active": false,
+      "registered": true,
+      "active_epoch": 0,
+      "controlled_amount": "1999824755",
+      "rewards_sum": "0",
+      "withdrawals_sum": "0",
+      "reserves_sum": "0",
+      "treasury_sum": "0",
+      "withdrawable_amount": "0",
+      "pool_id": null,
+      "drep_id": "drep_always_abstain"
+    }
+  },
+  {
+    "path": "/blocks/latest",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "430",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:47 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "time": 1655683210,
+      "height": 10,
+      "hash": "46c55af1efd131e8c475b01ba17c4a31e8eaaf330e1adeadbc539924603aff9c",
+      "slot": 10,
+      "epoch": 0,
+      "epoch_slot": 10,
+      "slot_leader": "ShelleyGenesis-836cc68931c2e4e3",
+      "size": 0,
+      "tx_count": 1,
+      "output": "49824755",
+      "fees": "175245",
+      "block_vrf": "vrf_vk1xrd0ec",
+      "op_cert": "",
+      "op_cert_counter": "0",
+      "previous_block": "903050133c96d4219a540e131c27512b0f6489c78ce100d44bcf90a2a4b488ce",
+      "next_block": null,
+      "confirmations": 0
+    }
+  },
+  {
+    "path": "POST /tx/submit (commitment-shaped, 0 ADA withdrawal)",
+    "label": "commitment-shaped, 0 ADA withdrawal",
+    "txHash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+    "status": 200,
+    "body": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445"
+  },
+  {
+    "path": "/txs/69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445/withdrawals",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "93",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:47 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+        "amount": "0"
+      }
+    ]
+  },
+  {
+    "path": "POST /tx/submit (stake 2, 1 ADA withdrawal (ledger balance))",
+    "label": "stake 2, 1 ADA withdrawal (ledger balance)",
+    "txHash": "64d4cf34afbd19c2a895d61b636a73ad45a0eb59410fb3d4df00f915c685ad39",
+    "status": 400,
+    "body": ""
+  },
+  {
+    "path": "POST /tx/submit (stake 2, 1 ADA withdrawal (pallas balance))",
+    "label": "stake 2, 1 ADA withdrawal (pallas balance)",
+    "txHash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+    "status": 200,
+    "body": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1"
+  },
+  {
+    "path": "POST /tx/submit (third party, organizer stake, no stake witness)",
+    "label": "third party, organizer stake, no stake witness",
+    "txHash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+    "status": 200,
+    "body": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49"
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "324",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:49 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "stake_address": "stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6",
+      "active": false,
+      "registered": true,
+      "active_epoch": 0,
+      "controlled_amount": "1998470217",
+      "rewards_sum": "0",
+      "withdrawals_sum": "1000000",
+      "reserves_sum": "0",
+      "treasury_sum": "0",
+      "withdrawable_amount": "0",
+      "pool_id": null,
+      "drep_id": "drep_always_abstain"
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "448",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:49 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      }
+    ]
+  },
+  {
+    "path": "POST /tx/submit (batch 0)",
+    "label": "batch 0",
+    "txHash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+    "status": 200,
+    "body": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a"
+  },
+  {
+    "path": "POST /tx/submit (batch 1)",
+    "label": "batch 1",
+    "txHash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+    "status": 200,
+    "body": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4"
+  },
+  {
+    "path": "POST /tx/submit (batch 2)",
+    "label": "batch 2",
+    "txHash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+    "status": 200,
+    "body": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86"
+  },
+  {
+    "path": "POST /tx/submit (batch 3)",
+    "label": "batch 3",
+    "txHash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+    "status": 200,
+    "body": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7"
+  },
+  {
+    "path": "POST /tx/submit (batch 4)",
+    "label": "batch 4",
+    "txHash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+    "status": 200,
+    "body": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377"
+  },
+  {
+    "path": "POST /tx/submit (batch 5)",
+    "label": "batch 5",
+    "txHash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+    "status": 200,
+    "body": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6"
+  },
+  {
+    "path": "POST /tx/submit (batch 6)",
+    "label": "batch 6",
+    "txHash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+    "status": 200,
+    "body": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82"
+  },
+  {
+    "path": "POST /tx/submit (batch 7)",
+    "label": "batch 7",
+    "txHash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+    "status": 200,
+    "body": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1"
+  },
+  {
+    "path": "POST /tx/submit (batch 8)",
+    "label": "batch 8",
+    "txHash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+    "status": 200,
+    "body": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5"
+  },
+  {
+    "path": "POST /tx/submit (batch 9)",
+    "label": "batch 9",
+    "txHash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+    "status": 200,
+    "body": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5"
+  },
+  {
+    "path": "POST /tx/submit (batch 10)",
+    "label": "batch 10",
+    "txHash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+    "status": 200,
+    "body": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28"
+  },
+  {
+    "path": "POST /tx/submit (batch 11)",
+    "label": "batch 11",
+    "txHash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+    "status": 200,
+    "body": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42"
+  },
+  {
+    "path": "POST /tx/submit (batch 12)",
+    "label": "batch 12",
+    "txHash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+    "status": 200,
+    "body": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839"
+  },
+  {
+    "path": "POST /tx/submit (batch 13)",
+    "label": "batch 13",
+    "txHash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+    "status": 200,
+    "body": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4"
+  },
+  {
+    "path": "POST /tx/submit (batch 14)",
+    "label": "batch 14",
+    "txHash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+    "status": 200,
+    "body": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7"
+  },
+  {
+    "path": "POST /tx/submit (batch 15)",
+    "label": "batch 15",
+    "txHash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+    "status": 200,
+    "body": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d"
+  },
+  {
+    "path": "POST /tx/submit (batch 16)",
+    "label": "batch 16",
+    "txHash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+    "status": 200,
+    "body": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1"
+  },
+  {
+    "path": "POST /tx/submit (batch 17)",
+    "label": "batch 17",
+    "txHash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+    "status": 200,
+    "body": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f"
+  },
+  {
+    "path": "POST /tx/submit (batch 18)",
+    "label": "batch 18",
+    "txHash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+    "status": 200,
+    "body": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc"
+  },
+  {
+    "path": "POST /tx/submit (batch 19)",
+    "label": "batch 19",
+    "txHash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+    "status": 200,
+    "body": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540"
+  },
+  {
+    "path": "POST /tx/submit (batch 20)",
+    "label": "batch 20",
+    "txHash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+    "status": 200,
+    "body": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7"
+  },
+  {
+    "path": "POST /tx/submit (batch 21)",
+    "label": "batch 21",
+    "txHash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+    "status": 200,
+    "body": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea"
+  },
+  {
+    "path": "POST /tx/submit (batch 22)",
+    "label": "batch 22",
+    "txHash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+    "status": 200,
+    "body": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8"
+  },
+  {
+    "path": "POST /tx/submit (batch 23)",
+    "label": "batch 23",
+    "txHash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+    "status": 200,
+    "body": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9"
+  },
+  {
+    "path": "POST /tx/submit (batch 24)",
+    "label": "batch 24",
+    "txHash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+    "status": 200,
+    "body": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b"
+  },
+  {
+    "path": "POST /tx/submit (batch 25)",
+    "label": "batch 25",
+    "txHash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+    "status": 200,
+    "body": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84"
+  },
+  {
+    "path": "POST /tx/submit (batch 26)",
+    "label": "batch 26",
+    "txHash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+    "status": 200,
+    "body": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e"
+  },
+  {
+    "path": "POST /tx/submit (batch 27)",
+    "label": "batch 27",
+    "txHash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+    "status": 200,
+    "body": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260"
+  },
+  {
+    "path": "POST /tx/submit (batch 28)",
+    "label": "batch 28",
+    "txHash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+    "status": 200,
+    "body": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e"
+  },
+  {
+    "path": "POST /tx/submit (batch 29)",
+    "label": "batch 29",
+    "txHash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+    "status": 200,
+    "body": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6"
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "4858",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&page=1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "4858",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=10&page=1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1477",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=10&page=2",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=10&page=3",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=10&page=4",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "442",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=desc&count=10&page=1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=desc&count=10&page=2",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=desc&count=10&page=3",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=desc&count=10&page=4",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "448",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?count=100&page=1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "4858",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&from=15",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2941",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&to=15",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "3388",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "69e60086aee43217381400cf2a158e51ba661dd771081f7460a95744a208e445",
+        "amount": "0",
+        "tx_slot": 11,
+        "block_time": 1655683211,
+        "block_height": 11
+      },
+      {
+        "tx_hash": "b05b64ec157db2034f1743a88e0405a61c0a918455385febb5ee5e76d7ef6ac1",
+        "amount": "1000000",
+        "tx_slot": 12,
+        "block_time": 1655683212,
+        "block_height": 12
+      },
+      {
+        "tx_hash": "b8970426f50695f9075810ee8eab60ae6822434c3a97220f754ee68ebc794b49",
+        "amount": "0",
+        "tx_slot": 13,
+        "block_time": 1655683213,
+        "block_height": 13
+      },
+      {
+        "tx_hash": "6fb4d0005017d2b70aee0710d3749b8208ddd034e39e8da7635e893557a6cb6a",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5f40f1d7d570faab3a0c1d810b05a79f7561109fb9a973c310bd709adb8e08e4",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "2a565e29272b4aebc61313fe5dabdffac8dc3c8dacf01ecbfb096be8d3a71f86",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "91aa80f3bc5c0a4f2627f339b4c97fe217e1f55e51929eaae8a396c167f25dc7",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "5d86faa27c8f16f1181d9adba939cabbe309c6ad29cffd03d3ea27595a773377",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "e1d8e502aed9b3dbc4f6a8cd46aa3109e6537f4494d67fe41b508d5760f2e4e6",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "18f4385c68531628b3a2473adeb8ee019bf3a72a60fa11d2eea0862ab3893a82",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "a7daef27be5fad2d908e80df3752ce56c790276d14b9211e622698ca60fffdb1",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "0c6cb0d81862405d58c8619c7b26af1a92689d2efbdd561adf679a6c2a4b14e5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "4fc29bc6eedefd2126861b501bbd8d62d8a3bdc4003ae70bf0a367ebfff77af5",
+        "amount": "0",
+        "tx_slot": 14,
+        "block_time": 1655683214,
+        "block_height": 14
+      },
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&from=15&to=15",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "1471",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "f25d5c61fdd735639004d51ced9eeff4b17a7478bbe59f35b4c916f70ba86c28",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&from=15:1",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2794",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "ae3f64d1992a94f76110e9f4c4a73c1d85fe470ed1d26fe0b0fde58cb83c3b42",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "8c379f00c103c68b414f547fc087cea61e4c0acc7970a09eabe503c45cb1e839",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "dfa7d8ab896df0248e8fec98726d619dba05fca935a527221c542f2282d7a9b4",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "9593b6d480d2f7282b2f235d3d6fe0f12ec1a246c54a35e07f3b8075a40dd9d7",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "918972db88d431e50ab3f2241e9fb9e0f223582a81f9ab7c284d2cd5566fbc7d",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "3840b38a508cd10557a17d13715a39a33ca5eaf9929df309ca4e46a2411230d1",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "934504debad86fb674304227644020c5f397628c8af31f80b922b83a507be60f",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "ed8f73f5cf2be67283b912abaeee3f320f5c4fe9ecdcec1bce802291b0cf9adc",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "e5d50043dc148600659dfb524f83a2f49c7b09506862dfc7bafc99c6ddf90540",
+        "amount": "0",
+        "tx_slot": 15,
+        "block_time": 1655683215,
+        "block_height": 15
+      },
+      {
+        "tx_hash": "aa63dba84712b25b64f4adcaaf80a5788fdbabc94931457e3bd22cee26eedcd7",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b24397366b476c79346c9ec02908b5f1afc45e2559045035e8044892d54ba4ea",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "205a0c44bb81305e1366d78a9c22146ec63a2cfcc2088ad6b0fe4f452ce458d8",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "b4f8d5bb9cb269a56f2363a41870ff39125d28a10de8e1247dfde420223774f9",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a8f8a461dcdc9abc3b79a553b33c993b9227093d327bb7d43d08d4a4cf22230b",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "c15c5437336add53aa3916d060f15d8cb1046e311cd3596844c33ca826f43b84",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "87dfa1601f80c6027177933f0c79d675a23ec2e613d63eb799ac30fa75576c9e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "a1db05f4faaf5bb13afecbfaae0afcf8ba97e8eb53bf70f4013d960db948e260",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "ede1871e9ca790c50fa3636e3fa9f0b4420081de6ac68ee5c28648c6d6ca9d4e",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      },
+      {
+        "tx_hash": "8755bfbe5788acee46def4725d5a6a94d78641c7fd63e8e4de36913bdb578af6",
+        "amount": "0",
+        "tx_slot": 16,
+        "block_time": 1655683216,
+        "block_height": 16
+      }
+    ]
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&from=16&to=15",
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "111",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "error": "Bad Request",
+      "message": "Invalid (malformed or out of range) from/to parameter(s).",
+      "status_code": 400
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=asc&count=100&from=abc",
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "111",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "error": "Bad Request",
+      "message": "Invalid (malformed or out of range) from/to parameter(s).",
+      "status_code": 400
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?count=101",
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "86",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "error": "Bad Request",
+      "message": "querystring/count must be <= 100",
+      "status_code": 400
+    }
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?count=100&page=50",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "2",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:53 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": []
+  },
+  {
+    "path": "/accounts/stake_test1uqqgk3uyfkfgzt7rp50s4jdkl0ecw7xvh2wmsvf2myreq7gk25jt6/withdrawals?order=up",
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "114",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": {
+      "error": "Bad Request",
+      "message": "querystring/order must be equal to one of the allowed values",
+      "status_code": 400
+    }
+  },
+  {
+    "path": "/accounts/stake_test1ur74jw0m2cq7tdq7aenxmws5cznaz5w5ekdsu9nfrn36nfql52yh3/withdrawals",
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "*",
+      "content-length": "146",
+      "content-type": "application/json",
+      "date": "Mon, 19 Oct 2026 13:15:52 GMT",
+      "vary": "origin, access-control-request-method, access-control-request-headers"
+    },
+    "body": [
+      {
+        "tx_hash": "c5f7af9662e4f7882765cacc19157310fd05d46e237781735d6895db6980e6bd",
+        "amount": "0",
+        "tx_slot": 9,
+        "block_time": 1655683209,
+        "block_height": 9
+      }
+    ]
+  },
+  {
+    "path": "POST /tx/submit (never-seen stake 10, 0 ADA)",
+    "label": "never-seen stake 10, 0 ADA",
+    "txHash": "97c23c8c5f8b881767921fc617fd241a00ea5592f421fae58f2528931a4972a7",
+    "status": 200,
+    "body": "97c23c8c5f8b881767921fc617fd241a00ea5592f421fae58f2528931a4972a7"
+  }
+]

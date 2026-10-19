@@ -1,0 +1,13 @@
+thread '<unnamed>' (65428735) panicked at crates/cardano/src/model/accounts.rs:662:38:
+existing account
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+2026-10-19T13:15:54.781842Z ERROR stage{stage="emulator"}:execute: gasket::framework: x=error sending work unit through output port
+2026-10-19T13:15:54.782211Z ERROR stage{stage="emulator"}: gasket::runtime: stage should stop retry=Retry(None)
+2026-10-19T13:15:54.787393Z  INFO stage{stage="emulator"}: gasket::runtime: stage teardown ok
+2026-10-19T13:15:57.772177Z  WARN gasket::daemon: pipeline ended or stalled
+2026-10-19T13:15:57.772573Z  INFO gasket::daemon: dismissing stage stage="emulator" state=Dropped
+2026-10-19T13:15:57.772611Z  INFO gasket::daemon: dismissing stage stage="apply" state=Dropped
+2026-10-19T13:15:57.772619Z  INFO gasket::daemon: waiting for stages to end
+
+thread 'tokio-rt-worker' (65428691) panicked at /Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gasket-0.9.0/src/runtime.rs:368:14:
+called from outside thread: Any { .. }

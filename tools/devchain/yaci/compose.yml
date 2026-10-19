@@ -1,0 +1,26 @@
+# Local real-ledger devnet for the plan step 9b spike: Yaci DevKit 0.12.0 (docs/plans/2026-10-18-hardening-and-backend/
+# spike-withdrawal.md). Derived from the release's scripts/docker-compose.yml (yaci-devkit-0.12.0.zip, sha256
+# 28851e1a…261f03): only the yaci-cli service (no viewer), image pinned by digest, host ports moved to 1xxxx on
+# 127.0.0.1 so they never collide with another devnet, and every name prefixed cvg-9b.
+name: cvg-9b
+services:
+  yaci-cli:
+    image: bloxbean/yaci-cli:0.12.0@sha256:da19478266ec2ff2c82bf5211ca8a2f5f18692f871d50ebce1c86d9d48e2e38d
+    container_name: cvg-9b-yaci
+    labels:
+      cvg-9b: "spike"
+    ports:
+      - "127.0.0.1:18090:8090" # cardano-submit-api (the Haskell node)
+      - "127.0.0.1:18080:8080" # Yaci Store (Blockfrost-shaped API under /api/v1)
+      - "127.0.0.1:20000:10000" # cluster admin API (topup)
+    volumes:
+      - cvg-9b-yaci-data:/clusters
+      - ./node.properties:/app/config/node.properties
+    env_file:
+      - ./env
+      - ./node.properties
+    entrypoint: [sleep, infinity]
+volumes:
+  cvg-9b-yaci-data:
+    labels:
+      cvg-9b: "spike"
