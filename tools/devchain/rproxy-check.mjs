@@ -121,6 +121,8 @@ const checks = {
       ['GET', `/addresses/${owner}/utxos`, 404],
       ['GET', `/txs/${txHash}/%2e%2e/%2e%2e/genesis`, 404],
       ['GET', `/blocks/latest/../../genesis`, 404],
+      ['GET', `/blocks/latest%0A`, 404],
+      ['GET', `/txs/${txHash}%0A`, 404],
       ['POST', '/tx/submit', 404],
       ['POST', '/blocks/latest', 405],
       ['GET', '/blocks/latest?select=hash', 400],

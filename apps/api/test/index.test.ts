@@ -72,7 +72,7 @@ describe('no indexer forwarding (BR-01)', () => {
 });
 
 // BR-05: request content (query, body, headers, client address) never reaches a log. Workers Logs are disabled in
-// wrangler.jsonc (tests/api-config.test.mjs); here every console method is watched while requests carrying a marker
+// wrangler.jsonc (tests/core.test.mjs); here every console method is watched while requests carrying a marker
 // in each part go through the wired worker.
 describe('no request content in logs (BR-05)', () => {
   it('writes nothing to the console for any request', async () => {

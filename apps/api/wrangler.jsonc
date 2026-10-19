@@ -8,7 +8,7 @@
   "send_metrics": false,
   "dev": { "ip": "127.0.0.1", "port": 8787 },
   // BR-05: Workers Logs record every invocation with its request URL (query included); they stay off. Checked by
-  // tests/api-config.test.mjs.
+  // tests/core.test.mjs.
   "observability": { "enabled": false },
   "vars": {
     // The only browser origin allowed to call the backend (BR-04): the local `make dev` server.

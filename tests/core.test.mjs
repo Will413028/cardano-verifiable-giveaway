@@ -896,7 +896,11 @@ const nginxMap = (source, variable) => {
 const nginxLookup = (entries, value) => {
   const exact = entries.find(([key]) => key === value && key !== 'default' && !key.startsWith('~'));
   if (exact) return exact[1];
-  const regex = entries.find(([key]) => key.startsWith('~') && new RegExp(key.slice(1)).test(value));
+  // nginx regexes are PCRE: $ also matches before a final newline (JS's does not), \z only at the very end (no JS
+  // spelling). Translate both so this lookup answers what nginx answers.
+  const pcre = (source) =>
+    new RegExp(source.replace(/(?<!\\)\$/g, '(?=\\n?(?![\\s\\S]))').replaceAll('\\z', '(?![\\s\\S])'));
+  const regex = entries.find(([key]) => key.startsWith('~') && pcre(key.slice(1)).test(value));
   return regex ? regex[1] : entries.find(([key]) => key === 'default')?.[1];
 };
 const proxyRoute = (path) => nginxLookup(nginxMap('$uri', '$route'), path);
@@ -942,6 +946,9 @@ test('reverse proxy allowlist admits every read the verifier and the page make, 
     `/txs/${'ab'.repeat(32)}/redeemers`,
     `/txs/${'AB'.repeat(32)}`,
     '/blocks/latest/txs',
+    // A decoded trailing newline (%0A): PCRE's $ would match before it.
+    '/blocks/latest\n',
+    `/txs/${'ab'.repeat(32)}\n`,
     // Mainnet identifiers: the project Dolos is preprod only.
     '/addresses/addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x/transactions',
     `/accounts/stake1${'q'.repeat(53)}/addresses`,
