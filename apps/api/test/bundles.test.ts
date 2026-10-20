@@ -4,7 +4,7 @@ import { createScheduledController, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CLAIM_STALE, objectKey, OWNER_QUOTA, RECONCILE_LIMIT, release, takedown } from '../src/bundles.ts';
 import worker, { type Env, handle } from '../src/index.ts';
-import { addMonths, HOSTING_MONTHS } from '../src/retention.ts';
+import { addMonths, firstHostingKeepUntil, HOSTING_MONTHS, hostingExpiry, roundExpiry } from '../src/retention.ts';
 import fixture from './chain-fixture.json';
 
 // The upload gate against the real BlockfrostChain and real local D1 and R2 (Miniflare). The indexer answers are
@@ -315,8 +315,38 @@ describe('retention base time = min(round time, first hosting time) (BR-08, plan
   it('a record removed before its expiry and uploaded again keeps the expiry of its first hosting', async () => {
     const first = addMonths(T, -36);
     const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, first));
-    expect(await release(bindings, txs.organizer, addMonths(first, 1))).toBe(true);
-    expect(await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(first, 2)))).toBe(expiresAt);
+    // Twice: a second hosting must not replace the first hosting time either.
+    for (const month of [1, 3]) {
+      expect(await release(bindings, txs.organizer, addMonths(first, month))).toBe(true);
+      expect(await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(first, month + 1)))).toBe(expiresAt);
+    }
+  });
+  it('a refused upload does not start the clock: the first hosting is the first upload that made a record', async () => {
+    const refusedAt = addMonths(T, -36);
+    for (let i = 0; i < OWNER_QUOTA; i++)
+      expect((await put(txs[`quota${i}` as keyof typeof txs], bundles.quota, refusedAt)).status).toBe(201);
+    expect((await put(txs.quota20, bundles.quota, refusedAt)).status).toBe(403);
+    const hostedAt = addMonths(T, -30);
+    await release(bindings, txs.quota0, hostedAt);
+    expect(await hostedUntil(await put(txs.quota20, bundles.quota, hostedAt))).toBe(
+      addMonths(hostedAt, HOSTING_MONTHS),
+    );
+  });
+  it('the first hosting time is kept until no expiry it gives can be open, also across a month-end (addMonths is not monotonic)', () => {
+    // Round time 2028-03-01T00:00Z, first hosting an hour earlier, 2028-02-29T23:00Z.
+    const round = 47_559_412;
+    const firstHosted = Date.UTC(2028, 1, 29, 23) / 1000;
+    expect(hostingExpiry(round, firstHosted)).toBe(Date.UTC(2029, 2, 1, 23) / 1000);
+    expect(roundExpiry(round)).toBe(Date.UTC(2029, 2, 1, 0) / 1000);
+    expect(firstHostingKeepUntil(round, firstHosted)).toBe(Date.UTC(2029, 2, 1, 23) / 1000);
+    // Every first hosting in the 3 days before rounds at the turn of each month of 2028: kept at least until its expiry.
+    for (let month = 0; month < 12; month++) {
+      const roundAtMonth = Math.ceil((Date.UTC(2028, month, 1) / 1000 - 1_692_803_367) / 3) + 1;
+      for (let back = 0; back <= 3 * 86_400; back += 1_800) {
+        const at = Date.UTC(2028, month, 1) / 1000 - back;
+        expect(firstHostingKeepUntil(roundAtMonth, at)).toBeGreaterThanOrEqual(hostingExpiry(roundAtMonth, at));
+      }
+    }
   });
   it('the first hosting time is kept until 12 months after the round, then swept', async () => {
     const firstHosting = async () =>

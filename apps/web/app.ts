@@ -276,14 +276,17 @@ async function reveal(state: AppState, chains: Chains) {
 }
 
 // Two downloads (plan step 10): the canonical bundle bytes, which the CLI's bundle mode and any host serve as they are,
-// and the announcement or proof. Once the backend hosts the bundle, its link (txHash + bundle hash) replaces the inline
-// one: it works until the hosting ends, which is before the round when the round is more than 12 months away.
+// and the announcement or proof. Once the backend hosts the bundle past the round, its link (txHash + bundle hash)
+// replaces the inline one. A hosting that ends before the round (a round more than 12 months after the first hosting,
+// ADR Amendment 5) would leave that link dead when participants need it, so the page keeps offering the inline link (or
+// none, with the guidance to publish the bundle file) and says why (hostedReach).
 function share(state: AppState, artifact: Artifact) {
   state.draw.shared = artifact;
   const hosted = state.draw.hosted;
-  const link = hosted
-    ? bundleShareLink(location.href, hosted.link)
-    : inlineShareLink(location.href, encodeInline(artifact));
+  const link =
+    hosted && hosted.expiresAt > roundTime(artifact.bundle.drand.round)
+      ? bundleShareLink(location.href, hosted.link)
+      : inlineShareLink(location.href, encodeInline(artifact));
   revokeDownloads(state);
   const json = (body: BlobPart) => URL.createObjectURL(new Blob([body], { type: 'application/json' }));
   state.downloadUrl = json(JSON.stringify(artifact, null, 2));

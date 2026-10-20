@@ -428,3 +428,35 @@ await mustFailApi(
   'an expired record uploaded again before its round gets no new period',
   bundles,
 );
+// Step 10b round-2 review: the first hosting time is written only by an upload that made a record, never replaced,
+// and kept until no expiry it gives can be open. One guard per mutation.
+await mustFailApi(
+  'Recording the first hosting time for an upload that made no record',
+  (text) =>
+    text.replace(
+      'SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM hosted WHERE tx_hash = ?1 AND hosted_at = ?2)',
+      'SELECT ?1, ?2, ?3',
+    ),
+  'a refused upload does not start the clock',
+  bundles,
+);
+await mustFailApi(
+  'Replacing the first hosting time on a later hosting',
+  (text) =>
+    text.replace(
+      '       ON CONFLICT (tx_hash) DO NOTHING`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+    ),
+  'keeps the expiry of its first hosting',
+  bundles,
+);
+await mustFailApi(
+  'Keeping the first hosting time only until 12 months after the round',
+  (text) =>
+    text.replace(
+      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted));',
+      'return byRound;',
+    ),
+  'also across a month-end',
+  `${root}apps/api/src/retention.ts`,
+);

@@ -525,7 +525,9 @@ try {
     assert.equal(uploads[0].url, `${API}/bundles/${txHash}`);
     assert.equal(await sha256(new Uint8Array(uploads[0].body)), committedHash);
     const link = new URL(await target.locator('#share-link').inputValue());
-    assert.deepEqual(Object.fromEntries(link.searchParams), { tx: txHash, bundle: committedHash });
+    if (pastRound) assert.deepEqual(Object.fromEntries(link.searchParams), { tx: txHash, bundle: committedHash });
+    // A hosted link that dies before the round is not offered: the inline announcement link stays.
+    else assert.ok(!link.searchParams.has('tx') && link.hash.startsWith('#proof='), link.href);
     assert.equal(await target.locator('#host').isVisible(), false);
     const status = await target.locator('#draw-status').textContent();
     const note = await target.locator('#result-note').textContent();
@@ -534,7 +536,7 @@ try {
       assert.match(note, /hosted until .*shows the winners once the round arrives/);
     } else {
       for (const text of [status, note]) {
-        assert.match(text, /hosted only until .*before the round .*stops working then.*source/);
+        assert.match(text, /hosted only until .*before the round .*stop working then, so it is not offered.*source/);
         assert.doesNotMatch(text, /shows the winners/);
       }
     }

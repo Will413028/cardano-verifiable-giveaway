@@ -8,7 +8,7 @@ import {
   sha256,
   validateBundle,
 } from '@giveaway/protocol';
-import { hostingExpiry, roundExpiry, SWEEP_LIMIT } from './retention.ts';
+import { firstHostingKeepUntil, hostingExpiry, SWEEP_LIMIT } from './retention.ts';
 
 // Bundle hosting (plan step 10; BR-06, BR-07, BR-08, BR-17; invariant B4; ADR 2026-10-18-wallet-auth-and-bounded-
 // retention with Amendment 2). Records live in D1 (migrations/0001_bundle_hosting.sql), bytes in R2.
@@ -255,7 +255,7 @@ export async function upload(
       `INSERT INTO first_hosting (tx_hash, first_hosted_at, keep_until)
        SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM hosted WHERE tx_hash = ?1 AND hosted_at = ?2)
        ON CONFLICT (tx_hash) DO NOTHING`,
-    ).bind(txHash, now, roundExpiry(round)),
+    ).bind(txHash, now, firstHostingKeepUntil(round, now)),
   ]);
   if (inserted.meta.changes !== 1) {
     if (await removed(env, bundleHash))
@@ -362,8 +362,9 @@ export async function sweep(env: HostingEnv, now: number): Promise<number> {
     results.map((row) => row.bundle_hash),
     now,
   );
-  // A first hosting time stops mattering 12 months after the round: from then on the round time alone ends any
-  // hosting period of that commitment (ADR Amendment 5), so deleting the row reopens nothing.
+  // A first hosting time stops mattering at keep_until (retention.ts `firstHostingKeepUntil`): no expiry it can produce
+  // lies later, and an upload without it counts from the round time, then over 12 months ago (ADR Amendment 5), so
+  // deleting the row reopens nothing.
   await env.DB.prepare(
     'DELETE FROM first_hosting WHERE tx_hash IN (SELECT tx_hash FROM first_hosting WHERE keep_until <= ? LIMIT ?)',
   )

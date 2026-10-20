@@ -24,11 +24,21 @@ export function retentionBase(round: number, uploadedAt: number): number {
 export function hostingExpiry(round: number, uploadedAt: number): number {
   return addMonths(retentionBase(round, uploadedAt), HOSTING_MONTHS);
 }
-// 12 months after the round time: no hosting period of the draw lasts past it. Null when no date represents it (a
-// round up to Number.MAX_SAFE_INTEGER passes validateBundle; Date covers ±8.64e15 ms).
+// 12 months after the round time. Null when no date represents it (a round up to Number.MAX_SAFE_INTEGER passes
+// validateBundle; Date covers ±8.64e15 ms).
 export function roundExpiry(round: number): number | null {
   const at = addMonths(roundTime(round), HOSTING_MONTHS);
   return Number.isSafeInteger(at) ? at : null;
+}
+// Until when the first hosting time of a commitment must be kept (first_hosting.keep_until): no expiry it can still
+// produce, hostingExpiry(round, firstHosted), lies after it, and from then on an upload without the row is expired too
+// (its base is the round time, which is then more than 12 months ago). Not simply roundExpiry: addMonths is not
+// monotonic (2028-02-29T23:00Z + 12 months = 2029-03-01T23:00Z, after 2028-03-01T00:00Z + 12 months =
+// 2029-03-01T00:00Z), so a first hosting just before a round at a month boundary can expire after roundExpiry.
+// Null (kept for good) when the round has no date.
+export function firstHostingKeepUntil(round: number, firstHosted: number): number | null {
+  const byRound = roundExpiry(round);
+  return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted));
 }
 // What one Cron run removes at most (D1 deletes in one statement, R2 deletes up to 1,000 keys per call); the rest waits
 // for the next run, and reads refuse an expired record meanwhile (`expires_at` is checked on read).
