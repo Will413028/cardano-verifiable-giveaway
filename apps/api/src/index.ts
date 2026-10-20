@@ -70,8 +70,9 @@ async function limited(request: Request, env: Env): Promise<boolean> {
 // The limiter's key for a client address: an IPv4 address as it is, an IPv6 address by its /64 prefix (review M1: one
 // subscriber usually holds a whole /64, so keying on the full address would hand out a fresh bucket per address).
 export function clientKey(address: string | null): string {
-  if (!address) return 'unknown';
-  const text = address.trim().toLowerCase();
+  const text = (address ?? '').trim().toLowerCase();
+  // Anything that is not an IPv4 or IPv6 address shares one bucket rather than minting keys.
+  if (!/^(?:[0-9.]{7,15}|[0-9a-f:.]{2,45})$/.test(text)) return 'unknown';
   if (!text.includes(':')) return text;
   // An IPv4 client written as IPv6 (::ffff:a.b.c.d) is keyed by its IPv4 address.
   if (text.includes('.')) return text.slice(text.lastIndexOf(':') + 1);

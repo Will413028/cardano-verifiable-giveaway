@@ -227,9 +227,6 @@ export async function upload(
   const { owner, committed } = await commitment(chain, txHash);
   // Only the commitment's organizer hosts it, so only the organizer starts its retention clock (ADR Amendment 5).
   requireOwner(signed, owner);
-  // An expired record of this commitment makes way for the new one; only after the owner check (review L6), though
-  // removing an expired record changes nothing a reader sees.
-  if (existing) await release(env, txHash, now);
   // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention may be counted
   // from is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
   if (!matchesCommitment(bundle, bundleHash, committed))
@@ -248,6 +245,8 @@ export async function upload(
     .first<{ first_hosted_at: number; extensions: number }>();
   const firstHosted = first?.first_hosted_at ?? now;
   const expiresAt = hostingExpiry(round, firstHosted, first?.extensions ?? 0);
+  // A record of this commitment that has expired but is not swept yet always ends here too: its stored expiry is this
+  // one (same round, first hosting and extensions), so no expired record is ever replaced (review round 3, L6).
   if (expiresAt <= now)
     throw new HttpError(
       410,

@@ -8,6 +8,13 @@ CREATE TABLE used_nonces (
   expires_at INTEGER NOT NULL
 ) STRICT;
 CREATE INDEX used_nonces_by_expiry ON used_nonces (expires_at);
+-- The sweep watermark: every use record with expires_at at or below it may have been deleted, so no use record at or
+-- below it is accepted again (apps/api/src/auth.ts `useNonce`, `sweepNonces`). One row.
+CREATE TABLE nonce_sweep (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  swept_through INTEGER NOT NULL
+) STRICT;
+INSERT INTO nonce_sweep (id, swept_through) VALUES (1, 0);
 -- Owner extensions of a commitment's hosting (12 months each, at most 2: base + 36 months, PD4), kept with its first
 -- hosting time, so a deletion and a later upload keep them like they keep the base time.
 ALTER TABLE first_hosting ADD COLUMN extensions INTEGER NOT NULL DEFAULT 0 CHECK (extensions BETWEEN 0 AND 2);

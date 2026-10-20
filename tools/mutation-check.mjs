@@ -579,3 +579,32 @@ await mustFail(
   'flagged as hashed',
   `${root}tests/cose.test.mjs`,
 );
+// Step 11 review round 3: the use record refuses anything at or below the sweep watermark (a replay verified inside
+// its window but recorded after the sweep), the key length, and the limiter key normalization. One guard each.
+for (const testName of [
+  'a replayed extension verified inside its window but recorded after the sweep',
+  'a replayed upload whose body stalls across the sweep',
+])
+  await mustFailApi(
+    `Recording a nonce use below the sweep watermark (${testName.split(' ').slice(0, 3).join(' ')})`,
+    (text) =>
+      text.replace('SELECT ?1, ?2 WHERE ?2 > (SELECT swept_through FROM nonce_sweep WHERE id = 1)', 'SELECT ?1, ?2'),
+    testName,
+    auth,
+  );
+await mustFailApi(
+  'Accepting a NONCE_KEY shorter than 32 characters',
+  (text) => text.replace('secret.length < 32', 'secret.length < 1'),
+  'refuses a NONCE_KEY shorter than 32 characters',
+  auth,
+);
+for (const [name, from, to] of [
+  ['Not lowercasing the client address', "(address ?? '').trim().toLowerCase()", "(address ?? '').trim()"],
+  [
+    'Not keying an IPv4-mapped IPv6 client by its IPv4 address',
+    "  if (text.includes('.')) return text.slice(text.lastIndexOf(':') + 1);\n",
+    '',
+  ],
+  ['Keying a malformed client address as itself', '/^(?:[0-9.]{7,15}|[0-9a-f:.]{2,45})$/.test(text)', 'true'],
+])
+  await mustFailApi(name, (text) => text.replace(from, to), 'normalizes the client address');

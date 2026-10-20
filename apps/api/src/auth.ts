@@ -139,10 +139,19 @@ export function requireOwner(signed: Signed, owner: string): void {
 // Records the one-time use of the message's nonce, after the signature and the owner were checked and before the
 // operation runs. One statement under the primary key, so two requests with the same message cannot both pass. A
 // failure of the operation afterwards costs the owner a new signature, nothing else.
+//
+// The window was checked against the time the request started, and this insert comes later (after D1 reads, and for
+// a hosting after the body and the chain reads), so a request verified just inside the window can reach it after the
+// Cron sweep removed the earlier use of the same message (step 11 review round 3, reproduced in Miniflare). The
+// insert therefore also refuses any message whose window ends at or before the sweep watermark (`nonce_sweep`): the
+// sweep raises the watermark and deletes up to it in one transaction, so a row it may have deleted can never be
+// inserted again. The watermark is the sweep's own cutoff, not a clock, so Worker and D1 clocks need not agree.
 export async function useNonce(db: D1Database, op: OwnerOperation): Promise<void> {
   const recorded = await db
     .prepare(
-      'INSERT INTO used_nonces (nonce, expires_at) VALUES (?1, ?2) ON CONFLICT (nonce) DO NOTHING RETURNING nonce',
+      `INSERT INTO used_nonces (nonce, expires_at)
+       SELECT ?1, ?2 WHERE ?2 > (SELECT swept_through FROM nonce_sweep WHERE id = 1)
+       ON CONFLICT (nonce) DO NOTHING RETURNING nonce`,
     )
     .bind(op.nonce, op.issuedAt + OWNER_OPERATION_VALIDITY)
     .first();
@@ -150,8 +159,16 @@ export async function useNonce(db: D1Database, op: OwnerOperation): Promise<void
     throw new HttpError(409, 'This signed message was already used (one-time nonce); sign the operation again');
 }
 
-// The Cron sweep: every use record past its window, in one statement (no per-run bound: rows can only arrive from
-// authenticated owner operations, and none outlives the time check).
+// Use records are kept this long past their window before the sweep may delete them (seconds): a request verified
+// inside the window and slower than this to reach `useNonce` is refused (409; the owner signs again) rather than
+// accepted, so the margin only spares slow legitimate requests that refusal.
+export const NONCE_SWEEP_MARGIN = 3600;
+// The Cron sweep: raises the watermark, then deletes every use record at or below it, in one transaction and with no
+// per-run bound (rows can only arrive from authenticated owner operations).
 export async function sweepNonces(db: D1Database, now: number): Promise<void> {
-  await db.prepare('DELETE FROM used_nonces WHERE expires_at <= ?').bind(now).run();
+  const cutoff = now - NONCE_SWEEP_MARGIN;
+  await db.batch([
+    db.prepare('UPDATE nonce_sweep SET swept_through = max(swept_through, ?) WHERE id = 1').bind(cutoff),
+    db.prepare('DELETE FROM used_nonces WHERE expires_at <= (SELECT swept_through FROM nonce_sweep WHERE id = 1)'),
+  ]);
 }

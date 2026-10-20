@@ -2,9 +2,10 @@ import { BlockfrostChain, decodeBech32 } from '@giveaway/chain';
 import { sha256 } from '@giveaway/protocol';
 import { createScheduledController, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { NONCE_SWEEP_MARGIN } from '../src/auth.ts';
 import { objectKey } from '../src/bundles.ts';
 import { extend as extendHosting } from '../src/owner.ts';
-import worker, { type Env, handle } from '../src/index.ts';
+import worker, { clientKey, type Env, handle } from '../src/index.ts';
 import { addMonths, HOSTING_MONTHS } from '../src/retention.ts';
 import fixture from './chain-fixture.json';
 import { authorization, issuedNonce, rewardAddress, SEEDS, secretOf, type Who } from './sign.ts';
@@ -83,6 +84,7 @@ beforeEach(async () => {
       bindings.DB.prepare(`DELETE FROM ${table}`),
     ),
   );
+  await bindings.DB.prepare('UPDATE nonce_sweep SET swept_through = 0').run();
   const listed = await bindings.BUNDLES.list();
   if (listed.objects.length) await bindings.BUNDLES.delete(listed.objects.map((o) => o.key));
 });
@@ -95,6 +97,15 @@ describe('nonce endpoint (BR-09, B3)', () => {
     expect(Number.parseInt(one.nonce.slice(32, 44), 16)).toBe(T);
     expect(two.nonce).not.toBe(one.nonce);
     expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n')).toBe(0);
+  });
+
+  it('refuses a NONCE_KEY shorter than 32 characters', async () => {
+    const short = { ...bindings, NONCE_KEY: 'x'.repeat(31) } as Env;
+    const response = await handle(new Request('http://api.test/nonce', { headers: { Origin: PAGE } }), short, {
+      now: () => T,
+      chain,
+    });
+    expect(await answer(response)).toEqual([503, 'Owner operations are not configured (no NONCE_KEY)']);
   });
 
   it('refuses to issue nonces or authorize owner operations without NONCE_KEY', async () => {
@@ -346,10 +357,67 @@ describe('signed owner operations (BR-09, BR-13, BR-17)', () => {
       .bind(EARLY + 300)
       .run();
     expect(await count()).toBe(1501);
-    await worker.scheduled(createScheduledController({ scheduledTime: (EARLY + 299) * 1000 }), bindings);
+    // Kept NONCE_SWEEP_MARGIN past the window, then all deleted in one run.
+    await worker.scheduled(
+      createScheduledController({ scheduledTime: (EARLY + 300 + NONCE_SWEEP_MARGIN - 1) * 1000 }),
+      bindings,
+    );
     expect(await count()).toBe(1501);
-    await worker.scheduled(createScheduledController({ scheduledTime: (EARLY + 300) * 1000 }), bindings);
+    await worker.scheduled(
+      createScheduledController({ scheduledTime: (EARLY + 300 + NONCE_SWEEP_MARGIN) * 1000 }),
+      bindings,
+    );
     expect(await count()).toBe(0);
+  });
+
+  // Review round 3 (MED, reproduced in Miniflare): the window is checked when the request starts and the use is
+  // recorded later, so a replay verified just inside the window could be recorded after the sweep removed the first use.
+  const sweepPast = (issued: number) =>
+    worker.scheduled(
+      createScheduledController({ scheduledTime: (issued + 300 + NONCE_SWEEP_MARGIN) * 1000 }),
+      bindings,
+    );
+
+  it('a replayed extension verified inside its window but recorded after the sweep is refused', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const once = await sign('extend', EARLY);
+    expect((await extend(EARLY + 10, once)).status).toBe(200);
+    await sweepPast(EARLY);
+    expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n')).toBe(0);
+    // The request's clock still reads inside the window: only the sweep watermark refuses it.
+    expect(await answer(await extend(EARLY + 299, once))).toEqual([
+      409,
+      'This signed message was already used (one-time nonce); sign the operation again',
+    ]);
+    expect(await firstHosting()).toEqual({ first_hosted_at: EARLY, extensions: 1 });
+  });
+
+  it('a replayed upload whose body stalls across the sweep does not re-create a hosting the owner deleted', async () => {
+    const upload = await sign('host', EARLY);
+    expect((await host(EARLY + 5, upload)).status).toBe(201);
+    expect((await remove(EARLY + 20)).status).toBe(200);
+    expect((await host(EARLY + 30, upload)).status).toBe(409);
+    let resume!: () => void;
+    const gate = new Promise<void>((done) => {
+      resume = done;
+    });
+    const bytes = new TextEncoder().encode(bundles.valid);
+    const body = new ReadableStream({
+      async pull(controller) {
+        await gate;
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
+    // Verified at EARLY + 299, inside the window; the body arrives only after the Cron sweep.
+    const pending = request('PUT', `/bundles/${txs.organizer}`, EARLY + 299, { auth: upload, body });
+    await new Promise((done) => setTimeout(done, 50));
+    // Past the window of every message so far (the deletion's too).
+    await sweepPast(EARLY + 20);
+    expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n')).toBe(0);
+    resume();
+    expect((await pending).status).toBe(409);
+    expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM hosted').first('n')).toBe(0);
   });
 });
 
@@ -414,6 +482,16 @@ describe('per-address rate limit of the write routes', () => {
 });
 
 describe('rate limit key: IPv4 address or IPv6 /64 (review M1)', () => {
+  it('normalizes the client address (review round 3)', () => {
+    expect(clientKey('203.0.113.7')).toBe('203.0.113.7');
+    expect(clientKey('::ffff:1.2.3.4')).toBe('1.2.3.4');
+    expect(clientKey('::FFFF:1.2.3.4')).toBe('1.2.3.4');
+    expect(clientKey('2001:DB8:A:b::1')).toBe('2001:0db8:000a:000b::/64');
+    expect(clientKey('2001:db8:a:b:ffff:1:2:3')).toBe('2001:0db8:000a:000b::/64');
+    for (const bad of [null, '', 'not an address', '203.0.113.7, 198.51.100.1', `${'a'.repeat(60)}`])
+      expect([bad, clientKey(bad)]).toEqual([bad, 'unknown']);
+  });
+
   it('counts every address of one IPv6 /64 together, and another /64 apart', { timeout: 20000 }, async () => {
     const second = (Date.now() / 1000) % 60;
     if (second > 50) await new Promise((resolve) => setTimeout(resolve, (61 - second) * 1000));

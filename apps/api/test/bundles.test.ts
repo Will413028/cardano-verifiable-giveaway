@@ -105,6 +105,7 @@ beforeEach(async () => {
     bindings.DB.prepare('DELETE FROM collecting'),
     bindings.DB.prepare('DELETE FROM first_hosting'),
     bindings.DB.prepare('DELETE FROM used_nonces'),
+    bindings.DB.prepare('UPDATE nonce_sweep SET swept_through = 0'),
     bindings.DB.prepare("UPDATE reconcile_cursor SET after = ''"),
   ]);
   const listed = await bindings.BUNDLES.list();
