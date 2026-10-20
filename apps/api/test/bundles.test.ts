@@ -74,6 +74,7 @@ beforeEach(async () => {
     bindings.DB.prepare('DELETE FROM hosted'),
     bindings.DB.prepare('DELETE FROM tombstones'),
     bindings.DB.prepare('DELETE FROM collecting'),
+    bindings.DB.prepare('DELETE FROM first_hosting'),
     bindings.DB.prepare("UPDATE reconcile_cursor SET after = ''"),
   ]);
   const listed = await bindings.BUNDLES.list();
@@ -274,7 +275,7 @@ describe('retention (BR-08): expires_at on read, Cron sweep (time injected)', ()
   });
 });
 
-describe('retention base time = min(round time, upload time) (BR-08, plan step 10b, ADR Amendment 5)', () => {
+describe('retention base time = min(round time, first hosting time) (BR-08, plan step 10b, ADR Amendment 5)', () => {
   const hostedUntil = async (response: Response) => {
     expect(response.status).toBe(201);
     return ((await response.json()) as { expiresAt: number }).expiresAt;
@@ -296,6 +297,39 @@ describe('retention base time = min(round time, upload time) (BR-08, plan step 1
   it('a round before the upload: the bundle is hosted until 12 months after the round', async () => {
     const uploaded = addMonths(T, 1);
     expect(await hostedUntil(await put(txs.organizer, bundles.valid, uploaded))).toBe(addMonths(T, HOSTING_MONTHS));
+  });
+  it('an expired record uploaded again before its round gets no new period: 410, nothing stored', async () => {
+    const first = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, first));
+    await cron(expiresAt);
+    expect(await records()).toEqual([]);
+    // Two years before the round, a year after the first hosting: counting from this upload would host it again.
+    const again = await put(txs.organizer, bundles.valid, addMonths(first, 13));
+    expect([again.status, await again.text()]).toEqual([
+      410,
+      'The hosting period of this draw has ended (12 months after its round or its first hosting, whichever came first)',
+    ]);
+    expect(await records()).toEqual([]);
+    expect(await stored(VALID_HASH)).toBe(false);
+  });
+  it('a record removed before its expiry and uploaded again keeps the expiry of its first hosting', async () => {
+    const first = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, first));
+    expect(await release(bindings, txs.organizer, addMonths(first, 1))).toBe(true);
+    expect(await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(first, 2)))).toBe(expiresAt);
+  });
+  it('the first hosting time is kept until 12 months after the round, then swept', async () => {
+    const firstHosting = async () =>
+      (
+        await bindings.DB.prepare('SELECT tx_hash FROM first_hosting ORDER BY tx_hash').all<{ tx_hash: string }>()
+      ).results.map((r) => r.tx_hash);
+    await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(T, -36)));
+    await hostedUntil(await put(txs.farRound, bundles.farRound));
+    await cron(addMonths(T, HOSTING_MONTHS) - 1);
+    expect(await firstHosting()).toEqual([txs.organizer, txs.farRound].sort());
+    // From 12 months after the round the round time alone ends any period; a round no date represents is kept.
+    await cron(addMonths(T, HOSTING_MONTHS));
+    expect(await firstHosting()).toEqual([txs.farRound]);
   });
 });
 

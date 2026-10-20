@@ -1,4 +1,4 @@
-import type { Bundle } from '@giveaway/protocol';
+import { type Bundle, roundTime } from '@giveaway/protocol';
 import { type CheckResult, UNIQUENESS_CHECK, type Verdict } from '@giveaway/verifier';
 import type { Artifact, Tip } from './services.ts';
 
@@ -92,6 +92,13 @@ export function renderWinners(labels: readonly string[]) {
   renderLabels('winners', labels);
 }
 
+// What a hosted link covers: the backend keeps a bundle 12 months from the earlier of its round and its first hosting
+// (ADR 2026-10-18-wallet-auth-and-bounded-retention, Amendment 5), so a round further away than that outlives the link.
+export function hostedReach(hostedUntil: number, round: number): string {
+  return hostedUntil > roundTime(round)
+    ? `The bundle is hosted until ${localTime(hostedUntil)}, so the link shows the winners once the round arrives.`
+    : `The bundle is hosted only until ${localTime(hostedUntil)}, before the round (${localTime(roundTime(round))}): the link stops working then, so publish the downloaded bundle file at an HTTPS URL and share that link (source) instead.`;
+}
 export function renderShare(
   artifact: Artifact,
   link: string,
@@ -108,7 +115,7 @@ export function renderShare(
       'result-note',
       hostedUntil === undefined
         ? 'Publish this commitment link or hosted announcement before the round. A result bundle will be available after opening.'
-        : `Publish this verification link before the round; it shows the winners once the round arrives. The bundle is hosted until ${localTime(hostedUntil)}: keep the downloaded bundle file.`,
+        : `Publish this verification link before the round. ${hostedReach(hostedUntil, artifact.bundle.drand.round)} Keep the downloaded bundle file.`,
     );
   }
   const name = artifact.format === 'giveaway-pending-2' ? 'announcement' : 'proof';

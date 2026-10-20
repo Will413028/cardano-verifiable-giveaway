@@ -278,6 +278,22 @@ await mustFail(
   'label normalization runs no backtracking pattern',
   `${root}tests/email.test.mjs`,
 );
+// Step 10b: emailShaped must give the former pattern's answers; each guard changed alone fails the differential test.
+for (const [name, from, to] of [
+  ['an "@" in first position', 'if (at < 1 ||', 'if (at < 0 ||'],
+  ['a second "@"', 'label.includes("@", at + 1) || ', ''],
+  ['whitespace', ' || /\\s/.test(label)) return false;', ') return false;'],
+  ['non-ASCII whitespace', '/\\s/.test(label)', '/[ \\t\\n\\r\\f\\v]/.test(label)'],
+  ['a "." first in the domain', 'label.indexOf(".", at + 2)', 'label.indexOf(".", at + 1)'],
+  ['a "." last in the label', 'dot < label.length - 1', 'dot < label.length'],
+])
+  await mustFail(
+    `emailShaped accepting ${name} differently from the former pattern`,
+    library,
+    (text) => text.replace(from, to),
+    'emailShaped agrees with the former email pattern',
+    `${root}tests/email.test.mjs`,
+  );
 // The reverse proxy in front of the project Dolos (plan step 9, PD8 A): each guard of the committed config, removed
 // alone, fails its static check. tools/devchain/rproxy-check.mjs removes the same guards in a live nginx.
 const proxyConfig = `${root}deploy/dolos-proxy/nginx.conf`;
@@ -405,4 +421,10 @@ await mustFailApi(
   (text) => text.replace('return Math.min(roundTime(round), uploadedAt);', 'return roundTime(round);'),
   'a round far after the upload',
   `${root}apps/api/src/retention.ts`,
+);
+await mustFailApi(
+  'Counting retention from each upload instead of the first hosting',
+  (text) => text.replace('const firstHosted = first?.first_hosted_at ?? now;', 'const firstHosted = now;'),
+  'an expired record uploaded again before its round gets no new period',
+  bundles,
 );

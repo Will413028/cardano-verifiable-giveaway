@@ -1,16 +1,21 @@
 // PD2: CPU time of the upload gate as a function of the entrant count n, for each label construction, measured in the
 // local Workers runtime (workerd, started by Wrangler's unstable_dev; nothing is deployed). Run from apps/api:
 //   node bench/cpu.mjs [--out bench/cpu-report.json] [--n 1,10,100,...] [--budget 4000] [--min-reps 10]
-// Each (construction, n) is sent max(min-reps, ceil(budget / n)) times, so small bundles get enough repetitions for the
-// process reading's 10 ms resolution. Readings:
+// Each (construction, n) is sent max(min-reps, ceil(budget / n)) times. The process reading's 10 ms resolution then
+// becomes 10 ms / repetitions per request: 0.005 ms at n = 1 with the default budget, but 1 ms once n reaches
+// budget / min-reps (n >= 200 at budget 2000), where the per-request process numbers are whole milliseconds. Readings:
 //   - process: the CPU time (user + system, `ps -o cputime`, 10 ms resolution) of the workerd processes this script
 //     started, over the repetitions, divided by their number. It also counts receiving the body, the local HTTP layer
-//     and concurrent GC threads, so it is an upper bound for the CPU of the same work, and is not inflated by other
-//     processes. `/noop` (receive the body, answer) gives that per-request overhead alone;
+//     and concurrent GC threads, so it is an upper bound for the CPU of the same work. It does not count other
+//     processes' time, but it is not independent of them: work the email rewrite did not change measured 1.3-2.2x
+//     higher at load average ~59 than at ~10 (empty request 3.6 against 1.61 ms, chain reads 7.9 against 4.78 ms, CJK
+//     n = 10,000 94 against 72 ms; cpu-report-before-email-rewrite.json against cpu-report.json), likely from shared caches,
+//     core scheduling and frequency (inferred). The load average is recorded in each report. `/noop` (receive the
+//     body, answer) gives the per-request overhead alone;
 //   - in-isolate: performance.now() around the work inside the Worker (local workerd lets it advance during
-//     computation; on Cloudflare it would not, so this Worker is local-only). It is wall time: when the machine is
-//     busy with other processes it includes their preemption, so its maximum is noisy; the minimum is the reading
-//     least disturbed by them.
+//     computation, in whole milliseconds; on Cloudflare it would not, so this Worker is local-only). Sub-millisecond
+//     work is read as a batch of k runs in one request divided by k. It is wall time: when the machine is busy with
+//     other processes it includes their preemption, so the least of five batches is the reading least disturbed.
 // Neither is Cloudflare's billed CPU time: that is measured on Cloudflare's hardware and runtime build; the numbers
 // here are from this machine (recorded in the report).
 import { execFileSync } from 'node:child_process';

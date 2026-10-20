@@ -45,6 +45,7 @@ import {
   el,
   input,
   isDemo,
+  hostedReach,
   localTime,
   lockControls,
   renderHostedShare,
@@ -276,7 +277,7 @@ async function reveal(state: AppState, chains: Chains) {
 
 // Two downloads (plan step 10): the canonical bundle bytes, which the CLI's bundle mode and any host serve as they are,
 // and the announcement or proof. Once the backend hosts the bundle, its link (txHash + bundle hash) replaces the inline
-// one: it works before and after the round.
+// one: it works until the hosting ends, which is before the round when the round is more than 12 months away.
 function share(state: AppState, artifact: Artifact) {
   state.draw.shared = artifact;
   const hosted = state.draw.hosted;
@@ -300,7 +301,7 @@ async function host(state: AppState) {
   draw.hosted = { link: { txHash: committed.txHash, bundleHash: confirmed.bundleHash }, expiresAt };
   el('host').hidden = true;
   share(state, shared);
-  status(`Bundle hosted until ${localTime(expiresAt)}. The verification link works before and after the round.`);
+  status(`Bundle hosted. ${hostedReach(expiresAt, bundle.drand.round)}`);
 }
 
 async function copyShareLink() {

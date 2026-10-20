@@ -98,12 +98,14 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 - 理由：proxy 的四個存在理由（Koios CORS、藏 key、Koios 日額度的全域預算、為省額度的 offset 快取）在自架 Dolos 下都已消失（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）；剩下的濫用防護不需要 edge。代價：限流不在 edge、VM 位址公開。
 - 不變：後端的 bundle 代管、伺服器草稿、錢包簽章與 owner 限流。
 
-## Amendment 5 (2026-10-20)：保存期限從 min(round 的時間, 上傳時間) 起算
+## Amendment 5 (2026-10-20)：保存期限從 min(round 的時間, 第一次代管時間) 起算
 
-- Will 2026-10-20 決定（階段計畫步驟 10b）：Decision「保存到 round 後 12 個月」與 Amendment「總保存不超過 round 後 36 個月」的起算點改為**基準時間＝min(round 的時間, 上傳時間)**：到期＝基準時間＋12 個日曆月（UTC），擁有者延長的總上限＝基準時間＋36 個月（延長屬步驟 11）。
-- 理由：`validateBundle` 接受到 `Number.MAX_SAFE_INTEGER` 的 round，以 round 起算時，round 訂在多年後的承諾讓 bytes 一直保存到 round 後 12 個月，限期保存（資料最小化，本 ADR「保存期限」）實際上沒有上限。取較早者，每筆紀錄最多保存到上傳後 12 個月；round 早於上傳（開獎後才代管）時仍從 round 起算，晚上傳不會延長。
-- 代價：round 在上傳 12 個月以後的抽獎，代管會在 round 前到期，主辦者要延長（步驟 11）或在到期後重新上傳；重新上傳是一筆新紀錄、從新的上傳時間起算，所以 round 未到前，連結可以靠重新上傳維持（任何持有 bytes 的人都能上傳，與 Amendment 2 刪除後可重傳相同）。
-- 隨之移除：步驟 10 review M1 的「round 遠到無法表示到期日→422」。基準時間不晚於上傳時間，到期日一定可表示，該檢查的存在理由消失；最大合法 round 的 bundle 現在保存到上傳後 12 個月。
+- Will 2026-10-20 決定（階段計畫步驟 10b）：Decision「保存到 round 後 12 個月」與 Amendment「總保存不超過 round 後 36 個月」的起算點改為**基準時間＝min(round 的時間, 該承諾第一次被代管的時間)**：到期＝基準時間＋12 個日曆月（UTC），擁有者延長的總上限＝基準時間＋36 個月（延長屬步驟 11）。
+- 理由：`validateBundle` 接受到 `Number.MAX_SAFE_INTEGER` 的 round，以 round 起算時，round 訂在多年後的承諾讓 bytes 一直保存到 round 後 12 個月，限期保存（資料最小化，本 ADR「保存期限」）實際上沒有上限。取較早者，一筆承諾最多保存到第一次代管後 12 個月；round 早於第一次代管（開獎後才代管）時從 round 起算，晚上傳不會延長。
+- 重新上傳不重新起算（Will 2026-10-20 決定堵住）：第一次代管時間以 txHash 為鍵存在 `first_hosting`（`apps/api/migrations/0003_first_hosting.sql`），紀錄到期、擁有者刪除、營運下架都不刪它。之後同一筆承諾再上傳，到期日仍是 min(round, 第一次代管)＋12 個月：還沒到就以原本的到期日重新代管（例如擁有者刪除後反悔），已過就 410。不放在 tombstone：tombstone 以 bundleHash 為鍵、只在營運下架時寫，到期與擁有者刪除都不會留下它。
+- `first_hosting` 什麼時候能刪：round 後 12 個月起，基準時間不論怎麼取都不晚於 round，任何代管期都已結束，這一列不再改變結果，Cron 清理（`sweep`）就刪除它（欄位 `keep_until`）。round 遠到無法表示日期時 `keep_until` 為 NULL，這一列永久保留。若有人在 round 後 12 個月之前手動刪掉這一列，該承諾的下一次上傳會被當成第一次代管，重新得到 12 個月——漏洞就重新打開，所以營運流程（步驟 13 的 runbook）不得刪它。tombstone 目前沒有任何刪除路徑；即使刪除，只會讓被下架的 bytes 可以再上傳，保存期限仍由 `first_hosting` 決定。
+- 代價：round 在第一次代管 12 個月以後的抽獎，代管會在 round 前到期，連結在 round 時已失效；主辦者要延長（步驟 11）或自行放置 bundle 檔並以 `source` 連結分享。建立頁在代管期不涵蓋 round 時明講這一點。
+- 隨之移除：步驟 10 review M1 的「round 遠到無法表示到期日→422」。基準時間不晚於上傳時間，到期日一定可表示，該檢查的存在理由消失；最大合法 round 的 bundle 保存到第一次代管後 12 個月。
 
 ## Review Notes
 

@@ -480,8 +480,10 @@ try {
   passed('the wallet submits the signed commitment (CIP-30 submitTx); the indexer receives no submission');
   // Hosting (plan step 10): after 15 confirmations the organizer asks the backend to host the canonical bundle bytes
   // (PUT /bundles/{txHash}); the share link becomes txHash + bundle hash. The backend is mocked here (its gate is
-  // tested in apps/api against D1, R2 and the chain); the page must send exactly the committed bytes.
-  {
+  // tested in apps/api against D1, R2 and the chain); the page must send exactly the committed bytes. Twice: hosted past
+  // the round, and hosted only until before it (a round more than 12 months after the first hosting, ADR Amendment 5),
+  // where the page must not promise that the link shows the winners.
+  for (const pastRound of [true, false]) {
     const { target, pageErrors, submitted } = await preprodPage({
       sign: true,
       onRead: async (_route, url, { index }) => {
@@ -491,7 +493,7 @@ try {
       },
     });
     const uploads = [];
-    const hostedUntil = 1_900_000_000;
+    const hostedUntil = pastRound ? 1_900_000_000 : Math.floor(Date.now() / 1000) + 60;
     await target.route(`${API}/bundles/*`, async (route) => {
       const request = route.request();
       const cors = { 'Access-Control-Allow-Origin': origin.replace(/\/$/, ''), Vary: 'Origin' };
@@ -525,11 +527,23 @@ try {
     const link = new URL(await target.locator('#share-link').inputValue());
     assert.deepEqual(Object.fromEntries(link.searchParams), { tx: txHash, bundle: committedHash });
     assert.equal(await target.locator('#host').isVisible(), false);
-    assert.match(await target.locator('#result-note').textContent(), /hosted until/);
+    const status = await target.locator('#draw-status').textContent();
+    const note = await target.locator('#result-note').textContent();
+    if (pastRound) {
+      assert.match(status, /shows the winners once the round arrives/);
+      assert.match(note, /hosted until .*shows the winners once the round arrives/);
+    } else {
+      for (const text of [status, note]) {
+        assert.match(text, /hosted only until .*before the round .*stops working then.*source/);
+        assert.doesNotMatch(text, /shows the winners/);
+      }
+    }
     assert.deepEqual(pageErrors, []);
     await target.close();
   }
-  passed('a confirmed preprod commitment is hosted with its committed bytes and shared as txHash + bundle hash');
+  passed(
+    'a confirmed preprod commitment is hosted with its committed bytes and shared as txHash + bundle hash; the page says whether the hosting outlasts the round',
+  );
   // A signed commitment the indexer never sees: once its invalid_hereafter has passed, the page says it expired
   // and asks for a later round instead of waiting for the round.
   {
