@@ -4,7 +4,7 @@
 
 ## 什麼時候用
 
-- 檢舉從 GitHub issues 進來（[Will413028/cardano-verifiable-giveaway/issues](https://github.com/Will413028/cardano-verifiable-giveaway/issues)，隱私說明 `apps/web/privacy.html` 與頁尾連到這裡）：參加者要求移除自己的 label、內容違法或濫用。
+- 檢舉從 GitHub issues 進來（[Will413028/cardano-verifiable-giveaway/issues](https://github.com/Will413028/cardano-verifiable-giveaway/issues)，隱私說明 `apps/web/privacy.html` 與頁尾連到這裡）；需要附個人資料的檢舉走 repo Security 分頁的「Report a vulnerability」（私人 advisory，2026-10-20 已開啟），在 advisory 裡回覆，不搬到公開 issue：參加者要求移除自己的 label、內容違法或濫用。
 - 參加者的刪除請求一律以**整份 bundle** 下架（BR-13）：改掉其中一個 label 會讓 hash 對不上鏈上承諾，部分刪除不存在。
 - 不適用：主辦者刪自己的代管（頁面上「Delete hosted bundle」，簽章路由 `DELETE /bundles/{tx}`，不留 tombstone）；伺服器草稿（只有簽章者讀得到，不公開，沒有可檢舉的對象）；鏈上的 hash 與別處的副本（營運端無法移除，請檢舉人找該主機）。
 
@@ -76,9 +76,9 @@ pnpm exec wrangler r2 object get "giveaway-bundles/bundles/$BUNDLE" $TARGET --pi
 curl -s -w ' %{http_code}\n' "$API/bundles/$TX"                                    # 404
 ```
 
-`GET /bundles/{tx}` 在下架後回 **404**（「No bundle is hosted for this commitment」），不是 410：紀錄已刪，`read()` 只在紀錄還在、bytes 被下架時回 410（下架與讀取交錯的瞬間）。之後任何人（含擁有者）以簽章重新上傳同一份 bytes 回 **410**「This bundle was taken down and cannot be hosted again」（`apps/api/test/bundles.test.ts` 的 takedown 測試斷言兩者）。
+**下架後的連結讀起來就是「找不到」：** `GET /bundles/{tx}` 回 **404**（「No bundle is hosted for this commitment」），與從未代管的連結相同，不是 410（刻意保留，觸發條件見計畫步驟 13「完成後的形狀」）：紀錄已刪，`read()` 只在紀錄還在、bytes 被下架時回 410（下架與讀取交錯的瞬間）。之後任何人（含擁有者）以簽章重新上傳同一份 bytes 回 **410**「This bundle was taken down and cannot be hosted again」（`apps/api/test/bundles.test.ts` 的 takedown 測試斷言兩者）。
 
-**5. 回覆檢舉。** 在 issue 回覆已下架的 hash 與時間後關閉；檢舉人若貼了個人資料，刪除整則留言（只編輯的話，舊內容仍留在留言的編輯紀錄裡）。
+**5. 回覆檢舉。** 在 issue（或私人 advisory）回覆已下架的 hash 與時間後關閉，並說明連結之後顯示「找不到」；檢舉人若貼了個人資料，刪除整則留言（只編輯的話，舊內容仍留在留言的編輯紀錄裡）。
 
 ## 本機驗證（2026-10-20，Wrangler 4.151.1，Miniflare 本機 D1／R2）
 

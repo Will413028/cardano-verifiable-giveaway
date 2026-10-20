@@ -57,7 +57,7 @@ See [development protocol](docs/protocol-development.md) for exact formats, algo
 
 ## Privacy and reports
 
-The [privacy notice](apps/web/privacy.html) (linked from the page footer) says what the backend keeps, for how long and how to delete it: hosted bundles until 12 months after the earlier of the round and their first hosting (extendable to 36 months), server drafts 30 days after the last save, no emails or accounts, and no request content in logs. A participant's removal request takes down the whole hosted bundle; organizers should keep their downloaded bundle and proof. Report a hosted bundle or a problem in [GitHub issues](https://github.com/Will413028/cardano-verifiable-giveaway/issues), without personal data; the operator follows the [takedown runbook](docs/runbooks/takedown.md).
+The [privacy notice](apps/web/privacy.html) (linked from the page footer) says what the backend keeps, for how long and how to delete it: hosted bundles until 12 months after the earlier of the round and their first hosting (extendable to 36 months), server drafts 30 days after the last save, no emails or accounts, and no request content in logs. A participant's removal request takes down the whole hosted bundle; organizers should keep their downloaded bundle and proof. Report a hosted bundle or a problem in [GitHub issues](https://github.com/Will413028/cardano-verifiable-giveaway/issues), without personal data (a report that needs it goes to a private advisory: Security → Report a vulnerability); a taken-down link reads as not found (404). The operator follows the [takedown runbook](docs/runbooks/takedown.md).
 
 ## License
 
