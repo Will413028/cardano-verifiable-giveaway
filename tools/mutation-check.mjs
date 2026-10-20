@@ -265,6 +265,35 @@ await mustFail(
     ),
   'enterprise organizer is refused',
 );
+// Step 10b: the email check runs in linear time. Its differential test cannot see the former pattern (same answers),
+// so putting it back must fail the test that records which patterns label normalization runs.
+await mustFail(
+  'Putting the former backtracking email pattern back',
+  library,
+  (text) =>
+    text.replace(
+      'function emailShaped(label) {\n',
+      'function emailShaped(label) {\n  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(label);\n',
+    ),
+  'label normalization runs no backtracking pattern',
+  `${root}tests/email.test.mjs`,
+);
+// Step 10b: emailShaped must give the former pattern's answers; each guard changed alone fails the differential test.
+for (const [name, from, to] of [
+  ['an "@" in first position', 'if (at < 1 ||', 'if (at < 0 ||'],
+  ['a second "@"', 'label.includes("@", at + 1) || ', ''],
+  ['whitespace', ' || /\\s/.test(label)) return false;', ') return false;'],
+  ['non-ASCII whitespace', '/\\s/.test(label)', '/[ \\t\\n\\r\\f\\v]/.test(label)'],
+  ['a "." first in the domain', 'label.indexOf(".", at + 2)', 'label.indexOf(".", at + 1)'],
+  ['a "." last in the label', 'dot < label.length - 1', 'dot < label.length'],
+])
+  await mustFail(
+    `emailShaped accepting ${name} differently from the former pattern`,
+    library,
+    (text) => text.replace(from, to),
+    'emailShaped agrees with the former email pattern',
+    `${root}tests/email.test.mjs`,
+  );
 // The reverse proxy in front of the project Dolos (plan step 9, PD8 A): each guard of the committed config, removed
 // alone, fails its static check. tools/devchain/rproxy-check.mjs removes the same guards in a live nginx.
 const proxyConfig = `${root}deploy/dolos-proxy/nginx.conf`;
@@ -385,4 +414,49 @@ await mustFailApi(
   'Not running the reconciliation on the Cron trigger',
   (text) => text.replace('    await reconcile(env, now);\n', ''),
   'reclaimed by the Cron reconciliation',
+);
+// Step 10b (ADR Amendment 5): retention counts from the earlier of the round time and the upload.
+await mustFailApi(
+  'Counting retention from the round time only',
+  (text) => text.replace('return Math.min(roundTime(round), uploadedAt);', 'return roundTime(round);'),
+  'a round far after the upload',
+  `${root}apps/api/src/retention.ts`,
+);
+await mustFailApi(
+  'Counting retention from each upload instead of the first hosting',
+  (text) => text.replace('const firstHosted = first?.first_hosted_at ?? now;', 'const firstHosted = now;'),
+  'an expired record uploaded again before its round gets no new period',
+  bundles,
+);
+// Step 10b round-2 review: the first hosting time is written only by an upload that made a record, never replaced,
+// and kept until no expiry it gives can be open. One guard per mutation.
+await mustFailApi(
+  'Recording the first hosting time for an upload that made no record',
+  (text) =>
+    text.replace(
+      'SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM hosted WHERE tx_hash = ?1 AND hosted_at = ?2)',
+      'SELECT ?1, ?2, ?3',
+    ),
+  'a refused upload does not start the clock',
+  bundles,
+);
+await mustFailApi(
+  'Replacing the first hosting time on a later hosting',
+  (text) =>
+    text.replace(
+      '       ON CONFLICT (tx_hash) DO NOTHING`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+    ),
+  'keeps the expiry of its first hosting',
+  bundles,
+);
+await mustFailApi(
+  'Keeping the first hosting time only until 12 months after the round',
+  (text) =>
+    text.replace(
+      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted));',
+      'return byRound;',
+    ),
+  'also across a month-end',
+  `${root}apps/api/src/retention.ts`,
 );

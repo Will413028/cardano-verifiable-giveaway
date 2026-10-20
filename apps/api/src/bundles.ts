@@ -8,7 +8,7 @@ import {
   sha256,
   validateBundle,
 } from '@giveaway/protocol';
-import { hostingExpiry, SWEEP_LIMIT } from './retention.ts';
+import { firstHostingKeepUntil, hostingExpiry, SWEEP_LIMIT } from './retention.ts';
 
 // Bundle hosting (plan step 10; BR-06, BR-07, BR-08, BR-17; invariant B4; ADR 2026-10-18-wallet-auth-and-bounded-
 // retention with Amendment 2). Records live in D1 (migrations/0001_bundle_hosting.sql), bytes in R2.
@@ -188,8 +188,8 @@ async function confirmStored(env: HostingEnv, txHash: string, bundleHash: string
 // PUT /bundles/{txHash}: host the canonical bundle bytes of an on-chain commitment (BR-06). 201 when hosted, 200 when
 // the record already exists (the bytes are written again, which repairs a lost object).
 //
-// Order (review L2): every check that needs no chain read runs first, validateBundle (up to ~0.25 s CPU on 10,000
-// labels, PD2) included, so the indexer is read only for bytes that are a valid canonical bundle; reading the chain
+// Order (review L2): every check that needs no chain read runs first, validateBundle (about 0.1 s CPU on 10,000
+// labels, PD2 step 10b) included, so the indexer is read only for bytes that are a valid canonical bundle; reading the chain
 // first would let anyone turn each request into indexer reads of the project Dolos instead. The CPU cost per request
 // is bounded by BUNDLE_BYTE_LIMIT; per-IP rate limiting of the backend's write routes comes with the signed owner
 // operations (plan step 11).
@@ -217,8 +217,8 @@ export async function upload(
   }
   if (existing) await release(env, txHash, now);
   const { owner, committed } = await commitment(chain, txHash);
-  // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention is counted from
-  // is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
+  // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention may be counted
+  // from is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
   if (!matchesCommitment(bundle, bundleHash, committed))
     throw new HttpError(
       409,
@@ -227,22 +227,36 @@ export async function upload(
         : 'The bundle drawId or drand round differs from the commitment of this transaction',
     );
   const round = bundle.drand.round;
-  const expiresAt = hostingExpiry(round);
-  if (expiresAt === null) throw new HttpError(422, 'The round of this draw is too far ahead to be hosted');
+  // Retention counts from the first time this commitment was hosted, not from this upload (ADR Amendment 5): the row
+  // outlives the record, so uploading again after an expiry, a deletion or a takedown starts no new period.
+  const first = await env.DB.prepare('SELECT first_hosted_at FROM first_hosting WHERE tx_hash = ?')
+    .bind(txHash)
+    .first<{ first_hosted_at: number }>();
+  const firstHosted = first?.first_hosted_at ?? now;
+  const expiresAt = hostingExpiry(round, firstHosted);
   if (expiresAt <= now)
-    throw new HttpError(410, 'The hosting period of this draw (12 months after its round) has ended');
+    throw new HttpError(
+      410,
+      'The hosting period of this draw has ended (12 months after its round or its first hosting, whichever came first)',
+    );
   // One statement, so a concurrent takedown, deletion claim or upload by the same owner cannot slip between the checks
-  // and the write.
-  const inserted = await env.DB.prepare(
-    `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
+  // and the write; the first hosting time is recorded in the same transaction (a D1 batch), only when this insert
+  // made the record.
+  const [inserted] = await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
      SELECT ?1, ?2, ?3, ?4, ?5, ?6
      WHERE NOT EXISTS (SELECT 1 FROM tombstones WHERE bundle_hash = ?2)
        AND NOT EXISTS (SELECT 1 FROM collecting WHERE bundle_hash = ?2)
        AND (SELECT COUNT(*) FROM hosted WHERE owner = ?3 AND expires_at > ?5) < ?7
      ON CONFLICT (tx_hash) DO NOTHING`,
-  )
-    .bind(txHash, bundleHash, owner, round, now, expiresAt, OWNER_QUOTA)
-    .run();
+    ).bind(txHash, bundleHash, owner, round, now, expiresAt, OWNER_QUOTA),
+    env.DB.prepare(
+      `INSERT INTO first_hosting (tx_hash, first_hosted_at, keep_until)
+       SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM hosted WHERE tx_hash = ?1 AND hosted_at = ?2)
+       ON CONFLICT (tx_hash) DO NOTHING`,
+    ).bind(txHash, now, firstHostingKeepUntil(round, now)),
+  ]);
   if (inserted.meta.changes !== 1) {
     if (await removed(env, bundleHash))
       throw new HttpError(410, 'This bundle was taken down and cannot be hosted again');
@@ -332,7 +346,8 @@ export async function takedown(env: HostingEnv, bundleHash: string, now: number)
   await env.BUNDLES.delete(objectKey(bundleHash));
 }
 
-// The Cron sweep (BR-08): removes up to SWEEP_LIMIT records past `expires_at`, then the bytes no record names any more.
+// The Cron sweep (BR-08): removes up to SWEEP_LIMIT records past `expires_at`, then the bytes no record names any more,
+// then first hosting times that no longer matter.
 // Returns how many records it removed.
 export async function sweep(env: HostingEnv, now: number): Promise<number> {
   const { results } = await env.DB.prepare(
@@ -347,6 +362,14 @@ export async function sweep(env: HostingEnv, now: number): Promise<number> {
     results.map((row) => row.bundle_hash),
     now,
   );
+  // A first hosting time stops mattering at keep_until (retention.ts `firstHostingKeepUntil`): no expiry it can produce
+  // lies later, and an upload without it counts from the round time, then over 12 months ago (ADR Amendment 5), so
+  // deleting the row reopens nothing.
+  await env.DB.prepare(
+    'DELETE FROM first_hosting WHERE tx_hash IN (SELECT tx_hash FROM first_hosting WHERE keep_until <= ? LIMIT ?)',
+  )
+    .bind(now, SWEEP_LIMIT)
+    .run();
   return results.length;
 }
 

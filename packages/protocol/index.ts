@@ -83,13 +83,24 @@ function object(value: unknown, keys: string[]): asserts value is Record<string,
   )
     throw new Error(`Expected exactly: ${keys.join(', ')}`);
 }
+// Whether a label is email-shaped: exactly the strings the pattern /^[^\s@]+@[^\s@]+\.[^\s@]+$/ matches (JavaScript
+// `\s`, UTF-16 code units), decided in linear time. That pattern backtracks quadratically on "a@" followed by dots and
+// a final "@" (plan step 10b, PD2), so its meaning is decided directly: a local part and a domain, neither containing
+// whitespace or "@" (so the label holds exactly one "@", not first), and in the domain a "." that is neither its first
+// nor its last character. tests/email.test.mjs checks it against the pattern itself.
+export function emailShaped(label: string): boolean {
+  const at = label.indexOf('@');
+  if (at < 1 || label.includes('@', at + 1) || /\s/.test(label)) return false;
+  const dot = label.indexOf('.', at + 2);
+  return dot !== -1 && dot < label.length - 1;
+}
 export function normalizeLabel(value: string): string {
   const label = value.trim().normalize('NFC');
   if (label.length > MAX_LABEL_UNITS) throw new Error('Invalid participant label');
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are rejected on purpose.
   if (!label || /[\u0000-\u001f\u007f-\u009f]/.test(label) || /[\ud800-\udfff]/u.test(label))
     throw new Error('Invalid participant label');
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(label) || /^\+?[\d\s()-]{7,}$/.test(label))
+  if (emailShaped(label) || /^\+?[\d\s()-]{7,}$/.test(label))
     throw new Error('Use a public participant label, not an email or phone number');
   return label;
 }

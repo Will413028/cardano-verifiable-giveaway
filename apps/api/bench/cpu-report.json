@@ -1,247 +1,891 @@
 {
-  "measuredAt": "2026-10-19T16:06:07.045Z",
-  "what": "Upload-gate CPU work in local workerd (Wrangler unstable_dev); see apps/api/bench/cpu.mjs header",
+  "measuredAt": "2026-10-19T17:48:07.049Z",
+  "label": "step 10b, after the email rewrite (linear emailShaped)",
+  "what": "Upload-gate CPU work in local workerd (Wrangler unstable_dev) against the entrant count; see apps/api/bench/cpu.mjs header",
   "machine": {
     "platform": "darwin 25.5.0",
     "arch": "arm64",
     "cpu": "Apple M1 Pro",
-    "node": "v26.10.0"
+    "node": "v26.10.0",
+    "loadAverage": [
+      9.941,
+      16.42,
+      25.431
+    ]
   },
   "wrangler": "4.151.1",
-  "repetitions": 10,
-  "entrants": 10000,
   "labelUnits": 200,
-  "variants": {
+  "budget": 2000,
+  "minRepetitions": 10,
+  "sizes": [
+    1,
+    10,
+    100,
+    300,
+    1000,
+    3000,
+    10000
+  ],
+  "constructions": {
     "ascii": {
-      "bytes": 2030217,
-      "inspectMs": {
-        "min": 12,
-        "median": 17,
-        "max": 27
+      "1": {
+        "bytes": 420,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.67,
+        "processCpuMsPerRequest": 2.03,
+        "inIsolateMsPerRun": 0.014,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 29,
-      "steps": {
-        "sha256Ms": {
-          "min": 1,
-          "median": 2,
-          "max": 4
-        },
-        "decodeMs": {
-          "min": 0,
-          "median": 0,
-          "max": 1
-        },
-        "parseMs": {
-          "min": 0,
-          "median": 1,
-          "max": 6
-        },
-        "canonicalMs": {
-          "min": 2,
-          "median": 3,
-          "max": 22
-        },
-        "validateMs": {
-          "min": 8,
-          "median": 8,
-          "max": 47
+      "10": {
+        "bytes": 2247,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.7,
+        "processCpuMsPerRequest": 1.75,
+        "inIsolateMsPerRun": 0.02,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 20517,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 1.5,
+        "processCpuMsPerRequest": 2,
+        "inIsolateMsPerRun": 0.1,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 61117,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 2,
+        "inIsolateMsPerRun": 0.333,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "1000": {
+        "bytes": 203217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 5,
+        "inIsolateMsPerRun": 1,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "3000": {
+        "bytes": 609217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 4,
+        "processCpuMsPerRequest": 7,
+        "inIsolateMsPerRun": 2,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 1
+        }
+      },
+      "10000": {
+        "bytes": 2030217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 9,
+        "processCpuMsPerRequest": 22,
+        "inIsolateMsPerRun": 9,
+        "stepsMinMs": {
+          "sha256Ms": 1,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 2,
+          "validateMs": 5
         }
       }
     },
     "cjk": {
-      "bytes": 6030217,
-      "inspectMs": {
-        "min": 55,
-        "median": 83,
-        "max": 181
+      "1": {
+        "bytes": 820,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.63,
+        "processCpuMsPerRequest": 1.74,
+        "inIsolateMsPerRun": 0.02,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 82,
-      "steps": {
-        "sha256Ms": {
-          "min": 3,
-          "median": 5,
-          "max": 7
-        },
-        "decodeMs": {
-          "min": 10,
-          "median": 14,
-          "max": 20
-        },
-        "parseMs": {
-          "min": 2,
-          "median": 3,
-          "max": 8
-        },
-        "canonicalMs": {
-          "min": 16,
-          "median": 22,
-          "max": 55
-        },
-        "validateMs": {
-          "min": 25,
-          "median": 41,
-          "max": 121
+      "10": {
+        "bytes": 6247,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.45,
+        "processCpuMsPerRequest": 2.2,
+        "inIsolateMsPerRun": 0.056,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 60517,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 2,
+        "inIsolateMsPerRun": 0.444,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 181117,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 3,
+        "processCpuMsPerRequest": 4,
+        "inIsolateMsPerRun": 1.333,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "1000": {
+        "bytes": 603217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 4,
+        "processCpuMsPerRequest": 9,
+        "inIsolateMsPerRun": 4,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 1,
+          "validateMs": 1
+        }
+      },
+      "3000": {
+        "bytes": 1809217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 10,
+        "processCpuMsPerRequest": 24,
+        "inIsolateMsPerRun": 14,
+        "stepsMinMs": {
+          "sha256Ms": 1,
+          "decodeMs": 2,
+          "parseMs": 0,
+          "canonicalMs": 4,
+          "validateMs": 5
+        }
+      },
+      "10000": {
+        "bytes": 6030217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 25,
+        "processCpuMsPerRequest": 72,
+        "inIsolateMsPerRun": 45,
+        "stepsMinMs": {
+          "sha256Ms": 3,
+          "decodeMs": 9,
+          "parseMs": 2,
+          "canonicalMs": 13,
+          "validateMs": 17
         }
       }
     },
     "hangul": {
-      "bytes": 6030217,
-      "inspectMs": {
-        "min": 59,
-        "median": 73,
-        "max": 114
+      "1": {
+        "bytes": 820,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.79,
+        "processCpuMsPerRequest": 1.77,
+        "inIsolateMsPerRun": 0.02,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 89,
-      "steps": {
-        "sha256Ms": {
-          "min": 3,
-          "median": 5,
-          "max": 9
-        },
-        "decodeMs": {
-          "min": 9,
-          "median": 16,
-          "max": 51
-        },
-        "parseMs": {
-          "min": 2,
-          "median": 3,
-          "max": 8
-        },
-        "canonicalMs": {
-          "min": 17,
-          "median": 22,
-          "max": 68
-        },
-        "validateMs": {
-          "min": 23,
-          "median": 35,
-          "max": 44
+      "10": {
+        "bytes": 6247,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.6,
+        "processCpuMsPerRequest": 1.75,
+        "inIsolateMsPerRun": 0.056,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 60517,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 1,
+        "processCpuMsPerRequest": 3,
+        "inIsolateMsPerRun": 0.444,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 181117,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 5,
+        "inIsolateMsPerRun": 1.333,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "1000": {
+        "bytes": 603217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 4,
+        "processCpuMsPerRequest": 9,
+        "inIsolateMsPerRun": 4,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 1,
+          "validateMs": 2
+        }
+      },
+      "3000": {
+        "bytes": 1809217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 10,
+        "processCpuMsPerRequest": 24,
+        "inIsolateMsPerRun": 14,
+        "stepsMinMs": {
+          "sha256Ms": 1,
+          "decodeMs": 2,
+          "parseMs": 0,
+          "canonicalMs": 4,
+          "validateMs": 5
+        }
+      },
+      "10000": {
+        "bytes": 6030217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 27,
+        "processCpuMsPerRequest": 73,
+        "inIsolateMsPerRun": 45,
+        "stepsMinMs": {
+          "sha256Ms": 3,
+          "decodeMs": 9,
+          "parseMs": 2,
+          "canonicalMs": 13,
+          "validateMs": 17
         }
       }
     },
     "combining": {
-      "bytes": 3000217,
-      "inspectMs": {
-        "min": 83,
-        "median": 153,
-        "max": 337
+      "1": {
+        "bytes": 517,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.92,
+        "processCpuMsPerRequest": 1.725,
+        "inIsolateMsPerRun": 0.024,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 97,
-      "steps": {
-        "sha256Ms": {
-          "min": 2,
-          "median": 2,
-          "max": 3
-        },
-        "decodeMs": {
-          "min": 5,
-          "median": 6,
-          "max": 8
-        },
-        "parseMs": {
-          "min": 3,
-          "median": 3,
-          "max": 5
-        },
-        "canonicalMs": {
-          "min": 17,
-          "median": 18,
-          "max": 24
-        },
-        "validateMs": {
-          "min": 51,
-          "median": 60,
-          "max": 90
+      "10": {
+        "bytes": 3217,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.75,
+        "processCpuMsPerRequest": 1.6,
+        "inIsolateMsPerRun": 0.08,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 30217,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 2,
+        "inIsolateMsPerRun": 0.6,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 90217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 4,
+        "inIsolateMsPerRun": 1.667,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 1
+        }
+      },
+      "1000": {
+        "bytes": 300217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 3,
+        "processCpuMsPerRequest": 21,
+        "inIsolateMsPerRun": 6,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 1,
+          "validateMs": 4
+        }
+      },
+      "3000": {
+        "bytes": 900217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 5,
+        "processCpuMsPerRequest": 26,
+        "inIsolateMsPerRun": 18,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 1,
+          "parseMs": 0,
+          "canonicalMs": 4,
+          "validateMs": 12
+        }
+      },
+      "10000": {
+        "bytes": 3000217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 14,
+        "processCpuMsPerRequest": 76,
+        "inIsolateMsPerRun": 62,
+        "stepsMinMs": {
+          "sha256Ms": 1,
+          "decodeMs": 3,
+          "parseMs": 2,
+          "canonicalMs": 14,
+          "validateMs": 41
         }
       }
     },
     "longCluster": {
-      "bytes": 3970217,
-      "inspectMs": {
-        "min": 78,
-        "median": 97,
-        "max": 113
+      "1": {
+        "bytes": 614,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.895,
+        "processCpuMsPerRequest": 1.575,
+        "inIsolateMsPerRun": 0.024,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 95,
-      "steps": {
-        "sha256Ms": {
-          "min": 2,
-          "median": 5,
-          "max": 10
-        },
-        "decodeMs": {
-          "min": 7,
-          "median": 12,
-          "max": 62
-        },
-        "parseMs": {
-          "min": 2,
-          "median": 6,
-          "max": 38
-        },
-        "canonicalMs": {
-          "min": 19,
-          "median": 37,
-          "max": 198
-        },
-        "validateMs": {
-          "min": 58,
-          "median": 90,
-          "max": 138
+      "10": {
+        "bytes": 4187,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.7,
+        "processCpuMsPerRequest": 1.9,
+        "inIsolateMsPerRun": 0.08,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 39917,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 2,
+        "inIsolateMsPerRun": 0.6,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 119317,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 5,
+        "inIsolateMsPerRun": 1.667,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 1
+        }
+      },
+      "1000": {
+        "bytes": 397217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 3,
+        "processCpuMsPerRequest": 11,
+        "inIsolateMsPerRun": 6,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 1,
+          "validateMs": 3
+        }
+      },
+      "3000": {
+        "bytes": 1191217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 6,
+        "processCpuMsPerRequest": 30,
+        "inIsolateMsPerRun": 18,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 1,
+          "parseMs": 0,
+          "canonicalMs": 3,
+          "validateMs": 11
+        }
+      },
+      "10000": {
+        "bytes": 3970217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 19,
+        "processCpuMsPerRequest": 85,
+        "inIsolateMsPerRun": 63,
+        "stepsMinMs": {
+          "sha256Ms": 2,
+          "decodeMs": 6,
+          "parseMs": 2,
+          "canonicalMs": 14,
+          "validateMs": 37
         }
       }
     },
     "emailBacktrack": {
-      "bytes": 2030217,
-      "inspectMs": {
-        "min": 245,
-        "median": 383,
-        "max": 665
+      "1": {
+        "bytes": 420,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.815,
+        "processCpuMsPerRequest": 1.92,
+        "inIsolateMsPerRun": 0.018,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
       },
-      "processCpuMsPerRequest": 276,
-      "steps": {
-        "sha256Ms": {
-          "min": 1,
-          "median": 2,
-          "max": 3
-        },
-        "decodeMs": {
-          "min": 0,
-          "median": 0,
-          "max": 4
-        },
-        "parseMs": {
-          "min": 0,
-          "median": 2,
-          "max": 6
-        },
-        "canonicalMs": {
-          "min": 3,
-          "median": 10,
-          "max": 18
-        },
-        "validateMs": {
-          "min": 242,
-          "median": 272,
-          "max": 296
+      "10": {
+        "bytes": 2247,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.85,
+        "processCpuMsPerRequest": 1.6,
+        "inIsolateMsPerRun": 0.03,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 20517,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 2.5,
+        "processCpuMsPerRequest": 2.5,
+        "inIsolateMsPerRun": 0.1,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 61117,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 4,
+        "inIsolateMsPerRun": 0.333,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "1000": {
+        "bytes": 203217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 6,
+        "inIsolateMsPerRun": 1,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "3000": {
+        "bytes": 609217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 4,
+        "processCpuMsPerRequest": 8,
+        "inIsolateMsPerRun": 3,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 2
+        }
+      },
+      "10000": {
+        "bytes": 2030217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 10,
+        "processCpuMsPerRequest": 25,
+        "inIsolateMsPerRun": 10,
+        "stepsMinMs": {
+          "sha256Ms": 1,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 2,
+          "validateMs": 6
+        }
+      }
+    },
+    "escapes": {
+      "1": {
+        "bytes": 613,
+        "repetitions": 2000,
+        "noopProcessCpuMsPerRequest": 1.65,
+        "processCpuMsPerRequest": 1.73,
+        "inIsolateMsPerRun": 0.02,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "10": {
+        "bytes": 4177,
+        "repetitions": 200,
+        "noopProcessCpuMsPerRequest": 1.8,
+        "processCpuMsPerRequest": 1.9,
+        "inIsolateMsPerRun": 0.07,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "100": {
+        "bytes": 39817,
+        "repetitions": 20,
+        "noopProcessCpuMsPerRequest": 1.5,
+        "processCpuMsPerRequest": 5.5,
+        "inIsolateMsPerRun": 0.5,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "300": {
+        "bytes": 119017,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 2,
+        "processCpuMsPerRequest": 5,
+        "inIsolateMsPerRun": 1.667,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 0,
+          "canonicalMs": 0,
+          "validateMs": 0
+        }
+      },
+      "1000": {
+        "bytes": 396217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 3,
+        "processCpuMsPerRequest": 9,
+        "inIsolateMsPerRun": 5,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 2,
+          "canonicalMs": 2,
+          "validateMs": 0
+        }
+      },
+      "3000": {
+        "bytes": 1188217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 7,
+        "processCpuMsPerRequest": 29,
+        "inIsolateMsPerRun": 17,
+        "stepsMinMs": {
+          "sha256Ms": 0,
+          "decodeMs": 0,
+          "parseMs": 7,
+          "canonicalMs": 6,
+          "validateMs": 2
+        }
+      },
+      "10000": {
+        "bytes": 3960217,
+        "repetitions": 10,
+        "noopProcessCpuMsPerRequest": 18,
+        "processCpuMsPerRequest": 75,
+        "inIsolateMsPerRun": 58,
+        "stepsMinMs": {
+          "sha256Ms": 2,
+          "decodeMs": 0,
+          "parseMs": 24,
+          "canonicalMs": 23,
+          "validateMs": 6
         }
       }
     }
   },
-  "chainReadsMs": {
-    "min": 3,
-    "median": 5,
-    "max": 37
+  "chainReadsColdMs": 31,
+  "emptyRequest": {
+    "repetitions": 1000,
+    "processCpuMsPerRequest": 1.61,
+    "refused": null,
+    "bytes": 0
   },
-  "worst": {
-    "variant": "emailBacktrack",
-    "processCpuMsPerRequest": 276,
-    "inspectMs": {
-      "min": 245,
-      "median": 383,
-      "max": 665
+  "chainReads": {
+    "repetitions": 1000,
+    "processCpuMsPerRequest": 4.78,
+    "inIsolateMsPerRun": 2.26,
+    "refused": null
+  },
+  "transactionRead": {
+    "repetitions": 1000,
+    "processCpuMsPerRequest": 2.98,
+    "inIsolateMsPerRun": 0.92,
+    "refused": null
+  },
+  "nonBundles": {
+    "manyKeys": {
+      "1": {
+        "repetitions": 2000,
+        "processCpuMsPerRequest": 1.94,
+        "inIsolateMsPerRun": 0.038,
+        "refused": 422,
+        "bytes": 820
+      },
+      "10": {
+        "repetitions": 200,
+        "processCpuMsPerRequest": 2.4,
+        "inIsolateMsPerRun": 0.189,
+        "refused": 422,
+        "bytes": 6254
+      },
+      "100": {
+        "repetitions": 20,
+        "processCpuMsPerRequest": 4.5,
+        "inIsolateMsPerRun": 2.333,
+        "refused": 422,
+        "bytes": 60516
+      },
+      "300": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 11,
+        "inIsolateMsPerRun": 7.667,
+        "refused": 422,
+        "bytes": 181117
+      },
+      "1000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 33,
+        "inIsolateMsPerRun": 26,
+        "refused": 422,
+        "bytes": 603227
+      },
+      "3000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 103,
+        "inIsolateMsPerRun": 84,
+        "refused": 422,
+        "bytes": 1809224
+      },
+      "10000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 464,
+        "inIsolateMsPerRun": 408,
+        "refused": 422,
+        "bytes": 6030220
+      }
     },
-    "chainReadsMsMax": 37
+    "shortLabels": {
+      "1": {
+        "repetitions": 2000,
+        "processCpuMsPerRequest": 2.465,
+        "inIsolateMsPerRun": 0,
+        "refused": null,
+        "bytes": 741
+      },
+      "10": {
+        "repetitions": 200,
+        "processCpuMsPerRequest": 2.45,
+        "inIsolateMsPerRun": 0,
+        "refused": null,
+        "bytes": 6166
+      },
+      "100": {
+        "repetitions": 20,
+        "processCpuMsPerRequest": 3,
+        "inIsolateMsPerRun": 1,
+        "refused": 422,
+        "bytes": 60439
+      },
+      "300": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 7,
+        "inIsolateMsPerRun": 4,
+        "refused": 422,
+        "bytes": 181039
+      },
+      "1000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 21,
+        "inIsolateMsPerRun": 12,
+        "refused": 422,
+        "bytes": 603138
+      },
+      "3000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 56,
+        "inIsolateMsPerRun": 37,
+        "refused": 422,
+        "bytes": 1809140
+      },
+      "10000": {
+        "repetitions": 10,
+        "processCpuMsPerRequest": 227,
+        "inIsolateMsPerRun": 188,
+        "refused": 422,
+        "bytes": 6030140
+      }
+    }
+  },
+  "gate": {
+    "emailBacktrack:1": {
+      "repetitions": 1000,
+      "processCpuMsPerRequest": 5.01,
+      "inIsolateMsPerRun": 2.14,
+      "refused": null,
+      "bytes": 420
+    },
+    "cjk:1": {
+      "repetitions": 1000,
+      "processCpuMsPerRequest": 4.53,
+      "inIsolateMsPerRun": 2.16,
+      "refused": null,
+      "bytes": 820
+    },
+    "combining:1": {
+      "repetitions": 1000,
+      "processCpuMsPerRequest": 4.44,
+      "inIsolateMsPerRun": 2.26,
+      "refused": null,
+      "bytes": 517
+    },
+    "emailBacktrack:100": {
+      "repetitions": 1000,
+      "processCpuMsPerRequest": 4.91,
+      "inIsolateMsPerRun": 2.3,
+      "refused": null,
+      "bytes": 20517
+    },
+    "cjk:100": {
+      "repetitions": 1000,
+      "processCpuMsPerRequest": 5.92,
+      "inIsolateMsPerRun": 2.667,
+      "refused": null,
+      "bytes": 60517
+    }
   }
 }

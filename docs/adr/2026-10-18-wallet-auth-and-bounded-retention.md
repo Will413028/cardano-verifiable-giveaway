@@ -98,6 +98,17 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 - 理由：proxy 的四個存在理由（Koios CORS、藏 key、Koios 日額度的全域預算、為省額度的 offset 快取）在自架 Dolos 下都已消失（[自架 Dolos indexer](./2026-10-19-self-hosted-dolos-indexer.md)）；剩下的濫用防護不需要 edge。代價：限流不在 edge、VM 位址公開。
 - 不變：後端的 bundle 代管、伺服器草稿、錢包簽章與 owner 限流。
 
+## Amendment 5 (2026-10-20)：保存期限從 min(round 的時間, 第一次代管時間) 起算
+
+- Will 2026-10-20 決定（階段計畫步驟 10b）：Decision「保存到 round 後 12 個月」與 Amendment「總保存不超過 round 後 36 個月」的起算點改為**基準時間＝min(round 的時間, 該承諾第一次被代管的時間)**：到期＝基準時間＋12 個日曆月（UTC），擁有者延長的總上限＝基準時間＋36 個月（延長屬步驟 11）。
+- 理由：`validateBundle` 接受到 `Number.MAX_SAFE_INTEGER` 的 round，以 round 起算時，round 訂在多年後的承諾讓 bytes 一直保存到 round 後 12 個月，限期保存（資料最小化，本 ADR「保存期限」）實際上沒有上限。取較早者，一筆承諾最多保存到第一次代管後 12 個月；round 早於第一次代管（開獎後才代管）時從 round 起算，晚上傳不會延長。
+- 重新上傳不重新起算（Will 2026-10-20 決定堵住）：第一次代管時間以 txHash 為鍵存在 `first_hosting`（`apps/api/migrations/0003_first_hosting.sql`），紀錄到期、擁有者刪除、營運下架都不刪它。之後同一筆承諾再上傳，到期日仍是 min(round, 第一次代管)＋12 個月：還沒到就以原本的到期日重新代管（例如擁有者刪除後反悔），已過就 410。不放在 tombstone：tombstone 以 bundleHash 為鍵、只在營運下架時寫，到期與擁有者刪除都不會留下它。
+- `first_hosting` 什麼時候能刪：到了 `keep_until`＝max(round 後 12 個月, 這次第一次代管給的到期日) 之後，任何代管期都已結束、沒有這一列的上傳也從 round 起算而已到期，這一列不再改變結果，Cron 清理（`sweep`）就刪除它。取 max 是因為 `addMonths` 不單調：第一次代管在 2028-02-29T23:00Z、round 在 2028-03-01T00:00Z 時，到期日 2029-03-01T23:00Z 晚於 round 後 12 個月的 2029-03-01T00:00Z（第二輪 review L1）。round 遠到無法表示日期時 `keep_until` 為 NULL，這一列永久保留。若有人在 round 後 12 個月之前手動刪掉這一列，該承諾的下一次上傳會被當成第一次代管，重新得到 12 個月——漏洞就重新打開，所以營運流程（步驟 13 的 runbook）不得刪它。tombstone 目前沒有任何刪除路徑；即使刪除，只會讓被下架的 bytes 可以再上傳，保存期限仍由 `first_hosting` 決定。
+- 代價：round 在第一次代管 12 個月以後的抽獎，代管會在 round 前到期，連結在 round 時已失效；主辦者要延長（步驟 11）或自行放置 bundle 檔並以 `source` 連結分享。建立頁在代管期不涵蓋 round 時明講這一點。
+- 代價（第三方先上傳，2026-10-20 第二輪 review M1）：上傳（`PUT /bundles/{tx}`）不需要擁有者簽章，bytes 又是公開的（round 前的公告就有完整 bundle），所以任何人都能搶先上傳，讓第一次代管時間從那時起算。刻意延後代管的主辦者（round 在很久以後）之後上傳可能拿到較短的期限，甚至 410。現在接受；補救在步驟 11：第一次代管時間與延長只認擁有者簽章的操作，延長以「基準時間＋36 個月」為上限，擁有者可以把被提早起算的期限延回來。
+- 永久保留的列（第二輪 review L3）：round 無法換算日期（`keep_until` 為 NULL）或在很遠未來的承諾，`first_hosting` 的列會保留到那時或永久。每一列都要一筆已確認的鏈上承諾交易加一份通過 `validateBundle` 的 bundle 才寫得進來，增長以此為界；刪掉它會重新打開重新上傳的漏洞，所以接受。
+- 隨之移除：步驟 10 review M1 的「round 遠到無法表示到期日→422」。基準時間不晚於上傳時間，到期日一定可表示，該檢查的存在理由消失；最大合法 round 的 bundle 保存到第一次代管後 12 個月。
+
 ## Review Notes
 
 ## Related

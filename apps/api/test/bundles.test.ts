@@ -4,7 +4,7 @@ import { createScheduledController, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CLAIM_STALE, objectKey, OWNER_QUOTA, RECONCILE_LIMIT, release, takedown } from '../src/bundles.ts';
 import worker, { type Env, handle } from '../src/index.ts';
-import { addMonths, HOSTING_MONTHS } from '../src/retention.ts';
+import { addMonths, firstHostingKeepUntil, HOSTING_MONTHS, hostingExpiry, roundExpiry } from '../src/retention.ts';
 import fixture from './chain-fixture.json';
 
 // The upload gate against the real BlockfrostChain and real local D1 and R2 (Miniflare). The indexer answers are
@@ -74,6 +74,7 @@ beforeEach(async () => {
     bindings.DB.prepare('DELETE FROM hosted'),
     bindings.DB.prepare('DELETE FROM tombstones'),
     bindings.DB.prepare('DELETE FROM collecting'),
+    bindings.DB.prepare('DELETE FROM first_hosting'),
     bindings.DB.prepare("UPDATE reconcile_cursor SET after = ''"),
   ]);
   const listed = await bindings.BUNDLES.list();
@@ -193,15 +194,6 @@ describe('upload gate (BR-06)', () => {
     ]);
     expect(await records()).toEqual([]);
   });
-
-  it('refuses a draw whose round is too far ahead for any expiry date, instead of failing (review M1)', async () => {
-    const response = await put(txs.farRound, bundles.farRound);
-    expect([response.status, await response.text()]).toEqual([
-      422,
-      'The round of this draw is too far ahead to be hosted',
-    ]);
-    expect(await records()).toEqual([]);
-  });
 });
 
 describe('records keyed by txHash, bytes shared and reference counted (BR-07, B4)', () => {
@@ -280,6 +272,94 @@ describe('retention (BR-08): expires_at on read, Cron sweep (time injected)', ()
     await cron(expiry);
     expect(await records()).toEqual([]);
     expect(await stored(VALID_HASH)).toBe(false);
+  });
+});
+
+describe('retention base time = min(round time, first hosting time) (BR-08, plan step 10b, ADR Amendment 5)', () => {
+  const hostedUntil = async (response: Response) => {
+    expect(response.status).toBe(201);
+    return ((await response.json()) as { expiresAt: number }).expiresAt;
+  };
+  it('a round far after the upload: the bundle is hosted 12 months from the upload, not from the round', async () => {
+    // The fixture's round is three years after this upload.
+    const uploaded = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, uploaded));
+    expect(expiresAt).toBe(addMonths(uploaded, HOSTING_MONTHS));
+    expect((await get(txs.organizer, expiresAt - 1)).status).toBe(200);
+    expect((await get(txs.organizer, expiresAt)).status).toBe(410);
+    await cron(expiresAt);
+    expect(await records()).toEqual([]);
+    expect(await stored(VALID_HASH)).toBe(false);
+  });
+  it('the largest round validateBundle accepts is hosted 12 months from the upload (formerly refused, review M1)', async () => {
+    expect(await hostedUntil(await put(txs.farRound, bundles.farRound))).toBe(addMonths(T, HOSTING_MONTHS));
+  });
+  it('a round before the upload: the bundle is hosted until 12 months after the round', async () => {
+    const uploaded = addMonths(T, 1);
+    expect(await hostedUntil(await put(txs.organizer, bundles.valid, uploaded))).toBe(addMonths(T, HOSTING_MONTHS));
+  });
+  it('an expired record uploaded again before its round gets no new period: 410, nothing stored', async () => {
+    const first = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, first));
+    await cron(expiresAt);
+    expect(await records()).toEqual([]);
+    // Two years before the round, a year after the first hosting: counting from this upload would host it again.
+    const again = await put(txs.organizer, bundles.valid, addMonths(first, 13));
+    expect([again.status, await again.text()]).toEqual([
+      410,
+      'The hosting period of this draw has ended (12 months after its round or its first hosting, whichever came first)',
+    ]);
+    expect(await records()).toEqual([]);
+    expect(await stored(VALID_HASH)).toBe(false);
+  });
+  it('a record removed before its expiry and uploaded again keeps the expiry of its first hosting', async () => {
+    const first = addMonths(T, -36);
+    const expiresAt = await hostedUntil(await put(txs.organizer, bundles.valid, first));
+    // Twice: a second hosting must not replace the first hosting time either.
+    for (const month of [1, 3]) {
+      expect(await release(bindings, txs.organizer, addMonths(first, month))).toBe(true);
+      expect(await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(first, month + 1)))).toBe(expiresAt);
+    }
+  });
+  it('a refused upload does not start the clock: the first hosting is the first upload that made a record', async () => {
+    const refusedAt = addMonths(T, -36);
+    for (let i = 0; i < OWNER_QUOTA; i++)
+      expect((await put(txs[`quota${i}` as keyof typeof txs], bundles.quota, refusedAt)).status).toBe(201);
+    expect((await put(txs.quota20, bundles.quota, refusedAt)).status).toBe(403);
+    const hostedAt = addMonths(T, -30);
+    await release(bindings, txs.quota0, hostedAt);
+    expect(await hostedUntil(await put(txs.quota20, bundles.quota, hostedAt))).toBe(
+      addMonths(hostedAt, HOSTING_MONTHS),
+    );
+  });
+  it('the first hosting time is kept until no expiry it gives can be open, also across a month-end (addMonths is not monotonic)', () => {
+    // Round time 2028-03-01T00:00Z, first hosting an hour earlier, 2028-02-29T23:00Z.
+    const round = 47_559_412;
+    const firstHosted = Date.UTC(2028, 1, 29, 23) / 1000;
+    expect(hostingExpiry(round, firstHosted)).toBe(Date.UTC(2029, 2, 1, 23) / 1000);
+    expect(roundExpiry(round)).toBe(Date.UTC(2029, 2, 1, 0) / 1000);
+    expect(firstHostingKeepUntil(round, firstHosted)).toBe(Date.UTC(2029, 2, 1, 23) / 1000);
+    // Every first hosting in the 3 days before rounds at the turn of each month of 2028: kept at least until its expiry.
+    for (let month = 0; month < 12; month++) {
+      const roundAtMonth = Math.ceil((Date.UTC(2028, month, 1) / 1000 - 1_692_803_367) / 3) + 1;
+      for (let back = 0; back <= 3 * 86_400; back += 1_800) {
+        const at = Date.UTC(2028, month, 1) / 1000 - back;
+        expect(firstHostingKeepUntil(roundAtMonth, at)).toBeGreaterThanOrEqual(hostingExpiry(roundAtMonth, at));
+      }
+    }
+  });
+  it('the first hosting time is kept until 12 months after the round, then swept', async () => {
+    const firstHosting = async () =>
+      (
+        await bindings.DB.prepare('SELECT tx_hash FROM first_hosting ORDER BY tx_hash').all<{ tx_hash: string }>()
+      ).results.map((r) => r.tx_hash);
+    await hostedUntil(await put(txs.organizer, bundles.valid, addMonths(T, -36)));
+    await hostedUntil(await put(txs.farRound, bundles.farRound));
+    await cron(addMonths(T, HOSTING_MONTHS) - 1);
+    expect(await firstHosting()).toEqual([txs.organizer, txs.farRound].sort());
+    // From 12 months after the round the round time alone ends any period; a round no date represents is kept.
+    await cron(addMonths(T, HOSTING_MONTHS));
+    expect(await firstHosting()).toEqual([txs.farRound]);
   });
 });
 
