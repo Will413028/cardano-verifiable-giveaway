@@ -72,9 +72,25 @@ import { wireDrafts } from './draft-flow.ts';
 const now = () => Date.now() / 1000;
 const isDemo = (state: AppState) => state.mode === 'demo';
 
-async function run(state: AppState, action: () => Promise<void>) {
-  if (state.busy) return;
+// One action at a time, with the controls locked. An action asked for while another runs is never dropped silently:
+// a file the visitor picked (`queue`: a draft or CSV import) waits for the running action and then runs, since the
+// picked file would otherwise be lost (a picker opened before the controls locked still delivers its file, and the
+// restore of a preprod draft lists the wallets right after a reload, plan step 13); anything else is refused with a
+// message. Necessity condition of the queue: an input event can reach a locked control's handler.
+let idle: Promise<void> = Promise.resolve();
+async function run(state: AppState, action: () => Promise<void>, options: { queue?: boolean } = {}) {
+  if (state.busy && !options.queue) {
+    status('Another action is still running. Try again when it has finished.', true);
+    return;
+  }
+  if (state.busy) status('Waiting for the running action to finish; your file is queued.');
+  // Checked again after every wake-up and set with no await in between, so queued actions run one at a time.
+  while (state.busy) await idle;
   state.busy = true;
+  let done = () => {};
+  idle = new Promise((resolve) => {
+    done = resolve;
+  });
   const unlock = lockControls();
   try {
     await action();
@@ -84,6 +100,7 @@ async function run(state: AppState, action: () => Promise<void>) {
     state.busy = false;
     unlock(state.mode);
     renderFlow(state);
+    done();
   }
 }
 
@@ -451,7 +468,7 @@ function start() {
       text('entrant-count', (e as Error).message);
     }
   };
-  input('csv').onchange = () => void run(state, importCsv);
+  input('csv').onchange = () => void run(state, importCsv, { queue: true });
   el('draw-form').onsubmit = (event) => {
     event.preventDefault();
     void run(state, () => prepare(state));

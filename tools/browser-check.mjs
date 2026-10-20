@@ -866,6 +866,51 @@ try {
     await drafting.waitForFunction(() => document.querySelector('#draft-note').textContent.startsWith('Restored'));
     assert.deepEqual(await form(), kept);
     passed('an exported draft imports back to the identical form, and the export of that is the same file');
+    // Regression (step 12 race, fixed in plan step 13): after a reload the preprod restore lists the wallets with the
+    // controls locked; an import arriving then was dropped without a word. The wallet module is held here until the
+    // import has been made, so the page is deterministically busy: the import must be queued, said so, and applied.
+    {
+      const chunk = /\/chunks\/cardano-[^/]+\.js$/;
+      let release;
+      const held = new Promise((resolve) => {
+        release = resolve;
+      });
+      await drafting.route(chunk, async (route) => {
+        await held;
+        await route.continue();
+      });
+      await drafting.reload();
+      await drafting.waitForFunction(() => document.querySelector('#draft-note').textContent.startsWith('Restored'));
+      await drafting.waitForFunction(() => document.querySelector('#import-draft').disabled);
+      const queued = {
+        format: 'giveaway-draft-1',
+        mode: 'preprod',
+        entrants: 'held\nqueued',
+        winners: '1',
+        round: '98765433',
+      };
+      await drafting
+        .locator('#import-draft')
+        .setInputFiles({ name: 'q.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(queued)) });
+      await drafting.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('is queued'));
+      release();
+      await drafting.waitForFunction(() =>
+        document.querySelector('#draw-status').textContent.includes('Draft imported'),
+      );
+      assert.deepEqual(await form(), ['preprod', 'held\nqueued', '1', '98765433']);
+      await drafting.unroute(chunk);
+      // Back to the kept form for the checks below.
+      await drafting
+        .locator('#import-draft')
+        .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(first.text) });
+      await drafting.waitForFunction(
+        (entrants) =>
+          document.querySelector('#entrants').value === entrants && !document.querySelector('#import-draft').disabled,
+        kept[1],
+      );
+      assert.deepEqual(await form(), kept);
+    }
+    passed('an import made while the page is busy after a reload is queued with a message, never dropped');
     // A verification proof is not a draft, and a draft is not a verifiable artifact.
     await drafting.locator('#import-draft').setInputFiles(path);
     await drafting.waitForFunction(() =>

@@ -24,7 +24,7 @@ import { draftNote, el, input, localTime, renderFlow, status } from './view.ts';
 export interface DraftFlow {
   // app.ts: run an action with the controls locked and render afterwards; switch mode (a new draw), with the round to
   // show; the preprod side effects of a mode switch (tip, wallets).
-  run: (state: AppState, action: () => Promise<void>) => Promise<void>;
+  run: (state: AppState, action: () => Promise<void>, options?: { queue?: boolean }) => Promise<void>;
   setMode: (state: AppState, mode: Mode, round?: number) => void;
   enterPreprod: (state: AppState) => Promise<void>;
 }
@@ -100,18 +100,22 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
     status('Draft exported. Import it here, on any browser, to continue.');
   };
   input('import-draft').onchange = () =>
-    void flow.run(state, async () => {
-      requireReplaceable();
-      const file = input('import-draft').files?.[0];
-      input('import-draft').value = '';
-      if (!file) return;
-      if (file.size > 4_000_000) throw new Error('Draft file exceeds 4 MB');
-      const draft = importDraft(await file.text());
-      state.serverDraftId = undefined;
-      await fill(draft);
-      keep();
-      status('Draft imported. Preview the draw when it is ready.');
-    });
+    void flow.run(
+      state,
+      async () => {
+        requireReplaceable();
+        const file = input('import-draft').files?.[0];
+        input('import-draft').value = '';
+        if (!file) return;
+        if (file.size > 4_000_000) throw new Error('Draft file exceeds 4 MB');
+        const draft = importDraft(await file.text());
+        state.serverDraftId = undefined;
+        await fill(draft);
+        keep();
+        status('Draft imported. Preview the draw when it is ready.');
+      },
+      { queue: true },
+    );
 
   // Server drafts: signed by the wallet chosen in the preprod wallet field.
   const signer: OwnerSigner = async (text) => {
