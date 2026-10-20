@@ -118,6 +118,12 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 - **nonce：** 由後端發出、但不儲存（Decision「伺服器發的一次性 nonce」）：`GET /nonce` 回 random(16 bytes)‖issued(6 bytes，後端時鐘)‖HMAC-SHA256(`NONCE_KEY`, random‖issued)。簽好的訊息只在 nonce 的 MAC 驗得過、nonce 裡的發出時間等於訊息的 issued、且在發出後 5 分鐘內才收；所以無法自造 nonce，也無法把訊息寫成較晚的 issued 預先簽好、日後才用（步驟 11 第一次獨立 review 的 MED）。一次性由使用紀錄 `used_nonces`（migration 0004）保證：主鍵唯一、在簽章、MAC、時間窗與 owner 都通過後才插入，所以只有通過驗證的 owner 請求會寫入一列，B3「只存一次性 nonce 的使用紀錄」字面成立；Cron 刪除過了時間窗 1 小時的列，不設每輪上限。時間窗是在請求開始時檢查，使用紀錄卻在之後才寫入（代管還要先讀完 body 與鏈上資料），所以一則在窗內通過檢查的重放可能在清理刪掉第一次使用之後才寫入（第三次 review 的 MED，在 Miniflare 重現）；因此清理與寫入共用一個水位 `nonce_sweep`：清理在同一個交易裡先抬高水位、再刪到水位為止，寫入只收時間窗結束晚於水位的訊息。水位是清理自己的截止點、不是時鐘，Worker 與 D1 的時鐘不必一致；那 1 小時只是讓慢的合法請求少被拒（被拒時 409，重簽即可）。曾改為「發出時記錄、使用時刪除」，第二次 review（M1）指出未驗證的 GET 每次都寫一列、每輪 500 筆的清理趕不上每 IP 每小時 1,200 筆的發出速度，且每次 GET 都耗一次 D1 寫入，因此改為 MAC。`NONCE_KEY` 是 Worker secret：`wrangler.jsonc` 只以 `secrets.required` 宣告名稱，測試與 `make api` 用非機密的開發值，部署時設定正式值（計畫「延後」）；沒有它時發 nonce 與擁有者操作一律 503。
 - **寫入路由依 IP 限流：** Workers Rate Limiting binding（`WRITE_LIMIT`，每 60 秒 20 次，初值屬 SELF-IMPOSED，部署時重評），只計 PUT、POST、DELETE；`GET /nonce` 不寫入任何東西，不計。鍵是 `CF-Connecting-IP` 的 IPv4 位址，IPv6 則取 /64 前綴（一個用戶通常握有整個 /64，以完整位址為鍵等於每個位址一個新額度，review M1）。必要條件寫在 `apps/api/src/index.ts`：寫入請求在確認簽章者是 owner 之前，就會花掉 `validateBundle` 的 CPU、一次 Ed25519 驗章與最多八次專案 Dolos 讀取（`commitmentOwner` 3 次＋`readCommitment` 5 次，讀程式碼推得）；任何人都能用自己的 key 簽，owner 額度與 nonce 都擋不住請求數。計數只在單一機房內、近似值，擋得住單一來源，擋不住分散來源。
 
+## Amendment 7 (2026-10-20)：伺服器草稿的全域上限與 30 天起算點（步驟 12，PD4 草稿子題）
+
+- Will 2026-10-20 決定（步驟 12 實作後提出的兩個開放問題）：
+  - **全域 byte 上限：** 所有有效伺服器草稿合計不超過設定值 `DRAFT_BYTES_CAP`（`apps/api/wrangler.jsonc` 的 `vars`，`apps/api/src/drafts.ts`），與每身分 5 份的額度在同一條 upsert 裡原子檢查；替換既有草稿以新大小計、不計被替換的舊版本；超過時回 507 Insufficient Storage（服務的上限，有別於每錢包額度的 403），頁面說明草稿仍存在瀏覽器且可匯出。設定值不合法時拒絕儲存（503），不放寬上限。初值 1 GiB（SELF-IMPOSED）：R2 免費 Standard 儲存 10 GB-month 的十分之一（Cloudflare R2 定價頁，2026-10-20 查），與同一 bucket 的代管 bundle 共用；約可放 178 份最大尺寸（協定 bundle 上限 6,030,512 bytes）的草稿。部署時重設（階段計畫「延後」）。理由：草稿身分零成本（任何 stake key 都能簽、不需上鏈承諾），每身分額度只限一個身分、不限總量；不加上限時唯一的界線是每 IP 寫入限流。代價：上限滿時所有人都暫時存不了伺服器草稿（本機草稿與匯出不受影響），一個來源可以用多個身分填滿它，需要靠限流與部署時的監控。沒有紀錄對應的孤兒 bytes（儲存中途停止）不計入，最晚 30 天由 Cron 刪除。
+  - **30 天自最後一次儲存起算（滑動）：** Decision 的「保存 30 天」指每份草稿保存到最後一次儲存後 30 天，每次儲存重新起算。每次儲存都是對新內容的新簽章，所以存著的內容不會超過 30 天沒被擁有者重新確認。代價：擁有者持續以簽章重存的草稿可以一直保留，沒有絕對上限；對照的「從建立時起算」會強迫 30 天後重建，換到較短的總保存時間。
+
 ## Review Notes
 
 ## Related

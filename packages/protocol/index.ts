@@ -307,4 +307,69 @@ export function parseEntrants(text: string): string[] {
   if (!labels.length) throw new Error('No participants found');
   return labels;
 }
+
+// A draft of a draw's setup (plan step 12; BR-11, BR-12, BR-18): the page's form before anything is committed (mode,
+// participant text, number of winners, round). Not part of the verification protocol: no verifier reads it (B1), and
+// it is never a bundle, an announcement or a proof (its own format; validateProof refuses it). It lives here because
+// both the page (IndexedDB copy, export, import) and the backend (server drafts) check the same format.
+export const DRAFT_FORMAT = 'giveaway-draft-1';
+export interface Draft {
+  format: typeof DRAFT_FORMAT;
+  mode: 'demo' | 'preprod';
+  // The participant field as typed (labels, or CSV with a label header).
+  entrants: string;
+  winners: string;
+  round: string;
+}
+// The page's CSV import limit (apps/web/app.ts importCsv): a draft's participant text is never larger than what the
+// page accepts in the field.
+const ENTRANTS_LIMIT = 2_000_000;
+
+export function validateDraft(value: unknown): Draft {
+  const refuse = () =>
+    new Error(
+      'This file is not an Open Draw draft. A verification bundle or proof is checked in the verification panel.',
+    );
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw refuse();
+  const draft = value as Record<string, unknown>;
+  const keys = Object.keys(draft).sort().join();
+  if (keys !== 'entrants,format,mode,round,winners' || draft.format !== DRAFT_FORMAT) throw refuse();
+  if (draft.mode !== 'demo' && draft.mode !== 'preprod') throw refuse();
+  for (const field of ['entrants', 'winners', 'round'] as const) if (typeof draft[field] !== 'string') throw refuse();
+  if ((draft.entrants as string).length > ENTRANTS_LIMIT) throw new Error('Draft participant list exceeds 2 MB');
+  if (!/^\d{0,16}$/.test(draft.winners as string) || !/^\d{0,16}$/.test(draft.round as string)) throw refuse();
+  return {
+    format: DRAFT_FORMAT,
+    mode: draft.mode,
+    entrants: draft.entrants as string,
+    winners: draft.winners as string,
+    round: draft.round as string,
+  };
+}
+
+// The public labels as participant text that parseEntrants reads back to the same labels: one per line when every
+// label is plain, otherwise a CSV with only the label column, every field quoted (a label holding a comma or a quote,
+// or a first label that reads as the `label` header).
+export function labelsText(labels: readonly string[]): string {
+  const plain = labels.every((label) => !/[",\r\n]/.test(label)) && labels[0]?.trim().toLowerCase() !== 'label';
+  return plain ? labels.join('\n') : ['label', ...labels.map((label) => `"${label.replaceAll('"', '""')}"`)].join('\n');
+}
+
+// What a server draft must be (BR-18; apps/api/src/drafts.ts): a draft whose participant text is exactly
+// labelsText of the public labels parseEntrants reads from it (no other CSV column, so no contacts), which is what the
+// page sends (apps/web/drafts.ts `serverCopy`). The backend checks it, so the server copy does not depend on the client
+// to minimize it, and the draft storage holds drafts only.
+export function validateServerDraft(value: unknown): Draft {
+  const draft = validateDraft(value);
+  let labels: string[];
+  try {
+    labels = parseEntrants(draft.entrants);
+  } catch (e) {
+    throw new Error(`Server draft participants: ${(e as Error).message}`);
+  }
+  if (labelsText(labels) !== draft.entrants)
+    throw new Error('A server draft holds the public labels only (no other CSV columns)');
+  return draft;
+}
+
 export * from './owner.ts';

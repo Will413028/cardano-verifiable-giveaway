@@ -12,6 +12,7 @@ import {
   FIXTURE,
   identityKeyHash,
   LABEL,
+  draftOperationText,
   parseOwnerOperation,
   preprodSlotAt,
   QUICKNET,
@@ -797,6 +798,225 @@ try {
     await verifier.close();
   }
   passed('verification page reads only the indexer the visitor names');
+  let exportedDraft = '';
+  // Drafts (plan step 12; BR-11): the setup form is kept in this browser's IndexedDB as it is edited and restored on
+  // the next load, mode included; it exports to a file that imports back to the same form. A draft never enters the
+  // verification flow, and a verification file is not a draft.
+  {
+    const drafting = await browser.newPage({ acceptDownloads: true });
+    const pageErrors = [];
+    drafting.on('pageerror', (e) => pageErrors.push(e.message));
+    await drafting.goto(origin);
+    await drafting.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('No wallet needed'),
+    );
+    const note = () => drafting.locator('#draft-note').textContent();
+    const form = () =>
+      drafting.evaluate(() =>
+        ['network', 'entrants', 'winner-count', 'round'].map((id) => document.getElementById(id).value),
+      );
+    await drafting.selectOption('#network', 'preprod');
+    await drafting.locator('#entrants').fill('zoe\nyan\nxu\nwen');
+    await drafting.locator('#winner-count').fill('2');
+    await drafting.locator('#round').fill('98765432');
+    await drafting.waitForFunction(() =>
+      document.querySelector('#draft-note').textContent.includes('kept in this browser ('),
+    );
+    const kept = await form();
+    assert.deepEqual(kept, ['preprod', 'zoe\nyan\nxu\nwen', '2', '98765432']);
+    await drafting.reload();
+    await drafting.waitForFunction(() => document.querySelector('#draft-note').textContent.startsWith('Restored'));
+    assert.deepEqual(await form(), kept);
+    // Restored in its mode: the preprod fields are shown and the participant count follows the restored text.
+    assert.equal(await drafting.locator('#wallet-area').isVisible(), true);
+    assert.equal(await drafting.locator('#entrant-count').textContent(), '4 participants');
+    assert.match(await note(), /Restored the draft kept in this browser/);
+    passed('a draft is kept in this browser while editing and restored with its mode after a reload');
+    const exported = async () => {
+      const event = drafting.waitForEvent('download');
+      await drafting.click('#export-draft');
+      const download = await event;
+      return { name: download.suggestedFilename(), text: await readFile(await download.path(), 'utf8') };
+    };
+    const first = await exported();
+    exportedDraft = first.text;
+    assert.equal(first.name, 'open-draw-draft.json');
+    assert.deepEqual(JSON.parse(first.text), {
+      format: 'giveaway-draft-1',
+      mode: 'preprod',
+      entrants: 'zoe\nyan\nxu\nwen',
+      winners: '2',
+      round: '98765432',
+    });
+    await drafting.selectOption('#network', 'demo');
+    await drafting.locator('#entrants').fill('somebody else');
+    await drafting.locator('#winner-count').fill('1');
+    assert.notDeepEqual(await form(), kept);
+    await drafting
+      .locator('#import-draft')
+      .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(first.text) });
+    await drafting.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Draft imported'));
+    assert.deepEqual(await form(), kept);
+    assert.equal((await exported()).text, first.text);
+    // The import is kept like an edit: it survives a reload too.
+    await drafting.waitForFunction(() =>
+      document.querySelector('#draft-note').textContent.includes('kept in this browser ('),
+    );
+    await drafting.reload();
+    await drafting.waitForFunction(() => document.querySelector('#draft-note').textContent.startsWith('Restored'));
+    assert.deepEqual(await form(), kept);
+    passed('an exported draft imports back to the identical form, and the export of that is the same file');
+    // A verification proof is not a draft, and a draft is not a verifiable artifact.
+    await drafting.locator('#import-draft').setInputFiles(path);
+    await drafting.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('not an Open Draw draft'),
+    );
+    assert.deepEqual(await form(), kept);
+    await drafting
+      .locator('#proof-file')
+      .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(first.text) });
+    await drafting.waitForFunction(() => document.querySelector('#verification').textContent.startsWith('FAIL'));
+    assert.equal(await drafting.locator('#verified-result').isVisible(), false);
+    // A committed draw is not discarded by importing a draft: the import is refused and the draw stays.
+    await drafting.selectOption('#network', 'demo');
+    await drafting.click('#prepare');
+    await drafting.waitForSelector('#commit');
+    await drafting.click('#commit');
+    await drafting.waitForSelector('#confirm');
+    await drafting
+      .locator('#import-draft')
+      .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(first.text) });
+    await drafting.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('A committed draw is in progress'),
+    );
+    assert.equal(await drafting.locator('#confirm').isVisible(), true);
+    assert.equal(await drafting.locator('#network').inputValue(), 'demo');
+    assert.deepEqual(pageErrors, []);
+    await drafting.close();
+  }
+  passed('a draft never enters the verification flow, and a proof file is refused as a draft');
+  // A preprod draft imported on a page still in demo mode switches to preprod with the browser's wallets listed
+  // (review LOW 1); and when the backend's draft storage is full (507, the global cap), the page says that the browser
+  // copy and the export still work.
+  {
+    const target = await browser.newPage();
+    const pageErrors = [];
+    target.on('pageerror', (e) => pageErrors.push(e.message));
+    await target.exposeFunction('mockSignData', signDataFor);
+    await target.addInitScript(mockWallet, { utxo: utxoOf(wallets.base), address: wallets.base, sign: true });
+    await target.route(`${INDEXER}/**`, (route) => route.fulfill({ status: 404, body: '' }));
+    await target.route(`${API}/**`, async (route) => {
+      const request = route.request();
+      const cors = { 'Access-Control-Allow-Origin': new URL(origin).origin, Vary: 'Origin' };
+      if (request.method() === 'OPTIONS')
+        return route.fulfill({
+          status: 204,
+          headers: {
+            ...cors,
+            'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        });
+      if (new URL(request.url()).pathname === '/nonce') {
+        const issuedAt = Math.floor(Date.now() / 1000);
+        return route.fulfill({
+          status: 200,
+          headers: cors,
+          json: { nonce: hex(crypto.getRandomValues(new Uint8Array(16))), issuedAt, expiresAt: issuedAt + 300 },
+        });
+      }
+      return route.fulfill({ status: 507, headers: cors, body: 'Server draft storage is full (the global cap).' });
+    });
+    await target.goto(origin);
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('No wallet needed'));
+    assert.equal(await target.locator('#wallet option').count(), 0);
+    await target
+      .locator('#import-draft')
+      .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(exportedDraft) });
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Draft imported'));
+    assert.equal(await target.locator('#network').inputValue(), 'preprod');
+    await target.waitForSelector('#wallet option', { state: 'attached' });
+    assert.equal(await target.locator('#wallet option').textContent(), 'Mock preprod');
+    await target.click('#save-server-draft');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('storage is full'));
+    assert.match(
+      await statusText(target),
+      /not saved to the server\. It is still kept in this browser, and Export draft still saves a copy/,
+    );
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed(
+    'an imported preprod draft lists the wallets; a full server draft storage (507) leaves the browser copy and export',
+  );
+  // Server drafts (BR-12, BR-18) against the real local backend (`make api`): every operation is signed by the
+  // wallet's stake key for its reward address, only the public labels are sent, and save, list, load and delete work
+  // end to end. Leftovers of an earlier run of this check (same test key) are deleted first through the same API.
+  {
+    const apiDraft = async (operation, draft, method, apiPath, body) => {
+      const nonceResponse = await fetch(`${API}/nonce`);
+      assert.equal(
+        nonceResponse.status,
+        200,
+        `start the backend (make api): GET /nonce answered ${nonceResponse.status}`,
+      );
+      const { nonce, issuedAt } = await nonceResponse.json();
+      const text = draftOperationText({
+        domain: new URL(origin).host,
+        operation,
+        network: 'preprod',
+        draft,
+        content: 'none',
+        nonce,
+        issuedAt,
+      });
+      const signed = signDataFor(REWARD, hex(new TextEncoder().encode(text)));
+      return fetch(`${API}${apiPath}`, {
+        method,
+        body,
+        headers: { Authorization: `CIP30 ${signed.signature} ${signed.key}` },
+      });
+    };
+    const leftovers = await (await apiDraft('draft-list', 'all', 'GET', '/drafts')).json();
+    for (const { id } of leftovers.drafts)
+      assert.equal((await apiDraft('draft-delete', id, 'DELETE', `/drafts/${id}`)).status, 200);
+    const { target, pageErrors } = await preprodPage({ sign: true });
+    await target.locator('#entrants').fill('label,email\nann,ann@example.com\nben,ben@example.com');
+    await target.click('#save-server-draft');
+    await target.waitForFunction(() =>
+      /Draft saved to the server|refused/.test(document.querySelector('#draw-status').textContent),
+    );
+    assert.match(
+      await statusText(target),
+      /Draft saved to the server \(public labels only\) until .*30 days after each save, at most 5 per wallet/,
+    );
+    await target.locator('#entrants').fill('changed');
+    await target.click('#list-server-drafts');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('server draft(s)'));
+    assert.equal(await target.locator('#server-draft option').count(), 1);
+    await target.click('#load-server-draft');
+    await target.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('Server draft loaded'),
+    );
+    // The contacts column never left the browser: the server copy holds the labels only.
+    assert.equal(await target.locator('#entrants').inputValue(), 'ann\nben');
+    await target.click('#delete-server-draft');
+    await target.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('Server draft deleted'),
+    );
+    assert.equal(await target.locator('#server-draft-pick').isVisible(), false);
+    await target.click('#list-server-drafts');
+    await target.waitForFunction(() =>
+      document.querySelector('#draw-status').textContent.includes('keeps no server drafts'),
+    );
+    // Five operations, each signed on its own by the stake key for the reward address.
+    assert.deepEqual(await target.evaluate(() => window.signDataCalls), Array(5).fill(REWARD));
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed(
+    'server drafts are saved, listed, loaded and deleted through the backend under the wallet stake key signature, labels only',
+  );
   await page.selectOption('#network', 'demo');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

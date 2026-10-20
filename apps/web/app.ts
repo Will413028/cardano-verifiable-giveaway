@@ -42,15 +42,14 @@ import {
   resolveArtifact,
   resolveBundle,
 } from './services.ts';
-import { type AppState, createState } from './state.ts';
+import { type AppState, createState, type Mode } from './state.ts';
 import {
-  clearDrawProgress,
   el,
   input,
-  isDemo,
   hostedReach,
   localTime,
   lockControls,
+  renderFlow,
   renderHostedShare,
   renderLookup,
   renderMode,
@@ -62,14 +61,16 @@ import {
   renderVerificationPending,
   renderWallets,
   renderWinners,
-  show,
   status,
   text,
 } from './view.ts';
+import { wireDrafts } from './draft-flow.ts';
 
-// Entry point: owns the page state and wires DOM events to the draw and verification flows.
+// Entry point: owns the page state and wires DOM events to the draw and verification flows. The flows change the
+// state; the draw panel's controls are rendered from it (view.ts `renderFlow`) after every action (plan step 12).
 
 const now = () => Date.now() / 1000;
+const isDemo = (state: AppState) => state.mode === 'demo';
 
 async function run(state: AppState, action: () => Promise<void>) {
   if (state.busy) return;
@@ -81,14 +82,16 @@ async function run(state: AppState, action: () => Promise<void>) {
     status((e as Error).message, true);
   } finally {
     state.busy = false;
-    unlock();
+    unlock(state.mode);
+    renderFlow(state);
   }
 }
 
 function reset(state: AppState) {
   clearTimeout(state.poll);
   state.draw = {};
-  clearDrawProgress();
+  state.stage = 'setup';
+  state.sharing = undefined;
   revokeDownloads(state);
 }
 
@@ -96,9 +99,13 @@ function revokeDownloads(state: AppState) {
   for (const url of [state.downloadUrl, state.bundleDownloadUrl]) if (url) URL.revokeObjectURL(url);
 }
 
-function updateMode(state: AppState) {
+// A new mode starts a new draw. `round` is a restored draft's; otherwise demo uses the recorded round and preprod one
+// about 31 minutes ahead.
+function updateMode(state: AppState, mode: Mode, round?: number) {
   reset(state);
-  renderMode(isDemo() ? FIXTURE.round : roundAt(now() + 1860));
+  state.mode = mode;
+  renderMode(mode, mode === 'demo' ? FIXTURE.round : (round ?? roundAt(now() + 1860)));
+  renderFlow(state);
 }
 
 // Outside run(): the tip is informational and must not lock the controls or replace the draw status.
@@ -108,6 +115,14 @@ async function refreshTip() {
   } catch (e) {
     renderTip(e as Error);
   }
+}
+
+// Preprod reads the chain tip and the browser's wallets. Inside a running action (a draft loaded or imported in preprod
+// mode) run() would return at once, since the page is busy (review LOW 1), so the action lists the wallets itself and
+// waits for them; otherwise listing them is an action of its own.
+function enterPreprod(state: AppState): Promise<void> {
+  void refreshTip();
+  return state.busy ? refreshWallets() : run(state, refreshWallets);
 }
 
 async function refreshWallets() {
@@ -121,14 +136,16 @@ async function importCsv() {
   if (file.size > 2_000_000) throw new Error('CSV exceeds 2 MB');
   const labels = parseEntrants(await file.text());
   input('entrants').value = labels.join('\n');
-  text('entrant-count', `${labels.length} participants`);
+  // An edit like typing: the count follows and the draft is kept (draft-flow.ts).
+  input('entrants').dispatchEvent(new Event('input'));
   status('Imported public labels. Other CSV columns were discarded.');
 }
 
 async function prepare(state: AppState) {
   reset(state);
   const round = Number(input('round').value);
-  if (!isDemo() && roundTime(round) < now() + 1800) throw new Error('Choose a round at least 30 minutes in the future');
+  if (!isDemo(state) && roundTime(round) < now() + 1800)
+    throw new Error('Choose a round at least 30 minutes in the future');
   const bundle = validateBundle({
     version: VERSION,
     algorithm: ALGORITHM,
@@ -141,8 +158,8 @@ async function prepare(state: AppState) {
   text('preview-count', String(bundle.entrants.length));
   text('preview-winners', String(bundle.rules.winners));
   text('preview-hash', await computeCommitment(bundle));
-  text('preview-time', isDemo() ? 'Recorded quicknet round · simulated timing' : localTime(roundTime(round)));
-  if (!isDemo()) {
+  text('preview-time', isDemo(state) ? 'Recorded quicknet round · simulated timing' : localTime(roundTime(round)));
+  if (!isDemo(state)) {
     const { prepareTransaction } = await import('./cardano.ts');
     const transaction = await prepareTransaction(bundle, input('wallet').value, PROJECT_INDEXER);
     state.draw.transaction = transaction;
@@ -154,32 +171,27 @@ async function prepare(state: AppState) {
       }.`,
     );
   } else status('List and rules locked in the preview. Commit the demo draw next.');
-  show(['commit-preview', 'commit'], true);
-  text('commit', isDemo() ? 'Commit demo draw' : 'Sign and submit to preprod');
-  el('stage-prepare').classList.add('done');
+  state.stage = 'previewed';
 }
 
 async function commit(state: AppState, chains: Chains) {
   const { bundle, transaction } = state.draw;
   if (!bundle) throw new Error('Preview a draw first');
-  if (isDemo()) state.draw.committed = await chains.demo.commit(bundle);
+  if (isDemo(state)) state.draw.committed = await chains.demo.commit(bundle);
   else {
     if (!transaction) throw new Error('Build a transaction first');
     state.draw.committed = { txHash: await transaction.signAndSubmit(), owner: transaction.owner };
   }
   const committed = state.draw.committed;
-  el('commit').hidden = true;
-  el('confirm').hidden = false;
-  el('late').hidden = !isDemo();
-  text('confirm', isDemo() ? 'Simulate 15 confirmations' : 'Check confirmations');
+  state.stage = 'committed';
   status(
-    isDemo()
+    isDemo(state)
       ? 'Demo commitment created. Simulate confirmations to continue.'
       : `Submitted ${committed.txHash}. Publish the commitment link before the round. Waiting for ${CONFIRMATIONS} confirmations.`,
   );
   // A pre-round link is available immediately. It identifies the committed bundle and reference.
-  share(state, announcement(isDemo() ? 'demo' : 'preprod', bundle, committed));
-  if (!isDemo()) scheduleConfirmation(state, chains);
+  share(state, announcement(isDemo(state) ? 'demo' : 'preprod', bundle, committed));
+  if (!isDemo(state)) scheduleConfirmation(state, chains);
 }
 
 function scheduleConfirmation(state: AppState, chains: Chains) {
@@ -187,12 +199,15 @@ function scheduleConfirmation(state: AppState, chains: Chains) {
   state.poll = setTimeout(async () => {
     const draw = state.draw;
     const { bundle, transaction } = draw;
-    if (!bundle || !draw.committed || isDemo()) return;
+    if (!bundle || !draw.committed || isDemo(state)) return;
     try {
       await confirm(state, chains);
+      renderFlow(state);
     } catch (e) {
       // A reset or new preview while the indexer answered: the response belongs to a draw that is gone.
       if (state.draw !== draw) return;
+      // A timing failure set the stage to invalid before throwing: its controls follow.
+      renderFlow(state);
       status(`${(e as Error).message}. Next check in 30 seconds.`);
       // Past invalid_hereafter the ledger refuses the transaction: if it is not on chain by now it never will be.
       // Only an indexer with no record of it says so; a listed transaction without CBOR yet (CborPendingError)
@@ -212,14 +227,14 @@ async function confirm(state: AppState, chains: Chains, late = false) {
   const draw = state.draw;
   const { bundle, committed } = draw;
   if (!bundle || !committed) throw new Error('Commit a draw first');
-  const confirmed = isDemo()
+  const confirmed = isDemo(state)
     ? chains.demo.confirm(committed, late)
     : await chains.indexer.readCommitment(committed.txHash, committed.owner);
   // Discard a response that arrives after the draw was reset or replaced.
   if (state.draw !== draw) return;
   draw.confirmed = confirmed;
   if (!checkTiming(confirmed, bundle.drand.round)) {
-    show(['open', 'confirm', 'late'], false);
+    state.stage = 'invalid';
     clearTimeout(state.poll);
     if (!checkValidityBound(confirmed, bundle.drand.round))
       throw new Error(
@@ -228,13 +243,9 @@ async function confirm(state: AppState, chains: Chains, late = false) {
     throw new Error('Confirmation arrived too late. This draw is invalid; create a new drawId.');
   }
   clearTimeout(state.poll);
-  el('stage-commit').classList.add('done');
-  show(['confirm', 'late'], false);
-  el('open').hidden = false;
-  // Hosting needs a confirmed on-chain commitment (BR-06); a demo draw has none.
-  el('host').hidden = isDemo() || draw.hosted !== undefined;
+  state.stage = 'confirmed';
   status(
-    isDemo()
+    isDemo(state)
       ? 'Demo confirms before the recorded round. You can reveal the winners.'
       : `Fifteen confirmations verified. Round starts at ${localTime(roundTime(bundle.drand.round))}.`,
   );
@@ -245,11 +256,11 @@ async function reveal(state: AppState, chains: Chains) {
   const { bundle, committed, confirmed } = draw;
   if (!bundle || !committed || !confirmed || !checkTiming(confirmed, bundle.drand.round))
     throw new Error('Need valid confirmation timing');
-  if (!isDemo() && now() < roundTime(bundle.drand.round))
+  if (!isDemo(state) && now() < roundTime(bundle.drand.round))
     throw new Error(`Round is not available yet. Starts at ${localTime(roundTime(bundle.drand.round))}.`);
-  const beacon = isDemo() ? FIXTURE : await fetchBeacon(bundle.drand.round);
+  const beacon = isDemo(state) ? FIXTURE : await fetchBeacon(bundle.drand.round);
   if (state.draw !== draw) return;
-  const proof = await assembleProof(isDemo() ? 'demo' : 'preprod', bundle, committed, beacon);
+  const proof = await assembleProof(isDemo(state) ? 'demo' : 'preprod', bundle, committed, beacon);
   const verdict = await verifyProof(proof, { chain: chains.indexer });
   if (state.draw !== draw) return;
   if (verdict.status === 'FAIL')
@@ -260,9 +271,7 @@ async function reveal(state: AppState, chains: Chains) {
         .join('; '),
     );
   renderWinners(verdict.winners);
-  show(['result', 'winner-result'], true);
-  el('open').hidden = true;
-  el('stage-result').classList.add('done');
+  state.stage = 'revealed';
   status(
     verdict.status === 'DEMO PASS'
       ? 'Demo complete. Chain evidence is simulated; drand signature and winners are independently checked.'
@@ -285,6 +294,7 @@ async function reveal(state: AppState, chains: Chains) {
 // none, with the guidance to publish the bundle file) and says why (hostedReach).
 function share(state: AppState, artifact: Artifact) {
   state.draw.shared = artifact;
+  state.sharing = 'draw';
   const hosted = state.draw.hosted;
   const link =
     hosted && hosted.expiresAt > roundTime(artifact.bundle.drand.round)
@@ -309,14 +319,12 @@ function ownerSigner(owner: string): OwnerSigner {
 async function host(state: AppState) {
   const draw = state.draw;
   const { bundle, committed, confirmed, shared } = draw;
-  if (isDemo() || !bundle || !committed || !confirmed || !shared)
+  if (isDemo(state) || !bundle || !committed || !confirmed || !shared)
     throw new Error('Host a bundle after its commitment is confirmed');
   const link = { txHash: committed.txHash, bundleHash: confirmed.bundleHash };
   const { expiresAt } = await hostBundle(link, bundle, ownerSigner(committed.owner));
   if (state.draw !== draw) return;
   draw.hosted = { link, expiresAt };
-  el('host').hidden = true;
-  show(['extend-hosting', 'delete-hosted'], true);
   share(state, shared);
   status(`Bundle hosted. ${hostedReach(expiresAt, bundle.drand.round)}`);
 }
@@ -328,7 +336,7 @@ async function extendHosting(state: AppState) {
   const { expiresAt, extensionsLeft } = await extendHosted(hosted.link, ownerSigner(committed.owner));
   if (state.draw !== draw) return;
   hosted.expiresAt = expiresAt;
-  el('extend-hosting').hidden = extensionsLeft === 0;
+  hosted.extensionsLeft = extensionsLeft;
   share(state, shared);
   status(
     `Hosting extended. ${hostedReach(expiresAt, bundle.drand.round)}${extensionsLeft === 0 ? ' This was the last extension: hosting ends 36 months after the earlier of the round and the first hosting.' : ''}`,
@@ -344,8 +352,6 @@ async function deleteHostedBundle(state: AppState) {
   await deleteHosted(hosted.link, ownerSigner(committed.owner));
   if (state.draw !== draw) return;
   draw.hosted = undefined;
-  show(['extend-hosting', 'delete-hosted'], false);
-  el('host').hidden = false;
   share(state, shared);
   status(
     'Hosted bundle deleted: the hosted verification link no longer works. Keep the downloaded bundle file and proof: participants can still verify from them (publish the bundle file at an HTTPS URL to share a link again).',
@@ -407,10 +413,16 @@ async function readProofFile() {
 
 // A verification link or the panel's transaction and URL fields (bundle mode): the bytes come from the named source or
 // the backend's copy, must hash to the link's bundle hash, and the verifier recomputes everything else.
-async function readBundle(chains: Chains, link: { txHash: string; bundleHash?: string; source?: string }) {
+async function readBundle(
+  state: AppState,
+  chains: Chains,
+  link: { txHash: string; bundleHash?: string; source?: string },
+) {
   const { bundle, hash } = await fetchBundle(link);
   const pinned: BundleLink = { txHash: link.txHash, bundleHash: hash, ...(link.source ? { source: link.source } : {}) };
+  state.sharing = 'link';
   renderHostedShare(bundleShareLink(location.href, pinned));
+  renderFlow(state);
   return resolveBundle(bundle, link.txHash, { chain: indexerFor(chains, input('indexer').value), now: now() });
 }
 
@@ -421,15 +433,15 @@ function bundleFields(): { txHash: string; source?: string } {
   return { txHash, ...(source ? { source } : {}) };
 }
 
+// A loaded verification artifact (proof or announcement) as the verification panel resolves it.
+const artifact = (read: () => Promise<unknown>) => async () => resolveArtifact(await read(), now());
+
 function start() {
   const state = createState();
   const chains = createChains();
   input('network').onchange = () => {
-    updateMode(state);
-    if (!isDemo()) {
-      void refreshTip();
-      void run(state, refreshWallets);
-    }
+    updateMode(state, input('network').value === 'preprod' ? 'preprod' : 'demo');
+    if (!isDemo(state)) void enterPreprod(state);
   };
   el('refresh-wallets').onclick = () => void run(state, refreshWallets);
   input('entrants').oninput = () => {
@@ -453,15 +465,20 @@ function start() {
   el('extend-hosting').onclick = () => void run(state, () => extendHosting(state));
   el('delete-hosted').onclick = () => void run(state, () => deleteHostedBundle(state));
   input('lookup').oninput = () => renderLookup(state.verifiedBundle);
-  const artifact = (read: () => Promise<unknown>) => async () => resolveArtifact(await read(), now());
   input('proof-file').onchange = () => void load(state, chains, artifact(readProofFile));
-  el('load-url').onclick = () => void load(state, chains, async () => readBundle(chains, bundleFields()));
+  el('load-url').onclick = () => void load(state, chains, async () => readBundle(state, chains, bundleFields()));
   text('boundary', BOUNDARY);
-  updateMode(state);
+  updateMode(state, 'demo');
   window.addEventListener('beforeunload', () => {
     clearTimeout(state.poll);
     revokeDownloads(state);
   });
+  // The draft kept in this browser, if any, replaces the defaults (plan step 12; BR-11); a link the page was opened
+  // with is loaded after that.
+  void wireDrafts(state, { run, setMode: updateMode, enterPreprod }).then(() => openLink(state, chains));
+}
+
+function openLink(state: AppState, chains: Chains) {
   if (location.hash.startsWith('#proof='))
     void load(
       state,
@@ -473,7 +490,7 @@ function start() {
     void load(state, chains, async () => {
       const link = readShareLink(location.search);
       if (!link) throw new Error('This page link carries no verification link');
-      return readBundle(chains, link);
+      return readBundle(state, chains, link);
     });
 }
 

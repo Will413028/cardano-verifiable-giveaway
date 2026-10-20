@@ -16,7 +16,7 @@
 <form id="draw-form">
 <label for="network">Mode</label><select id="network"><option value="demo">Demo — no wallet needed</option><option value="preprod">Cardano preprod — test ADA</option></select>
 <p id="mode-note" class="note">Demo uses a recorded, cryptographically verified drand beacon and simulated chain timing. It is not an on-chain giveaway.</p>
-<div id="wallet-area" hidden><p id="chain-tip" class="note" role="status">Reading the preprod tip…</p><label for="wallet">Your wallet</label><div class="inline"><select id="wallet"></select><button type="button" id="refresh-wallets" class="secondary">Refresh</button></div><p class="note">Use a preprod wallet. Mainnet is disabled. Development support requires one ADA-only UTxO with at least 5 test ADA.</p></div>
+<div id="wallet-area" hidden><p id="chain-tip" class="note" role="status">Reading the preprod tip…</p><label for="wallet">Your wallet</label><div class="inline"><select id="wallet"></select><button type="button" id="refresh-wallets" class="secondary">Refresh</button></div><p class="note">Use a preprod wallet. Mainnet is disabled. Development support requires one ADA-only UTxO with at least 5 test ADA.</p><div class="inline draft-actions"><button type="button" id="save-server-draft" class="secondary">Save draft to server</button><button type="button" id="list-server-drafts" class="secondary">Server drafts</button></div><div id="server-draft-pick" class="inline" hidden><select id="server-draft" aria-label="Server draft"></select><button type="button" id="load-server-draft" class="secondary">Load</button><button type="button" id="delete-server-draft" class="secondary">Delete</button></div><p class="note">Server drafts are signed by your wallet's stake key, hold only the public labels, and are kept 30 days after each save, at most 5 per wallet.</p></div>
 <label for="entrants">Public participant labels</label><textarea id="entrants" rows="7" spellcheck="false" placeholder="One label per line, or CSV with a label header">alice
 bob
 carol
@@ -25,6 +25,8 @@ eli</textarea>
 <div class="upload-row"><label class="file-label" for="csv">↑ Import CSV<input id="csv" type="file" accept=".csv,text/csv" hidden></label><span id="entrant-count">5 participants</span></div>
 <p class="note">Only the label column is used. Emails and phone numbers are rejected. Other CSV columns stay out of the public bundle.</p>
 <div class="form-grid"><div><label for="winner-count">Number of winners</label><input id="winner-count" type="number" min="1" value="1" required></div><div><label for="round">drand round</label><input id="round" type="number" min="1" required></div></div>
+<div class="upload-row"><button type="button" id="export-draft" class="secondary">↓ Export draft</button><label class="file-label" for="import-draft">↑ Import draft<input id="import-draft" type="file" accept=".json,application/json" hidden></label></div>
+<p id="draft-note" class="note">Your draft is kept in this browser as you type and restored when you come back.</p>
 <button class="primary" type="submit" id="prepare">Preview commitment →</button>
 </form>
 </section>

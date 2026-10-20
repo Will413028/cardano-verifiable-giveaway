@@ -165,21 +165,29 @@ export async function fetchBundle(
 // page's host, the operation, preprod, the commitment and its bundle hash, and a nonce with the backend's clock
 // (GET /nonce); `sign` asks the wallet (cardano.ts `signOwnerOperation`) and answers the CIP-30 DataSignature.
 export type OwnerSigner = (text: string) => Promise<{ signature: string; key: string }>;
+// A nonce from the backend (GET /nonce) with the backend's clock; every signed operation, owner or draft, needs one.
+export async function fetchNonce(api: string): Promise<{ nonce: string; issuedAt: number }> {
+  const response = await fetch(`${api}/nonce`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`Backend nonce: HTTP ${response.status}`);
+  const { nonce, issuedAt } = await response.json();
+  if (typeof nonce !== 'string' || !Number.isSafeInteger(issuedAt))
+    throw new Error('Backend nonce: unexpected response');
+  return { nonce, issuedAt };
+}
+// The Authorization header for a signed message text (CIP-30 answers hex; the backend reads it in lowercase).
+export async function signedAuthorization(text: string, sign: OwnerSigner): Promise<string> {
+  const { signature, key } = await sign(text);
+  return `CIP30 ${signature.toLowerCase()} ${key.toLowerCase()}`;
+}
 async function ownerAuthorization(
   operation: OwnerOperationName,
   ref: { txHash: string; bundleHash: string },
   sign: OwnerSigner,
   api: string,
 ): Promise<string> {
-  const response = await fetch(`${api}/nonce`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`Backend nonce: HTTP ${response.status}`);
-  const { nonce, issuedAt } = await response.json();
-  if (typeof nonce !== 'string' || !Number.isSafeInteger(issuedAt))
-    throw new Error('Backend nonce: unexpected response');
+  const { nonce, issuedAt } = await fetchNonce(api);
   const text = ownerOperationText({ domain: location.host, operation, network: 'preprod', ...ref, nonce, issuedAt });
-  const { signature, key } = await sign(text);
-  // CIP-30 answers hex; the backend reads it in lowercase.
-  return `CIP30 ${signature.toLowerCase()} ${key.toLowerCase()}`;
+  return signedAuthorization(text, sign);
 }
 async function ownerRequest(
   operation: OwnerOperationName,

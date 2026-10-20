@@ -1,16 +1,19 @@
 import { decodeBech32, verifyDataSignature } from '@giveaway/chain';
 import {
+  type DraftOperation,
+  type DraftOperationName,
   hex,
   unhex,
   OWNER_OPERATION_VALIDITY,
   type OwnerOperation,
   type OwnerOperationName,
+  parseDraftOperation,
   parseOwnerOperation,
 } from '@giveaway/protocol';
 import { HttpError } from './http.ts';
 
 // Owner authorization (plan step 11; BR-04, BR-09; invariant B3; ADR 2026-10-18-wallet-auth-and-bounded-retention with
-// its PD4 Amendment): every owner operation (host, delete, extend) carries its own CIP-30 signData signature in the
+// its PD4 Amendment): every owner operation (host, delete, extend), and since step 12 every draft operation, carries its own CIP-30 signData signature in the
 // Authorization header; nothing is issued to the client and nothing about it is stored but the nonce's one-time use.
 //
 //   Authorization: CIP30 <COSE_Sign1 hex> <COSE_Key hex>
@@ -80,48 +83,101 @@ async function nonceIssued(secret: string | undefined, nonce: string, issuedAt: 
   return true;
 }
 
-export interface Signed {
-  op: OwnerOperation;
+export interface Signed<Op = OwnerOperation> {
+  op: Op;
   // The verified signer: the address in the COSE protected header (hex) and its signing credential.
   address: string;
   keyHash: string;
 }
+// What every signed message carries, whichever format (owner operation or draft operation).
+interface SignedMessage {
+  domain: string;
+  operation: string;
+  network: string;
+  nonce: string;
+  issuedAt: number;
+}
 
-// Everything about a signed request that needs neither a record nor the chain: a signature that verifies, over the
-// owner operation text for this site (`domain`, the host of the one allowed page origin; null refuses everything),
-// this network, this operation and transaction, inside its window. Whose key signed is checked by `requireOwner`.
-export async function verifySigned(
+// Everything about a signed request that needs neither a record nor the chain: a signature that verifies, over a
+// message `parse` accepts (it throws for any other text, so a message in another format names no operation here),
+// for this site (`domain`, the host of the one allowed page origin; null refuses everything), this network and this
+// operation, inside its window, with a nonce this backend issued. Shared by the owner operations and the draft
+// operations (plan step 12), which check their own subject (transaction, draft) after it.
+async function verifyMessage<Op extends SignedMessage>(
   request: Request,
-  expected: { domain: string | null; operation: OwnerOperationName; txHash: string },
+  parse: (text: string) => Op,
+  kind: 'owner' | 'draft',
+  expected: { domain: string | null; operation: string },
   now: number,
   nonceKey: string | undefined,
-): Promise<Signed> {
+): Promise<Signed<Op>> {
   const header = request.headers.get('Authorization');
   if (header === null)
-    throw new HttpError(401, 'This operation needs the owner signature (Authorization: CIP30 <COSE_Sign1> <COSE_Key>)');
+    throw new HttpError(
+      401,
+      `This operation needs the ${kind} signature (Authorization: CIP30 <COSE_Sign1> <COSE_Key>)`,
+    );
   const parts = AUTHORIZATION.exec(header);
   if (!parts)
     throw new HttpError(401, 'Malformed Authorization header (expected CIP30 <COSE_Sign1 hex> <COSE_Key hex>)');
   const signed = verifyDataSignature({ signature: parts[1], key: parts[2] });
   if (!signed) throw new HttpError(401, 'The signature does not verify');
-  let op: OwnerOperation;
+  let op: Op;
   try {
-    op = parseOwnerOperation(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(signed.payload));
+    op = parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(signed.payload));
   } catch {
-    throw new HttpError(401, 'The signed message is not an owner operation');
+    throw new HttpError(401, `The signed message is not ${kind === 'owner' ? 'an owner' : 'a draft'} operation`);
   }
   if (expected.domain === null || op.domain !== expected.domain)
     throw new HttpError(401, 'The signed message was written for another site');
   if (op.network !== NETWORK) throw new HttpError(401, `The signed message is for another network than ${NETWORK}`);
   if (op.operation !== expected.operation)
     throw new HttpError(401, `The signed message authorizes "${op.operation}", not "${expected.operation}"`);
-  if (op.txHash !== expected.txHash) throw new HttpError(401, 'The signed message names another commitment');
   if (op.issuedAt > now) throw new HttpError(401, 'The signed message was issued in the future');
   if (now >= op.issuedAt + OWNER_OPERATION_VALIDITY)
     throw new HttpError(401, 'The signed message has expired (5 minutes); sign again');
   if (!(await nonceIssued(nonceKey, op.nonce, op.issuedAt)))
     throw new HttpError(401, 'The nonce of the signed message was not issued by this backend at its issue time');
   return { op, address: hex(signed.address), keyHash: signed.keyHash };
+}
+
+// An owner operation on a hosted bundle (host, delete, extend) for this transaction. Whose key signed is checked by
+// `requireOwner`.
+export async function verifySigned(
+  request: Request,
+  expected: { domain: string | null; operation: OwnerOperationName; txHash: string },
+  now: number,
+  nonceKey: string | undefined,
+): Promise<Signed> {
+  const signed = await verifyMessage(request, parseOwnerOperation, 'owner', expected, now, nonceKey);
+  if (signed.op.txHash !== expected.txHash) throw new HttpError(401, 'The signed message names another commitment');
+  return signed;
+}
+
+// A draft operation (plan step 12) for this draft (or 'all' for the listing). Whose drafts these are is
+// `draftIdentity`.
+export async function verifyDraftSigned(
+  request: Request,
+  expected: { domain: string | null; operation: DraftOperationName; draft: string },
+  now: number,
+  nonceKey: string | undefined,
+): Promise<Signed<DraftOperation>> {
+  const signed = await verifyMessage(request, parseDraftOperation, 'draft', expected, now, nonceKey);
+  if (signed.op.draft !== expected.draft) throw new HttpError(401, 'The signed message names another draft');
+  return signed;
+}
+
+// The identity a draft belongs to (PD4 Amendment: the signing wallet's identity, by the rule of the uniqueness ADR's
+// identity subtopic as PD10 left it: the stake key, signing for its reward address). A draft exists before any
+// commitment, so unlike `requireOwner` there is no recorded owner to compare with: the signature must be made by the
+// stake key of the preprod reward address it names (header e0, key-hash credential = the signing key's hash), and that
+// reward address (hex) is the identity. A payment key signing for a base or enterprise address is refused, as for
+// owner operations.
+export function draftIdentity(signed: Signed<DraftOperation>): string {
+  const byStakeKey = signed.address.length === 58 && signed.address === `e0${signed.keyHash}`;
+  if (!byStakeKey)
+    throw new HttpError(403, "Drafts are signed with the wallet's stake key (sign with its preprod reward address)");
+  return signed.address;
 }
 
 // The key-versus-owner check: the signature was made by the stake key of `owner` (the organizer identity's stake
@@ -146,7 +202,7 @@ export function requireOwner(signed: Signed, owner: string): void {
 // insert therefore also refuses any message whose window ends at or before the sweep watermark (`nonce_sweep`): the
 // sweep raises the watermark and deletes up to it in one transaction, so a row it may have deleted can never be
 // inserted again. The watermark is the sweep's own cutoff, not a clock, so Worker and D1 clocks need not agree.
-export async function useNonce(db: D1Database, op: OwnerOperation): Promise<void> {
+export async function useNonce(db: D1Database, op: Pick<SignedMessage, 'nonce' | 'issuedAt'>): Promise<void> {
   const recorded = await db
     .prepare(
       `INSERT INTO used_nonces (nonce, expires_at)

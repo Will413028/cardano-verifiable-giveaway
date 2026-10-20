@@ -1,7 +1,15 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { env } from 'cloudflare:test';
 import { decodeBech32 } from '@giveaway/chain';
-import { hex, type OwnerOperation, type OwnerOperationName, ownerOperationText } from '@giveaway/protocol';
+import {
+  type DraftOperation,
+  type DraftOperationName,
+  draftOperationText,
+  hex,
+  type OwnerOperation,
+  type OwnerOperationName,
+  ownerOperationText,
+} from '@giveaway/protocol';
 import { issueNonce } from '../src/auth.ts';
 import fixture from './chain-fixture.json';
 
@@ -88,6 +96,34 @@ export async function authorization(
     issuedAt,
   };
   const payload = new TextEncoder().encode(fields.text ?? ownerOperationText(op));
+  const { signature, key } = signData(
+    fields.secret ?? secretOf(SEEDS[who]),
+    fields.address ?? rewardAddress(who),
+    payload,
+  );
+  return `CIP30 ${signature} ${key}`;
+}
+
+// The Authorization header of a draft operation (plan step 12), by default as the page would build it: signed by
+// `who`'s stake key for its reward address, for this site and preprod, with a nonce issued `at`. `content` defaults to
+// 'none' (every operation but draft-save) and `draft` to 'all' (draft-list).
+export async function draftAuthorization(
+  who: Who,
+  fields: { operation: DraftOperationName; at: number } & Partial<
+    DraftOperation & { secret: Uint8Array; address: Uint8Array; text: string }
+  >,
+): Promise<string> {
+  const issuedAt = fields.issuedAt ?? fields.at;
+  const op: DraftOperation = {
+    domain: fields.domain ?? DOMAIN,
+    operation: fields.operation,
+    network: fields.network ?? 'preprod',
+    draft: fields.draft ?? 'all',
+    content: fields.content ?? 'none',
+    nonce: fields.nonce ?? (await issuedNonce(issuedAt)),
+    issuedAt,
+  };
+  const payload = new TextEncoder().encode(fields.text ?? draftOperationText(op));
   const { signature, key } = signData(
     fields.secret ?? secretOf(SEEDS[who]),
     fields.address ?? rewardAddress(who),

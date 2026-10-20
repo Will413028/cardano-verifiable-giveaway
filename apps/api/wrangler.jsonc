@@ -15,14 +15,18 @@
     "ALLOWED_ORIGIN": "http://127.0.0.1:4320",
     // The indexer the upload gate reads server-side (apps/api/src/bundles.ts; not a route of this Worker): the local
     // Dolos dev chain (tools/devchain/dolos.toml).
-    "INDEXER_URL": "http://127.0.0.1:3010"
+    "INDEXER_URL": "http://127.0.0.1:3010",
+    // The global cap on live server draft bytes (apps/api/src/drafts.ts `DRAFT_BYTES_CAP_DEFAULT`, ADR wallet-auth
+    // Amendment 7): 1 GiB, an initial value (SELF-IMPOSED) set again at deployment (plan, deferred items).
+    "DRAFT_BYTES_CAP": "1073741824"
   },
   // Hosting records (plan step 10). Locally Wrangler keeps them under .wrangler/state; no remote database is named
   // until deployment (MVP plan step 10). Migrations: `wrangler d1 migrations apply giveaway --local`.
   "d1_databases": [{ "binding": "DB", "database_name": "giveaway", "migrations_dir": "migrations" }],
   // Hosted bundle bytes, keyed bundles/<sha256 of the bytes>.
   "r2_buckets": [{ "binding": "BUNDLES", "bucket_name": "giveaway-bundles" }],
-  // Per-client-address limit of the write routes (PUT, POST, DELETE; apps/api/src/index.ts `limited`). The Workers
+  // Per-client-address limit of the write routes (PUT, POST, DELETE) and of every draft route (apps/api/src/index.ts
+  // `limited`). The Workers
   // Rate Limiting binding counts per Cloudflare location and approximately; the period can only be 10 or 60 seconds.
   // 20 writes a minute is an initial default (SELF-IMPOSED): an organizer's host, extend and delete are a few requests.
   // namespace_id is the account-scoped counter namespace; locally Miniflare keeps the counter in memory.
@@ -31,6 +35,6 @@
   // passes a non-secret development value (package.json `dev`), tests set their own (vitest.config.ts); the deployed
   // value is set at deployment (plan, deferred items).
   "secrets": { "required": ["NONCE_KEY"] },
-  // Hourly sweep of expired hosting records (BR-08); reads check expires_at as well.
+  // Hourly sweep of expired hosting records (BR-08) and server drafts past 30 days (B5); reads check expires_at as well.
   "triggers": { "crons": ["17 * * * *"] }
 }
