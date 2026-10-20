@@ -20,13 +20,14 @@ export interface OwnerOperation {
   // The commitment transaction the hosting record is keyed by, and the bundle hash it committed.
   txHash: string;
   bundleHash: string;
-  // From the backend's nonce endpoint: 16 random bytes (hex) and its clock (Unix seconds).
+  // From the backend's nonce endpoint (hex, opaque here) and its clock (Unix seconds).
   nonce: string;
   issuedAt: number;
 }
 
 const HASH = /^[a-f0-9]{64}$/;
-const NONCE = /^[a-f0-9]{32}$/;
+// Opaque to the page; the backend checks what it issued (apps/api/src/auth.ts).
+const NONCE = /^[a-f0-9]{32,256}$/;
 const DOMAIN = /^[a-z0-9.-]{1,253}(?::[0-9]{1,5})?$/;
 const time = (seconds: number) => new Date(seconds * 1000).toISOString().replace('.000Z', 'Z');
 

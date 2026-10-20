@@ -8,7 +8,7 @@ import {
   sha256,
   validateBundle,
 } from '@giveaway/protocol';
-import { consumeNonce, requireOwner, sweepNonces, verifySigned } from './auth.ts';
+import { requireOwner, sweepNonces, useNonce, verifySigned } from './auth.ts';
 import { HttpError } from './http.ts';
 import { firstHostingKeepUntil, hostingExpiry, SWEEP_LIMIT } from './retention.ts';
 
@@ -36,6 +36,8 @@ export interface HostingEnv {
   BUNDLES: R2Bucket;
   // The project indexer the gate reads (server-side; not a route of this Worker, BR-01).
   INDEXER_URL?: string;
+  // The Worker secret that MACs owner-operation nonces (apps/api/src/auth.ts); owner operations are refused without it.
+  NONCE_KEY?: string;
 }
 export type HostingChain = Pick<BlockfrostChain, 'commitmentOwner' | 'readCommitment'>;
 // Hosted bundles per owner identity at any time (BR-17; PD4 default).
@@ -203,7 +205,7 @@ export async function upload(
   domain: string | null,
 ): Promise<{ status: 200 | 201; hosted: Hosted }> {
   if (!TX_HASH.test(txHash)) throw new HttpError(400, 'Invalid transaction hash');
-  const signed = verifySigned(request, { domain, operation: 'host', txHash }, now);
+  const signed = await verifySigned(request, { domain, operation: 'host', txHash }, now, env.NONCE_KEY);
   const bytes = await readLimited(request);
   const { bundleHash, bundle } = await inspectBundleBytes(bytes);
   if (signed.op.bundleHash !== bundleHash)
@@ -217,15 +219,17 @@ export async function upload(
     if (existing.bundle_hash !== bundleHash)
       throw new HttpError(409, 'The bundle hash does not match the commitment of this transaction');
     requireOwner(signed, existing.owner);
-    await consumeNonce(env.DB, signed.op);
+    await useNonce(env.DB, signed.op);
     await env.BUNDLES.put(objectKey(bundleHash), bytes);
     await confirmStored(env, txHash, bundleHash, now);
     return { status: 200, hosted: { txHash, bundleHash, owner: existing.owner, expiresAt: existing.expires_at } };
   }
-  if (existing) await release(env, txHash, now);
   const { owner, committed } = await commitment(chain, txHash);
   // Only the commitment's organizer hosts it, so only the organizer starts its retention clock (ADR Amendment 5).
   requireOwner(signed, owner);
+  // An expired record of this commitment makes way for the new one; only after the owner check (review L6), though
+  // removing an expired record changes nothing a reader sees.
+  if (existing) await release(env, txHash, now);
   // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention may be counted
   // from is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
   if (!matchesCommitment(bundle, bundleHash, committed))
@@ -252,7 +256,7 @@ export async function upload(
   // One statement, so a concurrent takedown, deletion claim or upload by the same owner cannot slip between the checks
   // and the write; the first hosting time is recorded in the same transaction (a D1 batch), only when this insert
   // made the record. The signed message's nonce is used up first (it authorized this attempt, whatever its outcome).
-  await consumeNonce(env.DB, signed.op);
+  await useNonce(env.DB, signed.op);
   const [inserted] = await env.DB.batch([
     env.DB.prepare(
       `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
@@ -358,7 +362,7 @@ export async function takedown(env: HostingEnv, bundleHash: string, now: number)
 }
 
 // The Cron sweep (BR-08): removes up to SWEEP_LIMIT records past `expires_at`, then the bytes no record names any more,
-// then first hosting times that no longer matter, then issued nonces past their window.
+// then first hosting times that no longer matter, then nonce use records past their window.
 // Returns how many records it removed.
 export async function sweep(env: HostingEnv, now: number): Promise<number> {
   const { results } = await env.DB.prepare(
@@ -381,7 +385,7 @@ export async function sweep(env: HostingEnv, now: number): Promise<number> {
   )
     .bind(now, SWEEP_LIMIT)
     .run();
-  await sweepNonces(env.DB, now, SWEEP_LIMIT);
+  await sweepNonces(env.DB, now);
   return results.length;
 }
 

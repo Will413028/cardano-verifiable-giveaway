@@ -1,4 +1,4 @@
-import { consumeNonce, requireOwner, verifySigned } from './auth.ts';
+import { requireOwner, useNonce, verifySigned } from './auth.ts';
 import { release, TX_HASH } from './bundles.ts';
 import { HttpError } from './http.ts';
 import { hostingExpiry, MAX_EXTENSIONS } from './retention.ts';
@@ -12,7 +12,7 @@ interface Owned {
   owner: string;
   bundle_hash: string;
 }
-function requireRecord<T extends Owned>(record: T | null, signed: ReturnType<typeof verifySigned>): T {
+function requireRecord<T extends Owned>(record: T | null, signed: Awaited<ReturnType<typeof verifySigned>>): T {
   if (!record) throw new HttpError(404, 'No bundle is hosted for this commitment');
   requireOwner(signed, record.owner);
   if (signed.op.bundleHash !== record.bundle_hash)
@@ -24,19 +24,19 @@ function requireRecord<T extends Owned>(record: T | null, signed: ReturnType<typ
 // (`release`; B4: only this record, never a tombstone). The first hosting time and extensions stay (ADR Amendment 5):
 // hosting the same commitment again keeps its expiry. The page reminds the organizer to keep the downloaded files.
 export async function remove(
-  env: { DB: D1Database; BUNDLES: R2Bucket },
+  env: { DB: D1Database; BUNDLES: R2Bucket; NONCE_KEY?: string },
   request: Request,
   txHash: string,
   now: number,
   domain: string | null,
 ): Promise<{ txHash: string; deleted: true }> {
   if (!TX_HASH.test(txHash)) throw new HttpError(400, 'Invalid transaction hash');
-  const signed = verifySigned(request, { domain, operation: 'delete', txHash }, now);
+  const signed = await verifySigned(request, { domain, operation: 'delete', txHash }, now, env.NONCE_KEY);
   requireRecord(
     await env.DB.prepare('SELECT owner, bundle_hash FROM hosted WHERE tx_hash = ?').bind(txHash).first<Owned>(),
     signed,
   );
-  await consumeNonce(env.DB, signed.op);
+  await useNonce(env.DB, signed.op);
   await release(env, txHash, now);
   return { txHash, deleted: true };
 }
@@ -46,14 +46,14 @@ export async function remove(
 // ended one stays ended (the period is over, and reviving it would be a new period). The count lives on the
 // first_hosting row with the base time, so it outlives a deletion like the base time does.
 export async function extend(
-  env: { DB: D1Database },
+  env: { DB: D1Database; NONCE_KEY?: string },
   request: Request,
   txHash: string,
   now: number,
   domain: string | null,
 ): Promise<{ txHash: string; expiresAt: number; extensionsLeft: number }> {
   if (!TX_HASH.test(txHash)) throw new HttpError(400, 'Invalid transaction hash');
-  const signed = verifySigned(request, { domain, operation: 'extend', txHash }, now);
+  const signed = await verifySigned(request, { domain, operation: 'extend', txHash }, now, env.NONCE_KEY);
   const record = requireRecord(
     await env.DB.prepare(
       `SELECT h.owner, h.bundle_hash, h.round, h.expires_at, f.first_hosted_at, f.extensions
@@ -71,7 +71,7 @@ export async function extend(
     );
   const extensions = record.extensions + 1;
   const expiresAt = hostingExpiry(record.round, record.first_hosted_at, extensions);
-  await consumeNonce(env.DB, signed.op);
+  await useNonce(env.DB, signed.op);
   const results = await env.DB.batch([
     // Conditional on the count read above, so two concurrent extensions cannot both count.
     env.DB.prepare(

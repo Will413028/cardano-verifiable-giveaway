@@ -2,6 +2,7 @@ import { ed25519 } from '@noble/curves/ed25519.js';
 import { env } from 'cloudflare:test';
 import { decodeBech32 } from '@giveaway/chain';
 import { hex, type OwnerOperation, type OwnerOperationName, ownerOperationText } from '@giveaway/protocol';
+import { issueNonce } from '../src/auth.ts';
 import fixture from './chain-fixture.json';
 
 // A CIP-30 signData stand-in for the backend tests: CIP-8 COSE_Sign1 and COSE_Key built from the RFC 9052 structure
@@ -60,14 +61,11 @@ export function signData(secret: Uint8Array, address: Uint8Array, payload: Uint8
 }
 
 export const DOMAIN = '127.0.0.1:4320';
-// A nonce the backend issued at `issuedAt`, written as GET /nonce writes it (apps/api/src/auth.ts `issueNonce`), so a
+// A nonce the backend issues at `issuedAt` (GET /nonce's own function with the test NONCE_KEY of vitest.config.ts), so a
 // test can sign for any time it injects.
+export const NONCE_KEY = (env as unknown as { NONCE_KEY: string }).NONCE_KEY;
 export async function issuedNonce(issuedAt: number): Promise<string> {
-  const nonce = hex(crypto.getRandomValues(new Uint8Array(16)));
-  await (env as unknown as { DB: D1Database }).DB.prepare('INSERT INTO nonces (nonce, issued_at) VALUES (?, ?)')
-    .bind(nonce, issuedAt)
-    .run();
-  return nonce;
+  return (await issueNonce(NONCE_KEY, issuedAt)).nonce;
 }
 
 // The Authorization header of an owner operation, by default as the page would build it: signed by `who`'s stake key

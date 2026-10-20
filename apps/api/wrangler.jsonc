@@ -27,6 +27,10 @@
   // 20 writes a minute is an initial default (SELF-IMPOSED): an organizer's host, extend and delete are a few requests.
   // namespace_id is the account-scoped counter namespace; locally Miniflare keeps the counter in memory.
   "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }],
+  // The HMAC key of owner-operation nonces (apps/api/src/auth.ts), a Worker secret: named here, never valued. `make api`
+  // passes a non-secret development value (package.json `dev`), tests set their own (vitest.config.ts); the deployed
+  // value is set at deployment (plan, deferred items).
+  "secrets": { "required": ["NONCE_KEY"] },
   // Hourly sweep of expired hosting records (BR-08); reads check expires_at as well.
   "triggers": { "crons": ["17 * * * *"] }
 }

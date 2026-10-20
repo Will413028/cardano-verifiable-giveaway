@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler d1 migrations apply giveaway --local && wrangler dev",
+    "dev": "wrangler d1 migrations apply giveaway --local && wrangler dev --var NONCE_KEY:local-development-nonce-key-not-a-secret",
     "test": "vitest run"
   },
   "dependencies": {

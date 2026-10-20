@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { blake2b } from '@noble/hashes/blake2.js';
+import { cbor, hex, sign, testKey } from './cardano.mjs';
 const p = await import('@giveaway/verifier-cli/library');
 
 // CIP-8 COSE_Sign1 verification (packages/chain/cose.ts, moved from the S1 spike with its first caller, plan step 11)
@@ -78,4 +80,58 @@ test('owner operation text: what is rendered parses back, and nothing else parse
     text.replace('Open Draw', 'Closed Draw'),
   ])
     assert.throws(() => p.parseOwnerOperation(changed), /Owner operation/, changed);
+});
+
+// Review L4: the two guards the S1 vectors did not pin. A COSE_Sign1 assembled here (tests/cardano.mjs encoder).
+const sign1 = (protectedHeader, unprotected, payload, signature) =>
+  hex(cbor([cbor(protectedHeader), unprotected, payload, signature]));
+const coseKey = (publicKey) =>
+  hex(
+    cbor(
+      new Map([
+        [1, 1],
+        [3, -8],
+        [-1, 6],
+        [-2, publicKey],
+      ]),
+    ),
+  );
+
+test('verifyDataSignature refuses a small-order key with a message-independent signature (strict RFC 8032, not ZIP 215)', () => {
+  // The identity point as the public key, R = identity and S = 0: the cofactored (ZIP 215) equation holds for every
+  // message, so accepting it would let anyone "sign" anything for the reward address of this key.
+  const identity = new Uint8Array(32);
+  identity[0] = 1;
+  const address = Uint8Array.from([0xe0, ...blake2b(identity, { dkLen: 28 })]);
+  const payload = new TextEncoder().encode('any message at all');
+  const signature = new Uint8Array(64);
+  signature.set(identity);
+  const header = new Map([
+    [1, -8],
+    ['address', address],
+  ]);
+  assert.equal(
+    p.verifyDataSignature({
+      signature: sign1(header, new Map([['hashed', false]]), payload, signature),
+      key: coseKey(identity),
+    }),
+    null,
+  );
+});
+
+test('verifyDataSignature refuses a payload flagged as hashed, even with a valid signature', () => {
+  const key = testKey(2);
+  const address = Uint8Array.from([0xe0, ...p.unhex(key.hash)]);
+  const payload = new TextEncoder().encode('a message');
+  const protectedBytes = cbor(
+    new Map([
+      [1, -8],
+      ['address', address],
+    ]),
+  );
+  const signature = sign(key, cbor(['Signature1', protectedBytes, new Uint8Array(), payload]));
+  const signed = (hashed) => hex(cbor([protectedBytes, new Map([['hashed', hashed]]), payload, signature]));
+  // The same structure unflagged verifies, so only the flag decides.
+  assert.notEqual(p.verifyDataSignature({ signature: signed(false), key: coseKey(key.publicKey) }), null);
+  assert.equal(p.verifyDataSignature({ signature: signed(true), key: coseKey(key.publicKey) }), null);
 });

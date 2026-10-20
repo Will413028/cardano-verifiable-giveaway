@@ -29,7 +29,7 @@
 |---|---|
 | B1 驗證不依賴後端：verifier 不引用後端模組；CLI 沒有專案預設 indexer，只直連使用者以 `--indexer` 指定的 indexer 與 drand relay（PD7）；後端與專案 Dolos 停擺不影響 PASS 判定 | `packages/verifier/index.ts`（不帶預設 indexer）、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs` 的 `--indexer` 解析、`apps/api/`；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
 | B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/index.ts`（步驟 9 起沒有轉發 indexer 或送出交易的路由，`apps/api/test/index.test.ts` 斷言不發出任何請求）、`apps/web/cardano.ts` 的 `submitTx`（錢包送出） |
-| B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（`nonces`：只存後端發出的 nonce 與發出時間，用掉即刪）、`apps/api/migrations/0004_owner_operations.sql` |
+| B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（nonce 以 HMAC 簽發、不儲存；`used_nonces` 只存通過驗證的使用紀錄）、`apps/api/migrations/0004_owner_operations.sql` |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；代管紀錄以 `txHash` 為主鍵、owner 由該筆交易推導，bytes 以 bundleHash 定址並以參照計數回收；擁有者刪除只移除自己的紀錄，以 bundleHash 為鍵的 tombstone 只用於營運端下架 | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
 | B5 保存有期限：bundle 到 round 後 12 個月，每次延長 12 個月、總計不超過 round 後 36 個月（PD4）；伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
 | B6 任何列舉頁快取（Workers proxy 或 Dolos 前的 reverse proxy，是否存在依 PD8）不得讓唯一性列舉漏掉交易：Blockfrost 形狀以 page／count 分頁，位置仍隨 rollback 位移，所以列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取）；以 txHash 為鍵的 CBOR 回應可長期快取 | PD8 A 後沒有任何列舉快取（Workers proxy 已移除，`deploy/dolos-proxy/nginx.conf` 不設 `proxy_cache`）；日後加快取時守此規則、`packages/chain/index.ts` 的 `findCommitments` |
@@ -45,6 +45,7 @@
   - 預設交叉比對兩家 indexer——觸發條件：選定公開預設 indexer 時（PD7 重設；Koios、託管 Blockfrost 出局後，第二來源只剩使用者節點或另一個 Dolos）。
   - 偵測使用者節點的歷史不完整（儲存模式自報、最早可查區塊）——觸發條件：步驟 8b 或 8c 量到 Dolos 提供可查的儲存模式或最早區塊；否則只靠文件要求。
   - Mithril 交易收錄證明——觸發條件：`mithril-client-wasm` 的交易證明 API 不再需要 `unstable: true`，且 preprod 與主網都已啟用交易認證。
+  - 設定 nonce 的 HMAC secret（`wrangler secret put NONCE_KEY`，產生與保管由 Will 處理，不入版控）——觸發條件：MVP 計畫步驟 10 取得部署授權；未設定時後端的擁有者操作一律 503。
   - 硬體錢包 `signData` 相容性驗收——觸發條件：Will 提供 Ledger 或 Trezor 並授權。
   - 15 個確認的威脅說明（F8）——觸發條件：MVP 計畫 D7 凍結。
 
@@ -262,9 +263,9 @@
   - 完成後的形狀（2026-10-20）：
     - 第一次代管時間的規則（ADR Amendment 5 末兩條，BR-08、BR-17）：代管本身也是擁有者操作。`PUT /bundles/{tx}` 必須帶 owner 的 `host` 簽章（BR-06），簽章 key 必須是後端從承諾交易讀出的 organizer stake key，別人的 key 403、未簽章 401，都不建紀錄、不寫 `first_hosting`；所以第一次代管時間是 owner 自己第一次成功代管的時間，仍只寫一次，重新上傳不重新起算。比較過「未簽章照收、owner 簽章重新錨定一次」，兩個時鐘且錨定前第三方的短期限仍生效，未採用。代價：代管需要錢包支援 `signData`，第三方不能替主辦者代管。
     - 簽章（ADR Amendment 6，BR-09）：`Authorization: CIP30 <COSE_Sign1> <COSE_Key>`；訊息是 `packages/protocol/owner.ts` 的 `ownerOperationText`（網域、操作、network、txHash、bundleHash、nonce、issued、expires），只收逐字等於重新渲染的文字；stake key 對 reward address 簽，比對代管紀錄裡由承諾交易推得的 owner。COSE 驗章 `packages/chain/cose.ts`（S1 spike 移入，`@noble/curves` 已在 `@giveaway/chain`；S1 的 29 個向量在 `tests/cose.test.mjs`）；`biome.json` 的 SDK 禁用名單在步驟 10 已涵蓋 `apps/api`。
-    - nonce：`GET /nonce` 產生 nonce 並與發出時間記在 `nonces`（migration 0004）；訊息的 issued 必須等於記錄的發出時間、5 分鐘內有效，用掉即刪（重用、非本後端發出或預先寫成較晚 issued 的訊息都 409）；Cron 刪除過期的列。原先「不留狀態、時間窗從訊息自填的 issued 起算」經獨立 review 指出可預先簽好、日後才用（MED），改為綁定發出紀錄。
+    - nonce：`GET /nonce` 不儲存，回 random‖issued‖HMAC(`NONCE_KEY`)；訊息的 issued 必須等於 nonce 裡的發出時間、MAC 驗得過、5 分鐘內有效；使用紀錄 `used_nonces`（migration 0004）在簽章與 owner 都通過後才以唯一鍵插入，重用 409；Cron 不設上限地刪除過期列。歷程：最初不留狀態且時間窗從訊息自填的 issued 起算（review MED：可預先簽好、日後才用）→ 改為記錄發出的 nonce（第二次 review M1：未驗證的 GET 每次寫一列，清理趕不上）→ 現在的 MAC 形式。
     - 路由：`DELETE /bundles/{tx}`（`release`，只刪自己的紀錄，第一次代管時間與延長保留）、`POST /bundles/{tx}/extend`（每次 12 個月、從基準時間起算、最多 2 次，次數存在 `first_hosting.extensions`，只延長代管期內的紀錄）。
-    - 寫入路由依 IP 限流（BR-03）：Workers Rate Limiting binding `WRITE_LIMIT`（`CF-Connecting-IP`，每 60 秒 20 次，初值），PUT、POST、DELETE 與 `GET /nonce`（會寫入一列）才計；Miniflare 在測試中實際計數。必要條件寫在 `apps/api/src/index.ts`。
+    - 寫入路由依 IP 限流（BR-03）：Workers Rate Limiting binding `WRITE_LIMIT`（`CF-Connecting-IP`，每 60 秒 20 次，初值），PUT、POST、DELETE 才計，鍵是 IPv4 位址或 IPv6 /64；Miniflare 在測試中實際計數。必要條件寫在 `apps/api/src/index.ts`。
     - 網頁：代管、延長、刪除都經 `signData`（`apps/web/cardano.ts` `signOwnerOperation`，送出前以同一個驗章檢查錢包用的是 owner 的 stake key）；延長到涵蓋 round 時分享連結換成代管連結；刪除後連結退回 inline，狀態列提醒保留下載的 bundle 與 proof（BR-13）。
 
 - [ ] **12. 草稿保存**（被擋於：步驟 11）
