@@ -608,3 +608,13 @@ for (const [name, from, to] of [
   ['Keying a malformed client address as itself', '/^(?:[0-9.]{7,15}|[0-9a-f:.]{2,45})$/.test(text)', 'true'],
 ])
   await mustFailApi(name, (text) => text.replace(from, to), 'normalizes the client address');
+await mustFailApi(
+  'Letting an earlier sweep lower the nonce watermark',
+  (text) =>
+    text.replace(
+      "'UPDATE nonce_sweep SET swept_through = max(swept_through, ?) WHERE id = 1'",
+      "'UPDATE nonce_sweep SET swept_through = ? WHERE id = 1'",
+    ),
+  'an earlier sweep after a later one does not lower the watermark',
+  auth,
+);

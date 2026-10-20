@@ -392,6 +392,21 @@ describe('signed owner operations (BR-09, BR-13, BR-17)', () => {
     expect(await firstHosting()).toEqual({ first_hosted_at: EARLY, extensions: 1 });
   });
 
+  it('an earlier sweep after a later one does not lower the watermark, so a replay stays refused', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const once = await sign('extend', EARLY);
+    expect((await extend(EARLY + 10, once)).status).toBe(200);
+    const watermark = () =>
+      bindings.DB.prepare('SELECT swept_through FROM nonce_sweep WHERE id = 1').first('swept_through');
+    await sweepPast(EARLY);
+    expect(await watermark()).toBe(EARLY + 300);
+    // A delayed or manual Cron run with an earlier scheduled time.
+    await worker.scheduled(createScheduledController({ scheduledTime: EARLY * 1000 }), bindings);
+    expect(await watermark()).toBe(EARLY + 300);
+    expect((await extend(EARLY + 299, once)).status).toBe(409);
+    expect(await firstHosting()).toEqual({ first_hosted_at: EARLY, extensions: 1 });
+  });
+
   it('a replayed upload whose body stalls across the sweep does not re-create a hosting the owner deleted', async () => {
     const upload = await sign('host', EARLY);
     expect((await host(EARLY + 5, upload)).status).toBe(201);
