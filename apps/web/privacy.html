@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy and takedown — Open Draw</title>
+<meta name="description" content="What Open Draw stores, for how long, how to delete it, and how to report a hosted bundle.">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header><a class="brand" href="./">◈ <span>OPEN DRAW</span></a><span class="preview">DEVELOPMENT PREVIEW</span><a href="./">← Back to the draw</a></header>
+<main class="notice">
+<p class="eyebrow">PRIVACY NOTICE AND TAKEDOWN</p>
+<h1 id="privacy-title">What we keep, and how to remove it.</h1>
+<p id="notice-status" class="status-note"><strong>Status:</strong> development preview. The hosting backend and the project indexer are not publicly deployed. This notice describes how they handle data as built in the source code (<a href="https://github.com/Will413028/cardano-verifiable-giveaway">Will413028/cardano-verifiable-giveaway</a>) and applies once they are deployed; the details a deployment settles (service providers, log rotation) are added then.</p>
+
+<h2>Who is responsible</h2>
+<p>The operator of this service, the maintainer of the repository above, is the controller of the data the service keeps: hosted bundles, server drafts and the records listed below. An organizer decides which public labels go into a draw and is responsible for being allowed to publish them. Data written to the Cardano blockchain and copies other people keep are outside the operator's control.</p>
+
+<h2>What is stored, and where</h2>
+<ul>
+<li><strong>In your browser.</strong> The draft you are editing (IndexedDB), exactly as typed, including any CSV columns besides <code>label</code>. It never leaves the browser unless you export it or save a server draft. Clear it by clearing this site's data.</li>
+<li><strong>On Cardano, permanently.</strong> A commitment transaction carries the protocol name, the draw id, the bundle hash, the drand chain and round, and is signed by the organizer's wallet keys; the transaction shows the organizer's address. It holds no labels, only the hash of the bundle. Nobody, including the operator, can remove it.</li>
+<li><strong>Hosted bundles (backend).</strong> The bundle bytes: draw id, public labels, number of winners, drand round. A record per commitment: transaction hash, bundle hash, the organizer's stake address, round, hosting time and expiry. Per commitment, its first hosting time and the number of extensions. After a takedown, the bundle hash and the time it was taken down.</li>
+<li><strong>Server drafts (backend).</strong> Only the public labels, the number of winners, the round and the mode: the page sends the parsed labels, never other CSV columns, and the backend refuses anything else. A record per draft: your wallet's reward address, the draft id, a content hash, its size, the save time and its expiry.</li>
+<li><strong>Signature nonces (backend).</strong> Each signed request's one-time nonce and the end of its 5-minute window, so it cannot be used twice.</li>
+</ul>
+<p><strong>Not stored:</strong> email addresses or phone numbers (labels shaped like them are rejected, and contact columns are discarded on import), accounts, passwords, cookies, session or OAuth tokens, private keys. Request contents are not logged: the backend's request logs are off, and the reverse proxy in front of the indexer logs time, method, route name, status, size and duration only. Your IP address is used to rate-limit requests: by the backend's rate limiter (Cloudflare's counter over 60-second periods) and in the reverse proxy's memory until its rate-limit entry is idle and drained; neither writes it to a log or to storage.</p>
+<p>The page also talks to services the operator does not run: the drand relays (randomness), the CIP-30 wallet you choose (it signs and submits your transaction), and any indexer or bundle URL you enter for verification.</p>
+
+<h2>How long</h2>
+<ul>
+<li><strong>Hosted bundles:</strong> until 12 calendar months (UTC) after the earlier of the draw's round time and the commitment's first hosting by its organizer. Uploading again starts no new period. The organizer can extend it by 12 months at a time, up to 36 months after that same start. Reads stop at the expiry; an hourly job deletes the record and the bytes. The first hosting time and extension count are kept until no hosting period of that commitment can still be open (12 months after the round, or the end of the last hosting period if later; indefinitely for a round too far ahead to have a date), even after a deletion or takedown, so they cannot be reset. A takedown record is kept for as long as the service runs.</li>
+<li><strong>Server drafts:</strong> 30 days after the last save; each save starts the 30 days again. At most 5 per wallet, within a total storage cap for all drafts.</li>
+<li><strong>Nonces:</strong> deleted by the hourly job once their 5-minute window ended more than an hour before, so within about two hours.</li>
+</ul>
+
+<h2>How to delete</h2>
+<ul>
+<li><strong>Organizer, hosted bundle:</strong> “Delete hosted bundle” on the creation page, signed by your wallet. The bytes go when no other commitment names them.</li>
+<li><strong>Organizer, server draft:</strong> “Server drafts”, then “Delete”, signed by your wallet.</li>
+<li><strong>Anyone, including a participant whose label is in a hosted bundle:</strong> ask for a takedown (below). A bundle is removed whole: changing a single label would change its hash, so it would no longer match the commitment. Every hosting of the same bytes goes, and the same bytes can never be hosted again. The hash on Cardano stays, and copies others downloaded or host elsewhere are not affected; ask that host directly.</li>
+</ul>
+<p id="keep-copy"><strong>Organizers: keep your downloaded bundle and proof.</strong> After a deletion, an expiry or a takedown the hosted link stops working. Anyone holding the bundle file can still verify the draw with the independent CLI or another host.</p>
+
+<h2 id="report">Report a hosted bundle or a problem</h2>
+<p>Open an issue at <a id="report-link" href="https://github.com/Will413028/cardano-verifiable-giveaway/issues">github.com/Will413028/cardano-verifiable-giveaway/issues</a>. Issues are public: <strong>do not paste personal data</strong>, labels or contact details into them. A takedown needs only the commitment transaction hash or the bundle hash (both are in the verification link) and a reason category, such as “my label is in it and I want it removed” or “unlawful content”. If you cannot describe the problem without personal data, open an issue that says so, without details, and the maintainer will arrange a private channel.</p>
+<p>The operator removes reported bundles by hand; a reply follows on the issue.</p>
+</main>
+<footer><span>Open source. Free giveaways. Verifiable outcomes.</span><span><a href="./">Back to the draw</a></span></footer>
+</body></html>

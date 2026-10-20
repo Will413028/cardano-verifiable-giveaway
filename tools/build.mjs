@@ -62,5 +62,6 @@ await build({
   target: 'node22',
   outfile: `${root}apps/verifier-cli/dist/library.mjs`,
 });
-for (const name of ['index.html', 'styles.css']) await copyFile(`${root}apps/web/${name}`, `${root}dist/${name}`);
+for (const name of ['index.html', 'privacy.html', 'styles.css'])
+  await copyFile(`${root}apps/web/${name}`, `${root}dist/${name}`);
 console.log('Built static web app and independent Node verifier library');

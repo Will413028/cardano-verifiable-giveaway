@@ -1,0 +1,38 @@
+# docs/runbooks/takedown.md, local run 2026-10-20 (Wrangler 4.151.1, wrangler dev on 127.0.0.1:8798 with its own --persist-to directory, omitted below).
+# Seeded before the run: one hosted row (wrangler d1 execute --file) and the bundle bytes (wrangler r2 object put); see the runbook.
+## 1 identify
+tx hash format ok
+$ wrangler d1 execute giveaway --local --json --command "SELECT tx_hash, bundle_hash, owner, expires_at FROM hosted WHERE tx_hash = 'abababababababababababababababababababababababababababababababab'"
+[{"tx_hash":"abababababababababababababababababababababababababababababababab","bundle_hash":"8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15","owner":"stake_test1takedownrunbooktest","expires_at":1795077087}]
+BUNDLE=8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15
+## 2 scope
+$ wrangler d1 execute giveaway --local --json --command "SELECT tx_hash, owner FROM hosted WHERE bundle_hash = '8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15'"
+[{"tx_hash":"abababababababababababababababababababababababababababababababab","owner":"stake_test1takedownrunbooktest"}]
+$ curl GET /bundles/$TX
+200
+## 3 tombstone and records
+$ wrangler d1 execute giveaway --local --json --command "INSERT OR IGNORE INTO tombstones (bundle_hash, removed_at) VALUES ('8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15', unixepoch()); DELETE FROM hosted WHERE bundle_hash = '8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15'"
+[]
+[]
+## 4 bytes
+$ wrangler r2 object delete giveaway-bundles/bundles/$BUNDLE --local
+Deleting object "bundles/8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15" from bucket "giveaway-bundles".
+Delete complete.
+## 5 verify
+$ wrangler d1 execute giveaway --local --json --command "SELECT bundle_hash, removed_at FROM tombstones WHERE bundle_hash = '8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15'"
+[{"bundle_hash":"8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15","removed_at":1792485120}]
+$ wrangler d1 execute giveaway --local --json --command "SELECT count(*) AS records FROM hosted WHERE bundle_hash = '8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15'"
+[{"records":0}]
+$ wrangler r2 object get giveaway-bundles/bundles/$BUNDLE --local --pipe
+✘ [ERROR] The specified key does not exist.
+exit 1
+$ curl GET /bundles/$TX
+No bundle is hosted for this commitment 404
+$ signed PUT /bundles/$TX (test key, same bytes)
+410 This bundle was taken down and cannot be hosted again
+## 6 rerun is idempotent
+$ wrangler d1 execute giveaway --local --json --command "INSERT OR IGNORE INTO tombstones (bundle_hash, removed_at) VALUES ('8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15', unixepoch()); DELETE FROM hosted WHERE bundle_hash = '8f63772fc1f5c258b047bc8787776346c13f8d74bb3080e01702fc981da8ab15'"
+[]
+[]
+$ wrangler d1 execute giveaway --local --json --command "SELECT count(*) AS tombstones FROM tombstones"
+[{"tombstones":1}]

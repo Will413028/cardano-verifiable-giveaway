@@ -1017,6 +1017,38 @@ try {
   passed(
     'server drafts are saved, listed, loaded and deleted through the backend under the wallet stake key signature, labels only',
   );
+  // BR-14: the privacy notice and the report channel are reachable from the page (plan step 13).
+  {
+    const ISSUES = 'https://github.com/Will413028/cardano-verifiable-giveaway/issues';
+    const notice = await browser.newPage();
+    const noticeErrors = [];
+    notice.on('pageerror', (e) => noticeErrors.push(e.message));
+    await notice.goto(origin);
+    assert.equal(await notice.locator('#report-link').getAttribute('href'), ISSUES);
+    await notice.click('#privacy-link');
+    await notice.waitForSelector('#privacy-title');
+    assert.equal(new URL(notice.url()).pathname, '/privacy.html');
+    const text = await notice.locator('main').textContent();
+    for (const expected of [
+      /controller/,
+      /12 calendar months \(UTC\) after the earlier of the draw's round time and the commitment's first hosting/,
+      /up to 36 months/,
+      /30 days after the last save/,
+      /removed whole/,
+      /keep your downloaded bundle and proof/,
+      /do not paste personal data/,
+      /not publicly deployed/,
+    ])
+      assert.match(text, expected);
+    assert.equal(await notice.locator('#report-link').getAttribute('href'), ISSUES);
+    await notice.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await notice.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await notice.click('header .brand');
+    await notice.waitForSelector('#draw-form');
+    assert.deepEqual(noticeErrors, []);
+    await notice.close();
+  }
+  passed('privacy notice and the report channel are linked from the page');
   await page.selectOption('#network', 'demo');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
