@@ -29,7 +29,7 @@
 |---|---|
 | B1 驗證不依賴後端：verifier 不引用後端模組；CLI 沒有專案預設 indexer，只直連使用者以 `--indexer` 指定的 indexer 與 drand relay（PD7）；後端與專案 Dolos 停擺不影響 PASS 判定 | `packages/verifier/index.ts`（不帶預設 indexer）、`packages/beacon/index.ts` 的 `fetchBeacon`、`apps/verifier-cli/index.mjs` 的 `--indexer` 解析、`apps/api/`；邊界由各套件 `package.json` 的 dependencies 與 `biome.json` 的 `noUndeclaredDependencies`、`noRestrictedImports`（禁止離開套件目錄的相對路徑）守住 |
 | B2 後端不簽署、不送出交易、不持有私鑰、不產生 randomness、不判定 PASS／FAIL、不改寫 indexer 回應 | `apps/api/src/index.ts`（步驟 9 起沒有轉發 indexer 或送出交易的路由，`apps/api/test/index.test.ts` 斷言不發出任何請求）、`apps/web/cardano.ts` 的 `submitTx`（錢包送出） |
-| B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（預計）、D1 schema |
+| B3 後端不存密碼、email、OAuth token 或 session token；只存一次性 nonce 的使用紀錄（PD4） | `apps/api/src/auth.ts`（`used_nonces`，nonce 端點不留狀態）、`apps/api/migrations/0004_owner_operations.sql` |
 | B4 只代管已上鏈承諾、通過 `validateBundle` 的 bundle；代管紀錄以 `txHash` 為主鍵、owner 由該筆交易推導，bytes 以 bundleHash 定址並以參照計數回收；擁有者刪除只移除自己的紀錄，以 bundleHash 為鍵的 tombstone 只用於營運端下架 | `apps/api/src/bundles.ts`（預計）、`packages/protocol/index.ts` 的 `validateBundle`、D1 schema |
 | B5 保存有期限：bundle 到 round 後 12 個月，每次延長 12 個月、總計不超過 round 後 36 個月（PD4）；伺服器草稿 30 天 | `apps/api/src/retention.ts`（預計）、Cron Trigger |
 | B6 任何列舉頁快取（Workers proxy 或 Dolos 前的 reverse proxy，是否存在依 PD8）不得讓唯一性列舉漏掉交易：Blockfrost 形狀以 page／count 分頁，位置仍隨 rollback 位移，所以列舉頁只有在整頁交易都深於協定的 `CONFIRMATIONS` 時才快取（未滿頁與含淺層交易的頁都不快取）；以 txHash 為鍵的 CBOR 回應可長期快取 | PD8 A 後沒有任何列舉快取（Workers proxy 已移除，`deploy/dolos-proxy/nginx.conf` 不設 `proxy_cache`）；日後加快取時守此規則、`packages/chain/index.ts` 的 `findCommitments` |
@@ -254,11 +254,18 @@
   - 停止條件：找不到與舊正則逐字等價的線性判斷——停下回報（不改協定語意）。
   - 需要人做的事：無。
   - 完成後的狀態：專案代管收協定上限內的所有 bundle（PD2 B）；保存期限由第一次代管時間封頂；Cloudflare 上的實際 CPU 在部署前重量（「延後」）。
-- [ ] **11. 擁有者簽章操作**（被擋於：步驟 10b）
+- [x] **11. 擁有者簽章操作**（被擋於：步驟 10b）
   - 範圍：BR-09、BR-13、BR-17：nonce 端點、CIP-30 `signData` payload（網域、操作、bundleHash、network、nonce，5 分鐘有效），依 PD4 的驗證形式送出；後端驗章並確認 key 屬於 owner 地址；刪除與延長（延長上限依 PD4）；刪除後介面提醒保留下載副本；第一次代管時間與延長只從擁有者簽章的操作起算（步驟 10b：未簽章的上傳誰都能先做，會讓第一次代管時間提早，見 ADR Amendment 5 代價），延長上限＝基準時間＋36 個月，是被提早起算的補救。
   - 消費端：無（新端點）；網頁呼叫端：`rg -n "signData" apps`
   - 不能動：B2、B3；owner 取自承諾交易，不取錢包目前的 change address。
   - 驗收：以測試內產生的金鑰簽章；測試涵蓋過期 payload、重用 nonce、別的網域、別的 network、非 owner 的 key、超過延長上限全部被拒；mutation：拿掉 nonce 一次性檢查或 key 與 owner 的比對，各自的測試要失敗。
+  - 完成後的形狀（2026-10-20）：
+    - 第一次代管時間的規則（ADR Amendment 5 末兩條，BR-08、BR-17）：代管本身也是擁有者操作。`PUT /bundles/{tx}` 必須帶 owner 的 `host` 簽章（BR-06），簽章 key 必須是後端從承諾交易讀出的 organizer stake key，別人的 key 403、未簽章 401，都不建紀錄、不寫 `first_hosting`；所以第一次代管時間是 owner 自己第一次成功代管的時間，仍只寫一次，重新上傳不重新起算。比較過「未簽章照收、owner 簽章重新錨定一次」，兩個時鐘且錨定前第三方的短期限仍生效，未採用。代價：代管需要錢包支援 `signData`，第三方不能替主辦者代管。
+    - 簽章（ADR Amendment 6，BR-09）：`Authorization: CIP30 <COSE_Sign1> <COSE_Key>`；訊息是 `packages/protocol/owner.ts` 的 `ownerOperationText`（網域、操作、network、txHash、bundleHash、nonce、issued、expires），只收逐字等於重新渲染的文字；stake key 對 reward address 簽，比對代管紀錄裡由承諾交易推得的 owner。COSE 驗章 `packages/chain/cose.ts`（S1 spike 移入，`@noble/curves` 已在 `@giveaway/chain`；S1 的 29 個向量在 `tests/cose.test.mjs`）；`biome.json` 的 SDK 禁用名單在步驟 10 已涵蓋 `apps/api`。
+    - nonce：`GET /nonce` 不留狀態（16 個隨機 bytes＋後端時鐘）；一次性由 `used_nonces`（migration 0004）保證，與操作同一個 D1 batch，重用整批回滾 409；Cron 刪除過期的列。
+    - 路由：`DELETE /bundles/{tx}`（`release`，只刪自己的紀錄，第一次代管時間與延長保留）、`POST /bundles/{tx}/extend`（每次 12 個月、從基準時間起算、最多 2 次，次數存在 `first_hosting.extensions`，只延長代管期內的紀錄）。
+    - 寫入路由依 IP 限流（BR-03）：Workers Rate Limiting binding `WRITE_LIMIT`（`CF-Connecting-IP`，每 60 秒 20 次，初值），PUT、POST、DELETE 才計；Miniflare 在測試中實際計數。必要條件寫在 `apps/api/src/index.ts`。
+    - 網頁：代管、延長、刪除都經 `signData`（`apps/web/cardano.ts` `signOwnerOperation`，送出前以同一個驗章檢查錢包用的是 owner 的 stake key）；延長到涵蓋 round 時分享連結換成代管連結；刪除後連結退回 inline，狀態列提醒保留下載的 bundle 與 proof（BR-13）。
 
 - [ ] **12. 草稿保存**（被擋於：步驟 11）
   - 範圍：BR-11、BR-12、BR-18：本機 IndexedDB 草稿與匯出、重新整理後恢復；伺服器草稿內容存 R2、紀錄存 D1（D1 單列上限 2 MB，見 [D1 limits](https://developers.cloudflare.com/d1/platform/limits/)），依 PD4 的身分與額度，需簽章存取、30 天後自動刪除。網頁流程改為由狀態推導畫面：模式與流程階段記在 `AppState`（目前取自 `#network` 與元素的 `hidden`），恢復時由狀態 render，取代步驟 3 留下的「流程函式直接改 DOM」。

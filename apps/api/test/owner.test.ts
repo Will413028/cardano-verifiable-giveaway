@@ -1,0 +1,312 @@
+import { BlockfrostChain, decodeBech32 } from '@giveaway/chain';
+import { sha256 } from '@giveaway/protocol';
+import { createScheduledController, env } from 'cloudflare:test';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { objectKey } from '../src/bundles.ts';
+import worker, { type Env, handle } from '../src/index.ts';
+import { addMonths, HOSTING_MONTHS } from '../src/retention.ts';
+import fixture from './chain-fixture.json';
+import { authorization, rewardAddress, SEEDS, secretOf, type Who } from './sign.ts';
+
+// Signed owner operations (plan step 11; BR-09, BR-13, BR-17; B3) against real local D1, R2 and the Rate Limiting
+// binding (Miniflare), the real BlockfrostChain replaying chain-fixture.json, and signatures made with the fixture's
+// test keys (test/sign.ts).
+type Answer = { status: number; headers: Record<string, string>; body: string };
+const answers = fixture.answers as Record<string, Answer>;
+const chain = () =>
+  new BlockfrostChain(fixture.indexer, async (url) => {
+    const answer = answers[url.slice(fixture.indexer.length)];
+    if (!answer) throw new Error(`chain-fixture.json has no answer for ${url}`);
+    return new Response(answer.body === '' ? null : answer.body, { status: answer.status, headers: answer.headers });
+  });
+const PAGE = 'http://127.0.0.1:4320';
+const bindings = env as unknown as Env;
+const T = fixture.roundTime;
+const { txs, bundles } = fixture;
+const VALID_HASH = await sha256(bundles.valid);
+// The fixture's round is three years after this time, so the retention base is the first hosting itself.
+const EARLY = addMonths(T, -36);
+
+let client = 0;
+const request = (
+  method: string,
+  path: string,
+  at: number,
+  { auth, body, ip }: { auth?: string; body?: BodyInit; ip?: string } = {},
+) =>
+  handle(
+    new Request(`http://api.test${path}`, {
+      method,
+      body,
+      headers: {
+        Origin: PAGE,
+        'CF-Connecting-IP': ip ?? `192.0.2.${++client % 250}`,
+        ...(auth ? { Authorization: auth } : {}),
+      },
+    }),
+    bindings,
+    { now: () => at, chain },
+  );
+const sign = (
+  operation: 'host' | 'delete' | 'extend',
+  at: number,
+  extra: Parameters<typeof authorization>[1] | object = {},
+  who: Who = 'organizer',
+) => authorization(who, { operation, txHash: txs.organizer, bundleHash: VALID_HASH, at, ...extra });
+const host = (at: number, auth = sign('host', at)) =>
+  request('PUT', `/bundles/${txs.organizer}`, at, { auth, body: bundles.valid });
+const remove = (at: number, auth = sign('delete', at)) => request('DELETE', `/bundles/${txs.organizer}`, at, { auth });
+const extend = (at: number, auth = sign('extend', at)) =>
+  request('POST', `/bundles/${txs.organizer}/extend`, at, { auth });
+const answer = async (response: Response) => [response.status, await response.text()];
+const json = async <T>(response: Response, status = 200) => {
+  expect(response.status).toBe(status);
+  return (await response.json()) as T;
+};
+const expiry = async () =>
+  (
+    await bindings.DB.prepare('SELECT expires_at FROM hosted WHERE tx_hash = ?')
+      .bind(txs.organizer)
+      .first<{ expires_at: number }>()
+  )?.expires_at;
+const firstHosting = () =>
+  bindings.DB.prepare('SELECT first_hosted_at, extensions FROM first_hosting WHERE tx_hash = ?')
+    .bind(txs.organizer)
+    .first<{ first_hosted_at: number; extensions: number }>();
+
+beforeEach(async () => {
+  await bindings.DB.batch(
+    ['hosted', 'tombstones', 'collecting', 'first_hosting', 'used_nonces'].map((table) =>
+      bindings.DB.prepare(`DELETE FROM ${table}`),
+    ),
+  );
+  const listed = await bindings.BUNDLES.list();
+  if (listed.objects.length) await bindings.BUNDLES.delete(listed.objects.map((o) => o.key));
+});
+
+describe('nonce endpoint (BR-09, B3)', () => {
+  it('issues a fresh nonce with the backend clock and a 5-minute window, and stores nothing', async () => {
+    const one = await json<{ nonce: string; issuedAt: number; expiresAt: number }>(await request('GET', '/nonce', T));
+    const two = await json<{ nonce: string }>(await request('GET', '/nonce', T));
+    expect(one).toEqual({ nonce: expect.stringMatching(/^[a-f0-9]{32}$/), issuedAt: T, expiresAt: T + 300 });
+    expect(two.nonce).not.toBe(one.nonce);
+    expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n')).toBe(0);
+  });
+});
+
+describe('signed owner operations (BR-09, BR-13, BR-17)', () => {
+  it('the owner deletes the hosting: the record and its bytes go, the first hosting time stays', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    expect(await json(await remove(EARLY + 60))).toEqual({ txHash: txs.organizer, deleted: true });
+    expect((await request('GET', `/bundles/${txs.organizer}`, EARLY + 61)).status).toBe(404);
+    expect(await bindings.BUNDLES.head(objectKey(VALID_HASH))).toBeNull();
+    expect(await firstHosting()).toEqual({ first_hosted_at: EARLY, extensions: 0 });
+  });
+
+  it('the owner extends 12 months at a time up to 36 months after the base time; an extension past the cap is refused', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    expect(await expiry()).toBe(addMonths(EARLY, HOSTING_MONTHS));
+    expect(await json(await extend(EARLY + 60))).toEqual({
+      txHash: txs.organizer,
+      expiresAt: addMonths(EARLY, 24),
+      extensionsLeft: 1,
+    });
+    expect(await json(await extend(EARLY + 120))).toEqual({
+      txHash: txs.organizer,
+      expiresAt: addMonths(EARLY, 36),
+      extensionsLeft: 0,
+    });
+    const past = await extend(EARLY + 180);
+    expect(past.status).toBe(409);
+    expect(await past.text()).toMatch(/^Hosting is already extended to its limit: 36 months/);
+    expect(await expiry()).toBe(addMonths(EARLY, 36));
+    expect(await firstHosting()).toEqual({ first_hosted_at: EARLY, extensions: 2 });
+    expect((await request('GET', `/bundles/${txs.organizer}`, addMonths(EARLY, 36) - 1)).status).toBe(200);
+    expect((await request('GET', `/bundles/${txs.organizer}`, addMonths(EARLY, 36))).status).toBe(410);
+  });
+
+  it('extensions are counted from the base time and kept across a deletion and a new hosting', async () => {
+    // A round before the hosting: the base is the round time.
+    const at = addMonths(T, 2);
+    expect(await json<{ expiresAt: number }>(await host(at), 201)).toMatchObject({ expiresAt: addMonths(T, 12) });
+    expect(await json(await extend(at + 1))).toMatchObject({ expiresAt: addMonths(T, 24) });
+    expect((await remove(at + 2)).status).toBe(200);
+    expect(await json<{ expiresAt: number }>(await host(at + 3), 201)).toMatchObject({ expiresAt: addMonths(T, 24) });
+  });
+
+  it('an ended hosting is not extended', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const ended = addMonths(EARLY, HOSTING_MONTHS);
+    expect(await answer(await extend(ended))).toEqual([410, 'The hosting period of this bundle has ended']);
+  });
+
+  it('refuses an expired message, and one issued in the future', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const at = EARLY + 1000;
+    // The window is [issued, issued + 300 s).
+    expect(await answer(await extend(at, sign('extend', at, { issuedAt: at - 300 })))).toEqual([
+      401,
+      'The signed message has expired (5 minutes); sign again',
+    ]);
+    expect(await answer(await remove(at, sign('delete', at, { issuedAt: at - 300 })))).toEqual([
+      401,
+      'The signed message has expired (5 minutes); sign again',
+    ]);
+    expect(await answer(await extend(at, sign('extend', at, { issuedAt: at + 1 })))).toEqual([
+      401,
+      'The signed message was issued in the future',
+    ]);
+    expect(await expiry()).toBe(addMonths(EARLY, HOSTING_MONTHS));
+    expect((await extend(at, sign('extend', at, { issuedAt: at - 299 }))).status).toBe(200);
+  });
+
+  it('refuses a reused nonce: a signed message authorizes one operation', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const once = sign('extend', EARLY);
+    expect((await extend(EARLY + 10, once)).status).toBe(200);
+    expect(await answer(await extend(EARLY + 20, once))).toEqual([
+      409,
+      'This signed message was already used (one-time nonce); sign the operation again',
+    ]);
+    expect(await expiry()).toBe(addMonths(EARLY, 24));
+    // A deletion replayed after the owner hosted again would delete the new hosting.
+    const deletion = sign('delete', EARLY + 30);
+    expect((await remove(EARLY + 40, deletion)).status).toBe(200);
+    expect((await host(EARLY + 50)).status).toBe(201);
+    expect((await remove(EARLY + 60, deletion)).status).toBe(409);
+    expect((await request('GET', `/bundles/${txs.organizer}`, EARLY + 70)).status).toBe(200);
+    // And the hosting itself: the same signed upload twice.
+    const upload = sign('host', EARLY + 80);
+    expect((await host(EARLY + 90, upload)).status).toBe(200);
+    expect((await host(EARLY + 100, upload)).status).toBe(409);
+  });
+
+  it('refuses a message signed for another site', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    for (const domain of ['evil.example', '127.0.0.1:4321'])
+      expect(await answer(await extend(EARLY, sign('extend', EARLY, { domain })))).toEqual([
+        401,
+        'The signed message was written for another site',
+      ]);
+    expect(await answer(await host(EARLY, sign('host', EARLY, { domain: 'evil.example' })))).toEqual([
+      401,
+      'The signed message was written for another site',
+    ]);
+  });
+
+  it('refuses a message signed for another network', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    expect(await answer(await remove(EARLY, sign('delete', EARLY, { network: 'mainnet' })))).toEqual([
+      401,
+      'The signed message is for another network than preprod',
+    ]);
+    expect((await request('GET', `/bundles/${txs.organizer}`, EARLY)).status).toBe(200);
+  });
+
+  it("refuses any key but the commitment's organizer stake key", async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const refused = [
+      403,
+      "The signing key is not this commitment's organizer stake key (sign with its reward address)",
+    ];
+    // Another organizer's stake key, signing for its own reward address: a valid signature by someone else.
+    expect(await answer(await remove(EARLY, sign('delete', EARLY, {}, 'other')))).toEqual(refused);
+    expect(await answer(await extend(EARLY, sign('extend', EARLY, {}, 'other')))).toEqual(refused);
+    // The organizer's payment key (seed 1) for its base address: the address is the owner's, the key is not its
+    // identity key (PD3).
+    const paymentBase = Uint8Array.from([0x00, ...paymentKeyHash(), ...rewardAddress('organizer').subarray(1)]);
+    expect(
+      await answer(await remove(EARLY, sign('delete', EARLY, { secret: secretOf(1), address: paymentBase }))),
+    ).toEqual(refused);
+    // Another key naming the organizer's reward address: the signature cannot verify for that address.
+    expect(
+      await answer(
+        await remove(
+          EARLY,
+          sign('delete', EARLY, { secret: secretOf(SEEDS.other), address: rewardAddress('organizer') }),
+        ),
+      ),
+    ).toEqual([401, 'The signature does not verify']);
+    expect((await request('GET', `/bundles/${txs.organizer}`, EARLY)).status).toBe(200);
+    expect(await expiry()).toBe(addMonths(EARLY, HOSTING_MONTHS));
+  });
+
+  it('refuses a message for another operation, commitment or bundle, and requests without a valid signature', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    expect(await answer(await extend(EARLY, sign('delete', EARLY)))).toEqual([
+      401,
+      'The signed message authorizes "delete", not "extend"',
+    ]);
+    expect(await answer(await extend(EARLY, sign('extend', EARLY, { txHash: txs.other })))).toEqual([
+      401,
+      'The signed message names another commitment',
+    ]);
+    expect(await answer(await extend(EARLY, sign('extend', EARLY, { bundleHash: 'ab'.repeat(32) })))).toEqual([
+      409,
+      'The signed message names another bundle than the one hosted for this commitment',
+    ]);
+    expect((await request('DELETE', `/bundles/${txs.organizer}`, EARLY)).status).toBe(401);
+    expect(await answer(await remove(EARLY, 'Bearer token'))).toEqual([
+      401,
+      'Malformed Authorization header (expected CIP30 <COSE_Sign1 hex> <COSE_Key hex>)',
+    ]);
+    // The signed text must be exactly the rendered owner operation.
+    const loose = sign('delete', EARLY, { text: 'delete please' });
+    expect(await answer(await remove(EARLY, loose))).toEqual([401, 'The signed message is not an owner operation']);
+    expect((await request('GET', `/bundles/${txs.organizer}`, EARLY)).status).toBe(200);
+  });
+
+  it('the Cron run deletes nonce use records once their message has expired', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const count = () => bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n');
+    expect(await count()).toBe(1);
+    await worker.scheduled(createScheduledController({ scheduledTime: (EARLY + 299) * 1000 }), bindings);
+    expect(await count()).toBe(1);
+    await worker.scheduled(createScheduledController({ scheduledTime: (EARLY + 300) * 1000 }), bindings);
+    expect(await count()).toBe(0);
+  });
+});
+
+describe('the first hosting time is the owner’s (ADR Amendment 5, plan step 11)', () => {
+  it('a third party cannot host, so cannot start the clock: the owner’s later hosting counts from its own time', async () => {
+    // The bytes are public before the round; another organizer signs a hosting of this commitment with its own key.
+    const third = await host(EARLY, sign('host', EARLY, {}, 'other'));
+    expect(third.status).toBe(403);
+    expect(await request('GET', `/bundles/${txs.organizer}`, EARLY).then((r) => r.status)).toBe(404);
+    expect(await firstHosting()).toBeNull();
+    // Unsigned, as anyone could before step 11.
+    expect((await request('PUT', `/bundles/${txs.organizer}`, EARLY, { body: bundles.valid })).status).toBe(401);
+    expect(await firstHosting()).toBeNull();
+    // Six months later the organizer hosts: 12 months from then, as if nobody had tried.
+    const own = addMonths(EARLY, 6);
+    expect(await json<{ expiresAt: number }>(await host(own), 201)).toMatchObject({
+      expiresAt: addMonths(own, HOSTING_MONTHS),
+    });
+    expect(await firstHosting()).toEqual({ first_hosted_at: own, extensions: 0 });
+  });
+});
+
+describe('per-address rate limit of the write routes', () => {
+  it('refuses writes past 20 a minute from one address with 429, and only from that address and only writes', async () => {
+    const ip = '203.0.113.9';
+    const write = () => request('PUT', `/bundles/${txs.organizer}`, T, { ip, body: bundles.valid });
+    // Unsigned uploads: refused cheaply (401), each still counted.
+    for (let i = 0; i < 20; i++) expect((await write()).status).toBe(401);
+    const limited = await write();
+    expect([limited.status, limited.headers.get('Retry-After')]).toEqual([429, '60']);
+    expect((await request('DELETE', `/bundles/${txs.organizer}`, T, { ip })).status).toBe(429);
+    expect((await request('POST', `/bundles/${txs.organizer}/extend`, T, { ip })).status).toBe(429);
+    // Reads and the nonce are not limited; another address is not affected.
+    expect((await request('GET', `/bundles/${txs.organizer}`, T, { ip })).status).toBe(404);
+    expect((await request('GET', '/nonce', T, { ip })).status).toBe(200);
+    expect(
+      (await request('PUT', `/bundles/${txs.organizer}`, T, { ip: '203.0.113.10', body: bundles.valid })).status,
+    ).toBe(401);
+  });
+});
+
+// The organizer's payment key hash, from its base address spent by the commitment (tools/api-fixture.mjs).
+function paymentKeyHash(): number[] {
+  const utxos = JSON.parse(answers[`/txs/${txs.organizer}/utxos`].body) as { inputs: { address: string }[] };
+  return [...decodeBech32(utxos.inputs[0].address).bytes.subarray(1, 29)];
+}

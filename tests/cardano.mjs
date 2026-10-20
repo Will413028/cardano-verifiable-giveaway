@@ -53,6 +53,30 @@ export function testKey(seed) {
   return { secret, publicKey, hash: blake2b224(publicKey) };
 }
 export const sign = (key, message) => ed25519.sign(message, key.secret);
+// What a CIP-30 wallet's signData(address, payload) answers (CIP-8 COSE_Sign1 and COSE_Key, RFC 9052 structure),
+// signed by `key` for `address` (bytes).
+export function signData(key, address, payload) {
+  const protectedBytes = cbor(
+    new Map([
+      [1, -8],
+      ['address', address],
+    ]),
+  );
+  const signature = sign(key, cbor(['Signature1', protectedBytes, new Uint8Array(), payload]));
+  return {
+    signature: hex(cbor([protectedBytes, new Map([['hashed', false]]), payload, signature])),
+    key: hex(
+      cbor(
+        new Map([
+          [1, 1],
+          [3, -8],
+          [-1, 6],
+          [-2, key.publicKey],
+        ]),
+      ),
+    ),
+  };
+}
 
 // A signed commitment-shaped transaction. `metadata` is the LABEL entry (object of text/int values) or null;
 // `signers` are hex key hashes for required_signers; `witnesses` are keys that sign the transaction id.

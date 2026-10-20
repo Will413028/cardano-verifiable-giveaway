@@ -37,7 +37,22 @@ export function show(ids: string[], visible: boolean) {
 }
 
 export function clearDrawProgress() {
-  show(['commit-preview', 'commit', 'confirm', 'late', 'open', 'host', 'result', 'winner-result', 'share-link'], false);
+  show(
+    [
+      'commit-preview',
+      'commit',
+      'confirm',
+      'late',
+      'open',
+      'host',
+      'extend-hosting',
+      'delete-hosted',
+      'result',
+      'winner-result',
+      'share-link',
+    ],
+    false,
+  );
   for (const id of ['stage-prepare', 'stage-commit', 'stage-result']) el(id).classList.remove('done');
 }
 
@@ -97,7 +112,7 @@ export function renderWinners(labels: readonly string[]) {
 export function hostedReach(hostedUntil: number, round: number): string {
   return hostedUntil > roundTime(round)
     ? `The bundle is hosted until ${localTime(hostedUntil)}, so the link shows the winners once the round arrives.`
-    : `The bundle is hosted only until ${localTime(hostedUntil)}, before the round (${localTime(roundTime(round))}): a hosted link would stop working then, so it is not offered: publish the downloaded bundle file at an HTTPS URL and share that link (source) instead.`;
+    : `The bundle is hosted only until ${localTime(hostedUntil)}, before the round (${localTime(roundTime(round))}): a hosted link would stop working then, so it is not offered: publish the downloaded bundle file at an HTTPS URL and share that link (source) instead, or extend the hosting (12 months each, up to 36 months).`;
 }
 export function renderShare(
   artifact: Artifact,

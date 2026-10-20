@@ -22,6 +22,11 @@
   "d1_databases": [{ "binding": "DB", "database_name": "giveaway", "migrations_dir": "migrations" }],
   // Hosted bundle bytes, keyed bundles/<sha256 of the bytes>.
   "r2_buckets": [{ "binding": "BUNDLES", "bucket_name": "giveaway-bundles" }],
+  // Per-client-address limit of the write routes (PUT, POST, DELETE; apps/api/src/index.ts `limited`). The Workers
+  // Rate Limiting binding counts per Cloudflare location and approximately; the period can only be 10 or 60 seconds.
+  // 20 writes a minute is an initial default (SELF-IMPOSED): an organizer's host, extend and delete are a few requests.
+  // namespace_id is the account-scoped counter namespace; locally Miniflare keeps the counter in memory.
+  "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }],
   // Hourly sweep of expired hosting records (BR-08); reads check expires_at as well.
   "triggers": { "crons": ["17 * * * *"] }
 }

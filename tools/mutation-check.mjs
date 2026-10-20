@@ -444,8 +444,8 @@ await mustFailApi(
   'Replacing the first hosting time on a later hosting',
   (text) =>
     text.replace(
-      '       ON CONFLICT (tx_hash) DO NOTHING`,\n    ).bind(txHash, now, firstHostingKeepUntil',
-      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO NOTHING`,\n      ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n      ).bind(txHash, now, firstHostingKeepUntil',
     ),
   'keeps the expiry of its first hosting',
   bundles,
@@ -454,9 +454,59 @@ await mustFailApi(
   'Keeping the first hosting time only until 12 months after the round',
   (text) =>
     text.replace(
-      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted));',
+      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted, extensions));',
       'return byRound;',
     ),
   'also across a month-end',
   `${root}apps/api/src/retention.ts`,
+);
+// Step 11 (signed owner operations, BR-09, BR-17; ADR Amendment 5): one guard per mutation, each against the backend
+// test written for it.
+const auth = `${root}apps/api/src/auth.ts`;
+await mustFailApi(
+  'Dropping the one-time nonce check (a used nonce is overwritten instead of refused)',
+  (text) =>
+    text.replace(
+      "'INSERT INTO used_nonces (nonce, expires_at) VALUES (?, ?)'",
+      "'INSERT OR REPLACE INTO used_nonces (nonce, expires_at) VALUES (?, ?)'",
+    ),
+  'refuses a reused nonce',
+  auth,
+);
+await mustFailApi(
+  "Dropping the key-versus-owner check (any key's valid signature authorizes)",
+  (text) => text.replace('  if (!byOwner)\n', '  if (false)\n'),
+  "refuses any key but the commitment's organizer stake key",
+  auth,
+);
+await mustFailApi(
+  'Accepting a signed message past its 5-minute window',
+  (text) => text.replace('  if (now >= op.issuedAt + OWNER_OPERATION_VALIDITY)\n', '  if (false)\n'),
+  'refuses an expired message',
+  auth,
+);
+await mustFailApi(
+  "Letting anyone's signed upload create the hosting (and start the retention clock)",
+  (text) => text.replace('  requireOwner(signed, owner);\n', ''),
+  'a third party cannot host, so cannot start the clock',
+  bundles,
+);
+await mustFailApi(
+  'Dropping the owner extensions when the commitment is hosted again',
+  (text) =>
+    text.replace(
+      'const expiresAt = hostingExpiry(round, firstHosted, first?.extensions ?? 0);',
+      'const expiresAt = hostingExpiry(round, firstHosted);',
+    ),
+  'extensions are counted from the base time and kept across a deletion',
+  bundles,
+);
+await mustFailApi(
+  'Not rate limiting the write routes per client address',
+  (text) =>
+    text.replace(
+      'if (WRITES.has(request.method) && (await limited(request, env)))',
+      'if (WRITES.has(request.method) && false)',
+    ),
+  'refuses writes past 20 a minute from one address',
 );

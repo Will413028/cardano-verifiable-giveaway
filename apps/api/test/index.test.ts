@@ -34,9 +34,10 @@ describe('CORS (BR-04)', () => {
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
     expect(preflight.headers.get('Vary')).toBe('Origin');
-    // The page reads and uploads hosted bundles (plan step 10).
-    expect(preflight.headers.get('Access-Control-Allow-Methods')).toBe('GET, PUT');
-    expect(preflight.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    // The page reads, uploads, extends and deletes hosted bundles (plan steps 10, 11); the owner operations carry their
+    // signature in the Authorization header (BR-04).
+    expect(preflight.headers.get('Access-Control-Allow-Methods')).toBe('GET, PUT, POST, DELETE');
+    expect(preflight.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, Authorization');
     const get = await handle(from(PAGE), env);
     expect(get.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
   });

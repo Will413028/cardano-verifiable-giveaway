@@ -108,6 +108,15 @@ design-review 指出 Decision 的「第一筆被接受的（bundleHash, txHash, 
 - 代價（第三方先上傳，2026-10-20 第二輪 review M1）：上傳（`PUT /bundles/{tx}`）不需要擁有者簽章，bytes 又是公開的（round 前的公告就有完整 bundle），所以任何人都能搶先上傳，讓第一次代管時間從那時起算。刻意延後代管的主辦者（round 在很久以後）之後上傳可能拿到較短的期限，甚至 410。現在接受；補救在步驟 11：第一次代管時間與延長只認擁有者簽章的操作，延長以「基準時間＋36 個月」為上限，擁有者可以把被提早起算的期限延回來。
 - 永久保留的列（第二輪 review L3）：round 無法換算日期（`keep_until` 為 NULL）或在很遠未來的承諾，`first_hosting` 的列會保留到那時或永久。每一列都要一筆已確認的鏈上承諾交易加一份通過 `validateBundle` 的 bundle 才寫得進來，增長以此為界；刪掉它會重新打開重新上傳的漏洞，所以接受。
 - 隨之移除：步驟 10 review M1 的「round 遠到無法表示到期日→422」。基準時間不晚於上傳時間，到期日一定可表示，該檢查的存在理由消失；最大合法 round 的 bundle 保存到第一次代管後 12 個月。
+- **第三方先上傳的補救（2026-10-20，步驟 11）：代管本身也是擁有者操作，必須簽章。** `PUT /bundles/{tx}` 要帶擁有者對操作 `host` 的 `signData` 簽章（形式見 Amendment 6），簽章 key 必須是後端從該筆承諾交易讀出的 organizer 身分的 stake key；別人的 key 403、未簽章 401，都不建紀錄、不寫 `first_hosting`。所以第一次代管時間＝擁有者第一次以簽章成功代管的時間，第三方無法讓它提早，也就無法縮短主辦者的代管期；它仍只寫一次，之後任何重新上傳（包括擁有者自己）都不重新起算，10b 的重新上傳漏洞維持關閉。延長只能由擁有者簽章，每次 12 個月、從基準時間起算、最多兩次（基準時間＋36 個月）；次數與第一次代管時間存在同一列（`first_hosting.extensions`，migration 0004），所以刪除後重新代管沿用，`keep_until` 隨延長後的到期日延後。只延長仍在代管期內的紀錄，已結束的不復活。
+- 比較過的另一條規則：未簽章上傳照收、擁有者第一次簽章的操作把基準時間重新錨定一次。它也能同時堵住重新上傳並擋住第三方提早起算，但要兩個時鐘（未簽章的與擁有者的）；擁有者錨定前，第三方上傳給的較短期限仍然生效；錨定等於擁有者得到一次重新起算，最長可在一段未簽章期之後再拿 36 個月。選「代管要簽章」是因為只有一個時鐘，且與本 Amendment「只認擁有者簽章的操作」字面一致。代價：代管要求錢包支援 `signData`（硬體錢包相容性仍待驗證，見 Followup 與撤銷條件），不支援時只能自行放置 bundle 檔並以 `source` 連結分享；主辦者以外的人（例如參加者）不能替主辦者代管。
+
+## Amendment 6 (2026-10-20)：擁有者操作的簽章形式、nonce 與寫入限流（步驟 11）
+
+- **簽章訊息：** `packages/protocol/owner.ts` 的 `ownerOperationText`，一行一欄、固定順序：網域（頁面的 host）、操作（`host`／`delete`／`extend`）、network、transaction（txHash）、bundle（bundleHash）、nonce、issued、expires（issued＋5 分鐘）。後端只收逐字等於重新渲染結果的文字，錢包顯示的就是被檢查的內容。比 Decision 多帶 txHash：代管紀錄以 txHash 為鍵（Amendment 2），同一個 bundleHash 可以屬於多筆承諾、多個 owner。
+- **簽章 key：** organizer 身分的 stake key，對其 reward address 簽（CIP-30 `signData` 對 reward address 使用 stake key）。owner 取自承諾交易：代管時以 `commitmentOwner` 讀出並存在紀錄，刪除與延長比對紀錄裡的 owner，不讀錢包回報的地址。base address 的 payment key 雖然也屬於 owner 地址，但不是身分 key（唯一性 ADR 的 PD3），不接受。COSE_Sign1 驗章在 `packages/chain/cose.ts`（自 S1 spike 移入，S1 的 29 個向量在 `tests/cose.test.mjs`）。
+- **nonce：** `GET /nonce` 回 16 個隨機 bytes 與後端時鐘，後端不記錄發出過哪些 nonce。一次性由使用紀錄 `used_nonces` 保證：以 nonce 為主鍵，與它授權的操作在同一個 D1 batch，重用時整批回滾（409）；只在簽章、時間窗與 owner 都通過後才寫入，訊息過期後由 Cron 刪除。這是 Decision「伺服器發的一次性 nonce」的實作取捨：記住發出的 nonce 會讓未驗證的 GET 寫入資料列，對重放卻沒有多出防護（只有 owner 的 key 能簽，每則簽好的訊息只用一次、只在 5 分鐘內有效）；B3「只存一次性 nonce 的使用紀錄」因此字面成立。時間窗從訊息裡的 issued 起算，issued 晚於後端時鐘也拒收。
+- **寫入路由依 IP 限流：** Workers Rate Limiting binding（`WRITE_LIMIT`，`CF-Connecting-IP` 為鍵，每 60 秒 20 次，初值屬 SELF-IMPOSED，部署時重評），只計 PUT、POST、DELETE；`GET /nonce` 與讀取不限（不寫任何東西）。必要條件寫在 `apps/api/src/index.ts`：寫入請求在綁定任何 owner 之前就會花掉 `validateBundle` 的 CPU、一次 Ed25519 驗章與最多八次專案 Dolos 讀取（`commitmentOwner` 3 次＋`readCommitment` 5 次，讀程式碼推得），任何人都能用自己的 key 簽，owner 額度與 nonce 都擋不住請求數。計數只在單一機房內、近似值，擋得住單一來源，擋不住分散來源。
 
 ## Review Notes
 

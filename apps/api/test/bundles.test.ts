@@ -6,6 +6,7 @@ import { CLAIM_STALE, objectKey, OWNER_QUOTA, RECONCILE_LIMIT, release, takedown
 import worker, { type Env, handle } from '../src/index.ts';
 import { addMonths, firstHostingKeepUntil, HOSTING_MONTHS, hostingExpiry, roundExpiry } from '../src/retention.ts';
 import fixture from './chain-fixture.json';
+import { authorization, type Who } from './sign.ts';
 
 // The upload gate against the real BlockfrostChain and real local D1 and R2 (Miniflare). The indexer answers are
 // replayed from chain-fixture.json (tools/api-fixture.mjs: transactions signed with the test keys, answers from the
@@ -25,12 +26,40 @@ const PAGE = 'http://127.0.0.1:4320';
 const bindings = env as unknown as Env;
 const T = fixture.roundTime;
 const { txs, bundles, owners } = fixture;
-const call = (method: string, txHash: string, at: number, body?: BodyInit, on: Env = bindings) =>
-  handle(new Request(`http://api.test/bundles/${txHash}`, { method, body, headers: { Origin: PAGE } }), on, {
-    now: () => at,
-    chain,
-  });
-const put = (txHash: string, body: BodyInit, at = T, on: Env = bindings) => call('PUT', txHash, at, body, on);
+// Each request comes from its own client address, so the write rate limit (tested in owner.test.ts) never decides
+// these tests.
+let client = 0;
+const call = (method: string, txHash: string, at: number, body?: BodyInit, on: Env = bindings, auth?: string) =>
+  handle(
+    new Request(`http://api.test/bundles/${txHash}`, {
+      method,
+      body,
+      headers: {
+        Origin: PAGE,
+        'CF-Connecting-IP': `198.51.100.${++client % 250}`,
+        ...(auth ? { Authorization: auth } : {}),
+      },
+    }),
+    on,
+    { now: () => at, chain },
+  );
+// The fixture organizer whose stake key owns a commitment (tools/api-fixture.mjs).
+const ownerOf = (txHash: string): Who =>
+  txHash === txs.other
+    ? 'other'
+    : Object.entries(txs).some(([n, h]) => h === txHash && n.startsWith('quota'))
+      ? 'busy'
+      : 'organizer';
+// Every hosting is signed by the commitment's owner (plan step 11); the signed bundle hash is that of the body.
+const put = async (txHash: string, body: string | Uint8Array, at = T, on: Env = bindings) =>
+  call(
+    'PUT',
+    txHash,
+    at,
+    body,
+    on,
+    authorization(ownerOf(txHash), { operation: 'host', txHash, bundleHash: await sha256(body), at }),
+  );
 const get = (txHash: string, at = T) => call('GET', txHash, at);
 const stored = async (bundleHash: string) => (await bindings.BUNDLES.head(objectKey(bundleHash))) !== null;
 const records = async () =>
@@ -75,6 +104,7 @@ beforeEach(async () => {
     bindings.DB.prepare('DELETE FROM tombstones'),
     bindings.DB.prepare('DELETE FROM collecting'),
     bindings.DB.prepare('DELETE FROM first_hosting'),
+    bindings.DB.prepare('DELETE FROM used_nonces'),
     bindings.DB.prepare("UPDATE reconcile_cursor SET after = ''"),
   ]);
   const listed = await bindings.BUNDLES.list();
@@ -142,6 +172,14 @@ describe('upload gate (BR-06)', () => {
         method: 'PUT',
         body: stream,
         duplex: 'half',
+        headers: {
+          Authorization: authorization('organizer', {
+            operation: 'host',
+            txHash: txs.organizer,
+            bundleHash: VALID_HASH,
+            at: T,
+          }),
+        },
       } as RequestInit),
       bindings,
       { now: () => T, chain },
