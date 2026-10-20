@@ -8,6 +8,8 @@ import {
   sha256,
   validateBundle,
 } from '@giveaway/protocol';
+import { requireOwner, sweepNonces, useNonce, verifySigned } from './auth.ts';
+import { HttpError } from './http.ts';
 import { firstHostingKeepUntil, hostingExpiry, SWEEP_LIMIT } from './retention.ts';
 
 // Bundle hosting (plan step 10; BR-06, BR-07, BR-08, BR-17; invariant B4; ADR 2026-10-18-wallet-auth-and-bounded-
@@ -34,26 +36,19 @@ export interface HostingEnv {
   BUNDLES: R2Bucket;
   // The project indexer the gate reads (server-side; not a route of this Worker, BR-01).
   INDEXER_URL?: string;
+  // The Worker secret that MACs owner-operation nonces (apps/api/src/auth.ts); owner operations are refused without it.
+  NONCE_KEY?: string;
 }
 export type HostingChain = Pick<BlockfrostChain, 'commitmentOwner' | 'readCommitment'>;
 // Hosted bundles per owner identity at any time (BR-17; PD4 default).
 export const OWNER_QUOTA = 20;
 export const objectKey = (bundleHash: string) => `bundles/${bundleHash}`;
-const TX_HASH = /^[a-f0-9]{64}$/;
-
-export class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export const TX_HASH = /^[a-f0-9]{64}$/;
 export interface Hosted {
   txHash: string;
   bundleHash: string;
-  // The stake address of the organizer identity (PD3, PD10): the quota key, and whose stake key will authorize owner
-  // operations (plan step 11).
+  // The stake address of the organizer identity (PD3, PD10): the quota key, and whose stake key authorizes owner
+  // operations (plan step 11, apps/api/src/auth.ts).
   owner: string;
   expiresAt: number;
 }
@@ -185,24 +180,36 @@ async function confirmStored(env: HostingEnv, txHash: string, bundleHash: string
   throw new HttpError(409, 'This hosting record was removed by a concurrent request; upload again to host it');
 }
 
-// PUT /bundles/{txHash}: host the canonical bundle bytes of an on-chain commitment (BR-06). 201 when hosted, 200 when
-// the record already exists (the bytes are written again, which repairs a lost object).
+// PUT /bundles/{txHash}: host the canonical bundle bytes of an on-chain commitment (BR-06), signed by its owner
+// (operation "host", apps/api/src/auth.ts). 201 when hosted, 200 when the record already exists (the bytes are written
+// again, which repairs a lost object).
+//
+// Why hosting is signed (plan step 11, ADR Amendment 5): the first hosting starts the retention clock, and the bytes
+// are public (the pre-round announcement carries the whole bundle), so an unsigned upload let anyone start an
+// organizer's clock early and shorten its hosting. Only the owner's signed upload creates a record, so the first
+// hosting time is always the owner's, and it is still written once: a later upload, signed or not, starts no new
+// period.
 //
 // Order (review L2): every check that needs no chain read runs first, validateBundle (about 0.1 s CPU on 10,000
 // labels, PD2 step 10b) included, so the indexer is read only for bytes that are a valid canonical bundle; reading the chain
-// first would let anyone turn each request into indexer reads of the project Dolos instead. The CPU cost per request
-// is bounded by BUNDLE_BYTE_LIMIT; per-IP rate limiting of the backend's write routes comes with the signed owner
-// operations (plan step 11).
+// first would let anyone turn each request into indexer reads of the project Dolos instead. The signature is checked
+// before the body is read, so an unsigned request costs neither. Whose key signed needs the owner, read from the
+// chain; it is checked right after that read. The CPU cost per request is bounded by BUNDLE_BYTE_LIMIT, and the number
+// of write requests per client address by the rate limit in apps/api/src/index.ts.
 export async function upload(
   env: HostingEnv,
   chain: HostingChain,
   txHash: string,
   request: Request,
   now: number,
+  domain: string | null,
 ): Promise<{ status: 200 | 201; hosted: Hosted }> {
   if (!TX_HASH.test(txHash)) throw new HttpError(400, 'Invalid transaction hash');
+  const signed = await verifySigned(request, { domain, operation: 'host', txHash }, now, env.NONCE_KEY);
   const bytes = await readLimited(request);
   const { bundleHash, bundle } = await inspectBundleBytes(bytes);
+  if (signed.op.bundleHash !== bundleHash)
+    throw new HttpError(409, 'The signed message names another bundle than the uploaded bytes');
   // Checked again atomically by the insert below; this only spares the indexer a removed bundle's reads.
   if (await removed(env, bundleHash)) throw new HttpError(410, 'This bundle was taken down and cannot be hosted again');
   const existing = await env.DB.prepare('SELECT bundle_hash, owner, expires_at FROM hosted WHERE tx_hash = ?')
@@ -211,12 +218,15 @@ export async function upload(
   if (existing && existing.expires_at > now) {
     if (existing.bundle_hash !== bundleHash)
       throw new HttpError(409, 'The bundle hash does not match the commitment of this transaction');
+    requireOwner(signed, existing.owner);
+    await useNonce(env.DB, signed.op);
     await env.BUNDLES.put(objectKey(bundleHash), bytes);
     await confirmStored(env, txHash, bundleHash, now);
     return { status: 200, hosted: { txHash, bundleHash, owner: existing.owner, expiresAt: existing.expires_at } };
   }
-  if (existing) await release(env, txHash, now);
   const { owner, committed } = await commitment(chain, txHash);
+  // Only the commitment's organizer hosts it, so only the organizer starts its retention clock (ADR Amendment 5).
+  requireOwner(signed, owner);
   // The verifier's own bundle-to-commitment check (hash, drawId, drand round): the round the retention may be counted
   // from is then the bundle's, which every verifier holds the commitment to, not a number only the metadata carries.
   if (!matchesCommitment(bundle, bundleHash, committed))
@@ -228,12 +238,15 @@ export async function upload(
     );
   const round = bundle.drand.round;
   // Retention counts from the first time this commitment was hosted, not from this upload (ADR Amendment 5): the row
-  // outlives the record, so uploading again after an expiry, a deletion or a takedown starts no new period.
-  const first = await env.DB.prepare('SELECT first_hosted_at FROM first_hosting WHERE tx_hash = ?')
+  // outlives the record, so uploading again after an expiry, a deletion or a takedown starts no new period, and keeps
+  // the owner's extensions (apps/api/src/owner.ts `extend`).
+  const first = await env.DB.prepare('SELECT first_hosted_at, extensions FROM first_hosting WHERE tx_hash = ?')
     .bind(txHash)
-    .first<{ first_hosted_at: number }>();
+    .first<{ first_hosted_at: number; extensions: number }>();
   const firstHosted = first?.first_hosted_at ?? now;
-  const expiresAt = hostingExpiry(round, firstHosted);
+  const expiresAt = hostingExpiry(round, firstHosted, first?.extensions ?? 0);
+  // A record of this commitment that has expired but is not swept yet always ends here too: its stored expiry is this
+  // one (same round, first hosting and extensions), so no expired record is ever replaced (review round 3, L6).
   if (expiresAt <= now)
     throw new HttpError(
       410,
@@ -241,7 +254,8 @@ export async function upload(
     );
   // One statement, so a concurrent takedown, deletion claim or upload by the same owner cannot slip between the checks
   // and the write; the first hosting time is recorded in the same transaction (a D1 batch), only when this insert
-  // made the record.
+  // made the record. The signed message's nonce is used up first (it authorized this attempt, whatever its outcome).
+  await useNonce(env.DB, signed.op);
   const [inserted] = await env.DB.batch([
     env.DB.prepare(
       `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
@@ -320,7 +334,7 @@ async function collect(env: HostingEnv, bundleHashes: string[], now: number): Pr
   await env.DB.prepare('DELETE FROM collecting WHERE token = ?').bind(token).run();
 }
 
-// Removes one record (an owner's deletion, plan step 11, or an expired record), and its bytes when no other record
+// Removes one record (an owner's deletion, apps/api/src/owner.ts `remove`, or an expired record), and its bytes when no other record
 // names them. Returns whether a record was removed.
 export async function release(env: HostingEnv, txHash: string, now: number): Promise<boolean> {
   const { results } = await env.DB.prepare('DELETE FROM hosted WHERE tx_hash = ? RETURNING bundle_hash')
@@ -347,7 +361,7 @@ export async function takedown(env: HostingEnv, bundleHash: string, now: number)
 }
 
 // The Cron sweep (BR-08): removes up to SWEEP_LIMIT records past `expires_at`, then the bytes no record names any more,
-// then first hosting times that no longer matter.
+// then first hosting times that no longer matter, then nonce use records past their window.
 // Returns how many records it removed.
 export async function sweep(env: HostingEnv, now: number): Promise<number> {
   const { results } = await env.DB.prepare(
@@ -370,6 +384,7 @@ export async function sweep(env: HostingEnv, now: number): Promise<number> {
   )
     .bind(now, SWEEP_LIMIT)
     .run();
+  await sweepNonces(env.DB, now);
   return results.length;
 }
 

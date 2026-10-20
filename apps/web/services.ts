@@ -7,6 +7,8 @@ import {
   canonicalize,
   type Network,
   type Pending,
+  type OwnerOperationName,
+  ownerOperationText,
   type Proof,
   roundTime,
   sha256,
@@ -159,21 +161,89 @@ export async function fetchBundle(
   return { bundle: validateBundle(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))), hash };
 }
 
-// Asks the backend to host the canonical bundle bytes of a confirmed commitment (BR-06). The backend checks them
-// against the chain itself; this only reports what it answered.
-export async function hostBundle(txHash: string, bundle: Bundle, api = API_URL): Promise<{ expiresAt: number }> {
-  const response = await fetch(`${api}/bundles/${txHash}`, {
-    method: 'PUT',
-    body: bundleBytes(bundle),
-    headers: { 'Content-Type': 'application/json' },
+// Owner operations (plan step 11; BR-09): each one is signed on its own (PD4: no session). The text to sign names this
+// page's host, the operation, preprod, the commitment and its bundle hash, and a nonce with the backend's clock
+// (GET /nonce); `sign` asks the wallet (cardano.ts `signOwnerOperation`) and answers the CIP-30 DataSignature.
+export type OwnerSigner = (text: string) => Promise<{ signature: string; key: string }>;
+async function ownerAuthorization(
+  operation: OwnerOperationName,
+  ref: { txHash: string; bundleHash: string },
+  sign: OwnerSigner,
+  api: string,
+): Promise<string> {
+  const response = await fetch(`${api}/nonce`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`Backend nonce: HTTP ${response.status}`);
+  const { nonce, issuedAt } = await response.json();
+  if (typeof nonce !== 'string' || !Number.isSafeInteger(issuedAt))
+    throw new Error('Backend nonce: unexpected response');
+  const text = ownerOperationText({ domain: location.host, operation, network: 'preprod', ...ref, nonce, issuedAt });
+  const { signature, key } = await sign(text);
+  // CIP-30 answers hex; the backend reads it in lowercase.
+  return `CIP30 ${signature.toLowerCase()} ${key.toLowerCase()}`;
+}
+async function ownerRequest(
+  operation: OwnerOperationName,
+  ref: { txHash: string; bundleHash: string },
+  sign: OwnerSigner,
+  init: { method: string; path: string; body?: BodyInit },
+  api: string,
+): Promise<Record<string, unknown>> {
+  const authorization = await ownerAuthorization(operation, ref, sign, api);
+  const response = await fetch(`${api}${init.path}`, {
+    method: init.method,
+    body: init.body,
+    headers: { 'Content-Type': 'application/json', Authorization: authorization },
     credentials: 'omit',
     signal: AbortSignal.timeout(60000),
   });
   const text = await response.text();
-  if (!response.ok) throw new Error(`Bundle hosting refused: HTTP ${response.status} (${text.slice(0, 300)})`);
-  const { expiresAt } = JSON.parse(text);
-  if (!Number.isSafeInteger(expiresAt)) throw new Error('Bundle hosting: unexpected response');
-  return { expiresAt };
+  if (!response.ok)
+    throw new Error(`The backend refused to ${operation}: HTTP ${response.status} (${text.slice(0, 300)})`);
+  return JSON.parse(text);
+}
+
+// Asks the backend to host the canonical bundle bytes of a confirmed commitment (BR-06), signed by the organizer. The
+// backend checks them against the chain itself; this only reports what it answered.
+export async function hostBundle(
+  ref: { txHash: string; bundleHash: string },
+  bundle: Bundle,
+  sign: OwnerSigner,
+  api = API_URL,
+): Promise<{ expiresAt: number }> {
+  const answer = await ownerRequest(
+    'host',
+    ref,
+    sign,
+    { method: 'PUT', path: `/bundles/${ref.txHash}`, body: bundleBytes(bundle) },
+    api,
+  );
+  if (!Number.isSafeInteger(answer.expiresAt)) throw new Error('Bundle hosting: unexpected response');
+  return { expiresAt: answer.expiresAt as number };
+}
+// The organizer deletes the hosted copy (BR-13): the hosted link stops working; downloaded files still verify.
+export async function deleteHosted(
+  ref: { txHash: string; bundleHash: string },
+  sign: OwnerSigner,
+  api = API_URL,
+): Promise<void> {
+  await ownerRequest('delete', ref, sign, { method: 'DELETE', path: `/bundles/${ref.txHash}` }, api);
+}
+// The organizer extends the hosting by 12 months, up to 36 months after its base time (BR-17).
+export async function extendHosted(
+  ref: { txHash: string; bundleHash: string },
+  sign: OwnerSigner,
+  api = API_URL,
+): Promise<{ expiresAt: number; extensionsLeft: number }> {
+  const answer = await ownerRequest(
+    'extend',
+    ref,
+    sign,
+    { method: 'POST', path: `/bundles/${ref.txHash}/extend` },
+    api,
+  );
+  if (!Number.isSafeInteger(answer.expiresAt) || !Number.isSafeInteger(answer.extensionsLeft))
+    throw new Error('Hosting extension: unexpected response');
+  return { expiresAt: answer.expiresAt as number, extensionsLeft: answer.extensionsLeft as number };
 }
 
 export function announcement(network: Network, bundle: Bundle, ref: CommitmentRef): Pending {

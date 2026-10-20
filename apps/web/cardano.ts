@@ -11,6 +11,7 @@ import { preprod } from '@evolution-sdk/evolution/sdk/client/Chain';
 import { makeTxBuilder } from '@evolution-sdk/evolution/sdk/builders/TransactionBuilder';
 import { BlockfrostProvider } from '@evolution-sdk/evolution/sdk/provider/Blockfrost';
 import { computeCommitment, hex, unhex, type Bundle } from '@giveaway/protocol';
+import type { DataSignature } from '@giveaway/chain';
 import {
   checkCommitmentTransaction,
   commitmentMetadata,
@@ -27,6 +28,7 @@ import {
   readCommitmentTransaction,
   transactionHash,
   transactionParts,
+  verifyDataSignature,
 } from '@giveaway/chain';
 
 // The subset of CIP-30 this page calls (https://cips.cardano.org/cip/CIP-0030).
@@ -37,6 +39,8 @@ interface Cip30Api {
   signTx(tx: string, partialSign?: boolean): Promise<string>;
   // Submits a signed transaction through the wallet's own infrastructure and answers its id (BR-15, F14).
   submitTx(tx: string): Promise<string>;
+  // CIP-8 message signing with the key of `address` (hex); for a reward address that is the stake key.
+  signData(address: string, payload: string): Promise<DataSignature>;
 }
 interface Cip30Wallet {
   name?: string;
@@ -96,6 +100,32 @@ async function rewardWithdrawal(indexer: string, owner: string) {
   const balance = account.withdrawable_amount;
   if (typeof balance !== 'string' || !/^\d+$/.test(balance)) throw new Error('Indexer /accounts: unexpected response');
   return { account: identityRewardAccount(owner), lovelace: BigInt(balance) };
+}
+
+// Signs an owner operation (plan step 11; the text is @giveaway/protocol `ownerOperationText`) with the organizer
+// identity of the commitment: the stake key of `owner`, the committing address read back from the transaction, never
+// the wallet's current change address. The wallet signs for the reward address, so it uses that stake key. The answer
+// is checked here as the backend will check it, so a wallet holding another key fails with a clear message.
+export async function signOwnerOperation(id: string, owner: string, text: string): Promise<DataSignature> {
+  const enable = injected()[id]?.enable;
+  if (!id || typeof enable !== 'function')
+    throw new Error('Enable the CIP-30 wallet that committed this draw, then refresh wallets');
+  const wallet = await enable();
+  if ((await wallet.getNetworkId()) !== 0) throw new Error('Switch your wallet to preprod');
+  const address = identityRewardAccount(owner);
+  const payload = hex(new TextEncoder().encode(text));
+  const signed = await wallet.signData(address, payload);
+  const verified = signed && verifyDataSignature(signed);
+  if (
+    !verified ||
+    hex(verified.address) !== address ||
+    verified.keyHash !== identityKeyHash(owner) ||
+    hex(verified.payload) !== payload
+  )
+    throw new Error(
+      "The wallet did not sign with this draw's organizer stake key. Use the wallet that committed the draw.",
+    );
+  return signed;
 }
 
 // `indexer` is the project's Blockfrost-compatible indexer (build setting GIVEAWAY_INDEXER_URL); it needs no key and

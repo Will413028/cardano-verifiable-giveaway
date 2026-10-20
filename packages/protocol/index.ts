@@ -307,3 +307,4 @@ export function parseEntrants(text: string): string[] {
   if (!labels.length) throw new Error('No participants found');
   return labels;
 }
+export * from './owner.ts';

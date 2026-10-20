@@ -454,9 +454,167 @@ await mustFailApi(
   'Keeping the first hosting time only until 12 months after the round',
   (text) =>
     text.replace(
-      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted));',
+      'return byRound === null ? null : Math.max(byRound, hostingExpiry(round, firstHosted, extensions));',
       'return byRound;',
     ),
   'also across a month-end',
   `${root}apps/api/src/retention.ts`,
+);
+// Step 11 (signed owner operations, BR-09, BR-17; ADR Amendment 5): one guard per mutation, each against the backend
+// test written for it.
+const auth = `${root}apps/api/src/auth.ts`;
+await mustFailApi(
+  'Dropping the one-time nonce check (a used nonce is recorded again instead of refused)',
+  (text) =>
+    text.replace(
+      'ON CONFLICT (nonce) DO NOTHING RETURNING nonce',
+      'ON CONFLICT (nonce) DO UPDATE SET expires_at = excluded.expires_at RETURNING nonce',
+    ),
+  'refuses a reused nonce',
+  auth,
+);
+await mustFailApi(
+  "Not checking the nonce's issue time against the message (a message may be post-dated)",
+  (text) => text.replace('  if (Number.parseInt(parts[2], 16) !== issuedAt) return false;\n', ''),
+  'post-dated past its nonce',
+  auth,
+);
+await mustFailApi(
+  "Not checking the nonce's MAC (anyone may mint a nonce)",
+  (text) => text.replace('  if (!valid) return false;\n', ''),
+  'post-dated past its nonce',
+  auth,
+);
+await mustFailApi(
+  'Accepting owner operations without a configured page origin',
+  (text) =>
+    text.replace(
+      'if (expected.domain === null || op.domain !== expected.domain)',
+      'if (expected.domain !== null && op.domain !== expected.domain)',
+    ),
+  'refuses owner operations when no page origin is configured',
+  auth,
+);
+await mustFailApi(
+  "Dropping the key-versus-owner check (any key's valid signature authorizes)",
+  (text) => text.replace('  if (!byOwner)\n', '  if (false)\n'),
+  "refuses any key but the commitment's organizer stake key",
+  auth,
+);
+await mustFailApi(
+  'Accepting a signed message past its 5-minute window',
+  (text) => text.replace('  if (now >= op.issuedAt + OWNER_OPERATION_VALIDITY)\n', '  if (false)\n'),
+  'refuses an expired message',
+  auth,
+);
+await mustFailApi(
+  "Letting anyone's signed upload create the hosting (and start the retention clock)",
+  (text) => text.replace('  requireOwner(signed, owner);\n', ''),
+  'a third party cannot host, so cannot start the clock',
+  bundles,
+);
+await mustFailApi(
+  'Dropping the owner extensions when the commitment is hosted again',
+  (text) =>
+    text.replace(
+      'const expiresAt = hostingExpiry(round, firstHosted, first?.extensions ?? 0);',
+      'const expiresAt = hostingExpiry(round, firstHosted);',
+    ),
+  'extensions are counted from the base time and kept across a deletion',
+  bundles,
+);
+await mustFailApi(
+  'Not rate limiting the write routes per client address',
+  (text) =>
+    text.replace(
+      'if (WRITES.has(request.method) && (await limited(request, env)))',
+      'if (WRITES.has(request.method) && false)',
+    ),
+  'refuses writes past 20 a minute from one address',
+);
+await mustFailApi(
+  'Keying the rate limit on the full IPv6 address instead of its /64',
+  (text) =>
+    text.replace(
+      "key: clientKey(request.headers.get('CF-Connecting-IP'))",
+      "key: request.headers.get('CF-Connecting-IP') ?? 'unknown'",
+    ),
+  'counts every address of one IPv6 /64 together',
+);
+// Step 11 review L1–L3: one guard per mutation.
+await mustFailApi(
+  'Not checking the owner when a live hosting is uploaded again (L1)',
+  (text) => text.replace('    requireOwner(signed, existing.owner);\n', ''),
+  'a live hosting is not rewritten by another key either',
+  bundles,
+);
+await mustFailApi(
+  'Not checking the signed bundle hash against the uploaded bytes (L2)',
+  (text) => text.replace('  if (signed.op.bundleHash !== bundleHash)\n', '  if (false)\n'),
+  'the signed bundle hash must be the hash of the uploaded bytes',
+  bundles,
+);
+await mustFailApi(
+  'Counting an extension whatever count it was computed from (L3)',
+  (text) => text.replace('WHERE tx_hash = ?1 AND extensions = ?2 - 1', 'WHERE tx_hash = ?1'),
+  'of two extensions computed from the same state',
+  `${root}apps/api/src/owner.ts`,
+);
+// Step 11 review L4: COSE verification guards, in the built library the Node tests load.
+await mustFail(
+  'Verifying COSE signatures with ZIP 215 (cofactored) instead of strict RFC 8032',
+  library,
+  (text) =>
+    text.replace(
+      'ed25519.verify(sig, sigStructure(protectedBytes, payload), publicKey, { zip215: false })',
+      'ed25519.verify(sig, sigStructure(protectedBytes, payload), publicKey, { zip215: true })',
+    ),
+  'small-order key',
+  `${root}tests/cose.test.mjs`,
+);
+await mustFail(
+  'Accepting a COSE payload flagged as hashed',
+  library,
+  (text) => text.replace('if (unprotected.get("hashed") === true) return null;', ''),
+  'flagged as hashed',
+  `${root}tests/cose.test.mjs`,
+);
+// Step 11 review round 3: the use record refuses anything at or below the sweep watermark (a replay verified inside
+// its window but recorded after the sweep), the key length, and the limiter key normalization. One guard each.
+for (const testName of [
+  'a replayed extension verified inside its window but recorded after the sweep',
+  'a replayed upload whose body stalls across the sweep',
+])
+  await mustFailApi(
+    `Recording a nonce use below the sweep watermark (${testName.split(' ').slice(0, 3).join(' ')})`,
+    (text) =>
+      text.replace('SELECT ?1, ?2 WHERE ?2 > (SELECT swept_through FROM nonce_sweep WHERE id = 1)', 'SELECT ?1, ?2'),
+    testName,
+    auth,
+  );
+await mustFailApi(
+  'Accepting a NONCE_KEY shorter than 32 characters',
+  (text) => text.replace('secret.length < 32', 'secret.length < 1'),
+  'refuses a NONCE_KEY shorter than 32 characters',
+  auth,
+);
+for (const [name, from, to] of [
+  ['Not lowercasing the client address', "(address ?? '').trim().toLowerCase()", "(address ?? '').trim()"],
+  [
+    'Not keying an IPv4-mapped IPv6 client by its IPv4 address',
+    "  if (text.includes('.')) return text.slice(text.lastIndexOf(':') + 1);\n",
+    '',
+  ],
+  ['Keying a malformed client address as itself', '/^(?:[0-9.]{7,15}|[0-9a-f:.]{2,45})$/.test(text)', 'true'],
+])
+  await mustFailApi(name, (text) => text.replace(from, to), 'normalizes the client address');
+await mustFailApi(
+  'Letting an earlier sweep lower the nonce watermark',
+  (text) =>
+    text.replace(
+      "'UPDATE nonce_sweep SET swept_through = max(swept_through, ?) WHERE id = 1'",
+      "'UPDATE nonce_sweep SET swept_through = ? WHERE id = 1'",
+    ),
+  'an earlier sweep after a later one does not lower the watermark',
+  auth,
 );

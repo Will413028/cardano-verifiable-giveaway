@@ -9,7 +9,8 @@
 import { BlockfrostChain, readCommitmentTransaction } from '@giveaway/chain';
 import { canonicalize, sha256, validateBundle } from '@giveaway/protocol';
 import fixture from '../test/chain-fixture.json';
-import { HttpError, inspectBundleBytes } from '../src/bundles.ts';
+import { inspectBundleBytes } from '../src/bundles.ts';
+import { HttpError } from '../src/http.ts';
 
 type Answer = { status: number; headers: Record<string, string>; body: string };
 const answers = fixture.answers as Record<string, Answer>;

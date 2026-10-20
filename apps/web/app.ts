@@ -27,13 +27,16 @@ import {
   type Chains,
   createChains,
   decodeInline,
+  deleteHosted,
   encodeInline,
+  extendHosted,
   fetchBundle,
   fetchTip,
   hostBundle,
   indexerFor,
   inlineShareLink,
   type Loaded,
+  type OwnerSigner,
   PROJECT_INDEXER,
   readShareLink,
   resolveArtifact,
@@ -294,17 +297,59 @@ function share(state: AppState, artifact: Artifact) {
   renderShare(artifact, link, { artifact: state.downloadUrl, bundle: state.bundleDownloadUrl }, hosted?.expiresAt);
 }
 
+// Owner operations on the hosted copy (plan step 11) are signed by the wallet with the organizer's stake key, the
+// identity of the committing address (committed.owner), each operation on its own.
+function ownerSigner(owner: string): OwnerSigner {
+  return async (message) => {
+    const { signOwnerOperation } = await import('./cardano.ts');
+    return signOwnerOperation(input('wallet').value, owner, message);
+  };
+}
+
 async function host(state: AppState) {
   const draw = state.draw;
   const { bundle, committed, confirmed, shared } = draw;
   if (isDemo() || !bundle || !committed || !confirmed || !shared)
     throw new Error('Host a bundle after its commitment is confirmed');
-  const { expiresAt } = await hostBundle(committed.txHash, bundle);
+  const link = { txHash: committed.txHash, bundleHash: confirmed.bundleHash };
+  const { expiresAt } = await hostBundle(link, bundle, ownerSigner(committed.owner));
   if (state.draw !== draw) return;
-  draw.hosted = { link: { txHash: committed.txHash, bundleHash: confirmed.bundleHash }, expiresAt };
+  draw.hosted = { link, expiresAt };
   el('host').hidden = true;
+  show(['extend-hosting', 'delete-hosted'], true);
   share(state, shared);
   status(`Bundle hosted. ${hostedReach(expiresAt, bundle.drand.round)}`);
+}
+
+async function extendHosting(state: AppState) {
+  const draw = state.draw;
+  const { bundle, committed, hosted, shared } = draw;
+  if (!bundle || !committed || !hosted || !shared) throw new Error('Host the bundle first');
+  const { expiresAt, extensionsLeft } = await extendHosted(hosted.link, ownerSigner(committed.owner));
+  if (state.draw !== draw) return;
+  hosted.expiresAt = expiresAt;
+  el('extend-hosting').hidden = extensionsLeft === 0;
+  share(state, shared);
+  status(
+    `Hosting extended. ${hostedReach(expiresAt, bundle.drand.round)}${extensionsLeft === 0 ? ' This was the last extension: hosting ends 36 months after the earlier of the round and the first hosting.' : ''}`,
+  );
+}
+
+// BR-13: after a deletion the hosted link is dead, so the share link goes back to the inline one (or none) and the
+// organizer is reminded that the downloaded files are now the copy participants verify from.
+async function deleteHostedBundle(state: AppState) {
+  const draw = state.draw;
+  const { committed, hosted, shared } = draw;
+  if (!committed || !hosted || !shared) throw new Error('Nothing is hosted for this draw');
+  await deleteHosted(hosted.link, ownerSigner(committed.owner));
+  if (state.draw !== draw) return;
+  draw.hosted = undefined;
+  show(['extend-hosting', 'delete-hosted'], false);
+  el('host').hidden = false;
+  share(state, shared);
+  status(
+    'Hosted bundle deleted: the hosted verification link no longer works. Keep the downloaded bundle file and proof: participants can still verify from them (publish the bundle file at an HTTPS URL to share a link again).',
+  );
 }
 
 async function copyShareLink() {
@@ -405,6 +450,8 @@ function start() {
   el('open').onclick = () => void run(state, () => reveal(state, chains));
   el('share').onclick = () => void run(state, copyShareLink);
   el('host').onclick = () => void run(state, () => host(state));
+  el('extend-hosting').onclick = () => void run(state, () => extendHosting(state));
+  el('delete-hosted').onclick = () => void run(state, () => deleteHostedBundle(state));
   input('lookup').oninput = () => renderLookup(state.verifiedBundle);
   const artifact = (read: () => Promise<unknown>) => async () => resolveArtifact(await read(), now());
   input('proof-file').onchange = () => void load(state, chains, artifact(readProofFile));

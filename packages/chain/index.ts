@@ -27,6 +27,7 @@ import {
   withdrawals,
 } from './cbor.ts';
 export * from './cbor.ts';
+export * from './cose.ts';
 
 // Private development label, absent from the CIP-10 registry (checked 2026-10-18 at CIPs commit befcdb7);
 // registration is left to the v1 freeze.

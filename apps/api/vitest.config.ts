@@ -7,7 +7,13 @@ export default defineConfig(async () => ({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },
-      miniflare: { bindings: { TEST_MIGRATIONS: await readD1Migrations('./migrations') } },
+      // NONCE_KEY: a test value for the owner-operation nonce MAC (a Worker secret when deployed; apps/api/src/auth.ts).
+      miniflare: {
+        bindings: {
+          TEST_MIGRATIONS: await readD1Migrations('./migrations'),
+          NONCE_KEY: 'test-nonce-key-for-workerd-tests-only-0123456789',
+        },
+      },
     }),
   ],
   test: { setupFiles: ['./test/setup.ts'] },

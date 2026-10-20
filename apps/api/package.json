@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler d1 migrations apply giveaway --local && wrangler dev",
+    "dev": "wrangler d1 migrations apply giveaway --local && wrangler dev --var NONCE_KEY:local-development-nonce-key-not-a-secret",
     "test": "vitest run"
   },
   "dependencies": {
@@ -13,6 +13,7 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.4.4",
     "@cloudflare/workers-types": "5.20261016.1",
+    "@noble/curves": "2.4.0",
     "vitest": "4.1.12",
     "wrangler": "4.151.1"
   }

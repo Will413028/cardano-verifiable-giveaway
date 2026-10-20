@@ -12,6 +12,7 @@ import {
   FIXTURE,
   identityKeyHash,
   LABEL,
+  parseOwnerOperation,
   preprodSlotAt,
   QUICKNET,
   roundTime,
@@ -19,9 +20,10 @@ import {
   sha256,
   transactionHash,
   VERSION,
+  verifyDataSignature,
 } from '@giveaway/verifier-cli/library';
 import { ACCOUNT, ANSWERS, blockfrostIndexer } from '../tests/blockfrost-mock.mjs';
-import { buildTransaction, cbor, hex, sign, Tag, testKey, unhex } from '../tests/cardano.mjs';
+import { buildTransaction, cbor, hex, sign, signData, Tag, testKey, unhex } from '../tests/cardano.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Same PORT variable as tools/serve.mjs, so a check can run beside another dev server.
 const origin = `http://127.0.0.1:${process.env.PORT ?? 4320}/`;
@@ -315,12 +317,22 @@ try {
     });
     return indexer;
   };
+  // CIP-30 signData as a wallet holding the base wallet's keys answers it: the stake key for its reward address, the
+  // payment key for the base address (plan step 11; owner operations must use the stake key).
+  const REWARD = `e0${stake.hash}`;
+  const signDataFor = (address, payload) => {
+    const key = address === REWARD ? stake : address === wallets.base ? payment : null;
+    if (!key) throw new Error('The mock wallet holds no key for this address');
+    return signData(key, unhex(address), unhex(payload));
+  };
   // A CIP-30 mock. With `sign` it approves through the exposed `mockSign`; every signTx call is counted. submitTx
   // hands the signed transaction to the exposed `mockSubmit` (the wallet's own infrastructure, not the project
-  // indexer) and answers its id; every call is counted.
+  // indexer) and answers its id; every call is counted. signData (owner operations) records the address asked for and
+  // signs through the exposed `mockSignData`.
   const mockWallet = ({ utxo, address, sign }) => {
     window.signCalls = 0;
     window.submitCalls = 0;
+    window.signDataCalls = [];
     window.cardano = {
       mock: {
         name: 'Mock preprod',
@@ -339,6 +351,11 @@ try {
             window.submitCalls++;
             return window.mockSubmit(tx);
           },
+          signData: async (addr, payload) => {
+            window.signDataCalls.push(addr);
+            if (sign) return window.mockSignData(addr, payload);
+            throw new Error('No signing allowed in automated browser checks');
+          },
         }),
       },
     };
@@ -349,6 +366,7 @@ try {
     target.on('pageerror', (e) => pageErrors.push(e.message));
     if (clock) await target.clock.install();
     await target.exposeFunction('mockSign', witnessSet);
+    await target.exposeFunction('mockSignData', signDataFor);
     const submitted = new Map();
     await target.exposeFunction('mockSubmit', (tx) => {
       submitted.set(transactionHash(tx), tx);
@@ -478,11 +496,15 @@ try {
   }
   passed('confirmation response after a reset is discarded');
   passed('the wallet submits the signed commitment (CIP-30 submitTx); the indexer receives no submission');
-  // Hosting (plan step 10): after 15 confirmations the organizer asks the backend to host the canonical bundle bytes
-  // (PUT /bundles/{txHash}); the share link becomes txHash + bundle hash. The backend is mocked here (its gate is
-  // tested in apps/api against D1, R2 and the chain); the page must send exactly the committed bytes. Twice: hosted past
-  // the round, and hosted only until before it (a round more than 12 months after the first hosting, ADR Amendment 5),
-  // where the page must not promise that the link shows the winners.
+  // Hosting (plan steps 10, 11): after 15 confirmations the organizer asks the backend to host the canonical bundle
+  // bytes (PUT /bundles/{txHash}), signed with signData by the organizer's stake key for its reward address; the share
+  // link becomes txHash + bundle hash. The backend is mocked here (its gate, signature checks and retention are tested
+  // in apps/api against D1, R2 and the chain); the page must send exactly the committed bytes and a signature over the
+  // owner operation text for this page, the operation, the commitment and its bundle hash, which this mock checks
+  // with the trust-path verifier. Twice: hosted past the round, then deleted (the link falls back and the page says to
+  // keep the downloaded files, BR-13); and hosted only until before it (a round more than 12 months after the first
+  // hosting, ADR Amendment 5), where the page must not promise that the link shows the winners, then extended past
+  // the round (BR-17), when the hosted link is offered.
   for (const pastRound of [true, false]) {
     const { target, pageErrors, submitted } = await preprodPage({
       sign: true,
@@ -492,22 +514,49 @@ try {
         return false;
       },
     });
-    const uploads = [];
+    const calls = [];
     const hostedUntil = pastRound ? 1_900_000_000 : Math.floor(Date.now() / 1000) + 60;
-    await target.route(`${API}/bundles/*`, async (route) => {
+    const page = new URL(origin);
+    // The operation the request's Authorization header signs, checked as the backend checks it (apps/api/src/auth.ts).
+    const signedOperation = (request) => {
+      const [, signature, key] = (request.headers().authorization ?? '').split(' ');
+      const verified = verifyDataSignature({ signature, key });
+      assert.ok(verified, 'the owner signature verifies');
+      assert.equal(hex(verified.address), REWARD);
+      assert.equal(verified.keyHash, stake.hash);
+      const op = parseOwnerOperation(new TextDecoder().decode(verified.payload));
+      assert.equal(op.domain, page.host);
+      assert.equal(op.network, 'preprod');
+      return op;
+    };
+    await target.route(`${API}/**`, async (route) => {
       const request = route.request();
-      const cors = { 'Access-Control-Allow-Origin': origin.replace(/\/$/, ''), Vary: 'Origin' };
+      const cors = { 'Access-Control-Allow-Origin': page.origin, Vary: 'Origin' };
       if (request.method() === 'OPTIONS')
         return route.fulfill({
           status: 204,
           headers: {
             ...cors,
-            'Access-Control-Allow-Methods': 'GET, PUT',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
         });
-      uploads.push({ method: request.method(), url: request.url(), body: request.postDataBuffer() });
-      return route.fulfill({ status: 201, headers: cors, json: { expiresAt: hostedUntil } });
+      const url = new URL(request.url());
+      if (url.pathname === '/nonce') {
+        const issuedAt = Math.floor(Date.now() / 1000);
+        return route.fulfill({
+          status: 200,
+          headers: cors,
+          json: { nonce: hex(crypto.getRandomValues(new Uint8Array(16))), issuedAt, expiresAt: issuedAt + 300 },
+        });
+      }
+      const op = signedOperation(request);
+      calls.push({ method: request.method(), path: url.pathname, op, body: request.postDataBuffer() });
+      if (request.method() === 'PUT')
+        return route.fulfill({ status: 201, headers: cors, json: { expiresAt: hostedUntil } });
+      if (request.method() === 'POST')
+        return route.fulfill({ status: 200, headers: cors, json: { expiresAt: 1_900_000_000, extensionsLeft: 1 } });
+      return route.fulfill({ status: 200, headers: cors, json: { deleted: true } });
     });
     await target.click('#prepare');
     await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Ready to sign'));
@@ -517,34 +566,71 @@ try {
     assert.equal(await target.locator('#host').isVisible(), false);
     await target.click('#confirm');
     await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Fifteen'));
+    for (const id of ['#extend-hosting', '#delete-hosted']) assert.equal(await target.locator(id).isVisible(), false);
     await target.click('#host');
     await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Bundle hosted'));
     const [txHash] = [...submitted.keys()];
-    assert.equal(uploads.length, 1);
-    assert.equal(uploads[0].method, 'PUT');
-    assert.equal(uploads[0].url, `${API}/bundles/${txHash}`);
-    assert.equal(await sha256(new Uint8Array(uploads[0].body)), committedHash);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, 'PUT');
+    assert.equal(calls[0].path, `/bundles/${txHash}`);
+    assert.equal(await sha256(new Uint8Array(calls[0].body)), committedHash);
+    assert.deepEqual(
+      [calls[0].op.operation, calls[0].op.txHash, calls[0].op.bundleHash],
+      ['host', txHash, committedHash],
+    );
+    // The wallet was asked to sign for the organizer's reward address (the stake key), not for its payment address.
+    assert.deepEqual(await target.evaluate(() => window.signDataCalls), [REWARD]);
     const link = new URL(await target.locator('#share-link').inputValue());
     if (pastRound) assert.deepEqual(Object.fromEntries(link.searchParams), { tx: txHash, bundle: committedHash });
     // A hosted link that dies before the round is not offered: the inline announcement link stays.
     else assert.ok(!link.searchParams.has('tx') && link.hash.startsWith('#proof='), link.href);
     assert.equal(await target.locator('#host').isVisible(), false);
+    for (const id of ['#extend-hosting', '#delete-hosted']) assert.equal(await target.locator(id).isVisible(), true);
     const status = await target.locator('#draw-status').textContent();
     const note = await target.locator('#result-note').textContent();
     if (pastRound) {
       assert.match(status, /shows the winners once the round arrives/);
       assert.match(note, /hosted until .*shows the winners once the round arrives/);
+      // Deletion: signed, the hosted link is withdrawn, and the page says to keep the downloaded files (BR-13).
+      await target.click('#delete-hosted');
+      await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('deleted'));
+      assert.deepEqual(
+        [calls[1].method, calls[1].path, calls[1].op.operation, calls[1].op.bundleHash],
+        ['DELETE', `/bundles/${txHash}`, 'delete', committedHash],
+      );
+      assert.match(
+        await statusText(target),
+        /hosted verification link no longer works\. Keep the downloaded bundle file and proof/,
+      );
+      const after = new URL(await target.locator('#share-link').inputValue());
+      assert.ok(!after.searchParams.has('tx') && after.hash.startsWith('#proof='), after.href);
+      for (const id of ['#extend-hosting', '#delete-hosted']) assert.equal(await target.locator(id).isVisible(), false);
+      assert.equal(await target.locator('#host').isVisible(), true);
+      assert.equal(await target.locator('#download-bundle').isVisible(), true);
     } else {
       for (const text of [status, note]) {
         assert.match(text, /hosted only until .*before the round .*stop working then, so it is not offered.*source/);
         assert.doesNotMatch(text, /shows the winners/);
       }
+      // Extension: signed, and once the hosting outlasts the round the hosted link is offered (BR-17).
+      await target.click('#extend-hosting');
+      await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('extended'));
+      assert.deepEqual(
+        [calls[1].method, calls[1].path, calls[1].op.operation, calls[1].op.bundleHash],
+        ['POST', `/bundles/${txHash}/extend`, 'extend', committedHash],
+      );
+      assert.notEqual(calls[1].op.nonce, calls[0].op.nonce);
+      assert.match(await statusText(target), /Hosting extended\. .*shows the winners once the round arrives/);
+      const extended = new URL(await target.locator('#share-link').inputValue());
+      assert.deepEqual(Object.fromEntries(extended.searchParams), { tx: txHash, bundle: committedHash });
+      assert.equal(await target.locator('#extend-hosting').isVisible(), true);
     }
+    assert.equal(calls.length, 2);
     assert.deepEqual(pageErrors, []);
     await target.close();
   }
   passed(
-    'a confirmed preprod commitment is hosted with its committed bytes and shared as txHash + bundle hash; the page says whether the hosting outlasts the round',
+    'a confirmed preprod commitment is hosted with its committed bytes under the organizer stake key signature and shared as txHash + bundle hash; the page says whether the hosting outlasts the round, extends it and deletes it with signed requests',
   );
   // A signed commitment the indexer never sees: once its invalid_hereafter has passed, the page says it expired
   // and asks for a later round instead of waiting for the round.
