@@ -17,13 +17,13 @@
 | BR-09 | API | 擁有者操作（代管、刪除、延長）以 CIP-30 `signData` 簽章；payload 含網域、操作、txHash、bundleHash、network、一次性 nonce，5 分鐘有效；簽章 key 是承諾交易推導出的 organizer 身分 stake key（對其 reward address 簽）；nonce 由後端以 HMAC 簽發、不儲存，後端只存通過驗證的 nonce 使用紀錄 | WA Decision；WA Amendment 6 | 11 |
 | BR-10 | 畫面 | 驗證連結帶 `txHash`＋bundleHash，beacon 與得獎者由 verifier 重算 | WA Decision | 10 |
 | BR-11 | 畫面 | 草稿一律存本機 IndexedDB，可匯出 | WA Decision | 12 |
-| BR-12 | API | 伺服器草稿需錢包簽章存取，保存 30 天 | WA Decision | 12 |
+| BR-12 | API | 伺服器草稿需錢包簽章存取，保存到最後一次儲存後 30 天（每次儲存重新起算，WA Amendment 7） | WA Decision；WA Amendment 7 | 12 |
 | BR-13 | 流程 | 刪除請求以整份 bundle 下架；介面提醒主辦者保留下載副本 | WA Decision | 11、13 |
 | BR-14 | 文件 | 隱私說明（controller 角色、保存期限、刪除方式）與檢舉、下架流程 | WA Followup | 13 |
 | BR-15 | 流程 | 交易由錢包 CIP-30 `submitTx` 送出，後端不經手交易 | BK Decision | 9 |
 | BR-16 | 流程 | 驗證頁顯示鏈上證據來源（步驟 9），可填入 Blockfrost 相容、full archive 且允許 CORS 的 indexer 網址（步驟 8b）；CLI 沒有專案預設，必須以 `--indexer` 指定（步驟 8b） | BK Decision；DL Decision | 8b、9 |
 | BR-17 | 流程 | 每個 owner 最多 20 份代管中的 bundle；每次延長 12 個月，總保存不超過基準時間後 36 個月（基準時間同 BR-08，重新上傳不改變它）；延長只由 owner 簽章、只對代管期內的紀錄，次數與第一次代管時間同存，刪除後重新代管沿用 | WA Amendment；WA Amendment 5 | 10、10b、11 |
-| BR-18 | 資料實體 | 每個身分最多 5 份伺服器草稿，每份不超過協定 byte 上限；內容存 R2、紀錄存 D1 | WA Amendment；D1 limits | 12 |
+| BR-18 | 資料實體 | 每個身分最多 5 份伺服器草稿，每份不超過協定 byte 上限；所有有效草稿合計不超過全域 byte 上限（設定值 `DRAFT_BYTES_CAP`，初值 1 GiB，超過回 507、頁面說明本機草稿與匯出仍可用），與每身分額度在同一條 upsert 檢查；30 天自最後一次儲存起算；內容存 R2、紀錄存 D1 | WA Amendment；WA Amendment 7；D1 limits | 12 |
 
 PD7 對需求的處置（2026-10-19）：
 

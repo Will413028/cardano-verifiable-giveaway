@@ -117,10 +117,12 @@ async function refreshTip() {
   }
 }
 
-// Preprod reads the chain tip and the browser's wallets.
-function enterPreprod(state: AppState) {
+// Preprod reads the chain tip and the browser's wallets. Inside a running action (a draft loaded or imported in preprod
+// mode) run() would return at once, since the page is busy (review LOW 1), so the action lists the wallets itself and
+// waits for them; otherwise listing them is an action of its own.
+function enterPreprod(state: AppState): Promise<void> {
   void refreshTip();
-  void run(state, refreshWallets);
+  return state.busy ? refreshWallets() : run(state, refreshWallets);
 }
 
 async function refreshWallets() {
@@ -439,7 +441,7 @@ function start() {
   const chains = createChains();
   input('network').onchange = () => {
     updateMode(state, input('network').value === 'preprod' ? 'preprod' : 'demo');
-    if (!isDemo(state)) enterPreprod(state);
+    if (!isDemo(state)) void enterPreprod(state);
   };
   el('refresh-wallets').onclick = () => void run(state, refreshWallets);
   input('entrants').oninput = () => {

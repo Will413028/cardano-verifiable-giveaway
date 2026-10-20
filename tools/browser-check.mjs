@@ -798,6 +798,7 @@ try {
     await verifier.close();
   }
   passed('verification page reads only the indexer the visitor names');
+  let exportedDraft = '';
   // Drafts (plan step 12; BR-11): the setup form is kept in this browser's IndexedDB as it is edited and restored on
   // the next load, mode included; it exports to a file that imports back to the same form. A draft never enters the
   // verification flow, and a verification file is not a draft.
@@ -838,6 +839,7 @@ try {
       return { name: download.suggestedFilename(), text: await readFile(await download.path(), 'utf8') };
     };
     const first = await exported();
+    exportedDraft = first.text;
     assert.equal(first.name, 'open-draw-draft.json');
     assert.deepEqual(JSON.parse(first.text), {
       format: 'giveaway-draft-1',
@@ -893,6 +895,60 @@ try {
     await drafting.close();
   }
   passed('a draft never enters the verification flow, and a proof file is refused as a draft');
+  // A preprod draft imported on a page still in demo mode switches to preprod with the browser's wallets listed
+  // (review LOW 1); and when the backend's draft storage is full (507, the global cap), the page says that the browser
+  // copy and the export still work.
+  {
+    const target = await browser.newPage();
+    const pageErrors = [];
+    target.on('pageerror', (e) => pageErrors.push(e.message));
+    await target.exposeFunction('mockSignData', signDataFor);
+    await target.addInitScript(mockWallet, { utxo: utxoOf(wallets.base), address: wallets.base, sign: true });
+    await target.route(`${INDEXER}/**`, (route) => route.fulfill({ status: 404, body: '' }));
+    await target.route(`${API}/**`, async (route) => {
+      const request = route.request();
+      const cors = { 'Access-Control-Allow-Origin': new URL(origin).origin, Vary: 'Origin' };
+      if (request.method() === 'OPTIONS')
+        return route.fulfill({
+          status: 204,
+          headers: {
+            ...cors,
+            'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        });
+      if (new URL(request.url()).pathname === '/nonce') {
+        const issuedAt = Math.floor(Date.now() / 1000);
+        return route.fulfill({
+          status: 200,
+          headers: cors,
+          json: { nonce: hex(crypto.getRandomValues(new Uint8Array(16))), issuedAt, expiresAt: issuedAt + 300 },
+        });
+      }
+      return route.fulfill({ status: 507, headers: cors, body: 'Server draft storage is full (the global cap).' });
+    });
+    await target.goto(origin);
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('No wallet needed'));
+    assert.equal(await target.locator('#wallet option').count(), 0);
+    await target
+      .locator('#import-draft')
+      .setInputFiles({ name: 'd.json', mimeType: 'application/json', buffer: Buffer.from(exportedDraft) });
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('Draft imported'));
+    assert.equal(await target.locator('#network').inputValue(), 'preprod');
+    await target.waitForSelector('#wallet option', { state: 'attached' });
+    assert.equal(await target.locator('#wallet option').textContent(), 'Mock preprod');
+    await target.click('#save-server-draft');
+    await target.waitForFunction(() => document.querySelector('#draw-status').textContent.includes('storage is full'));
+    assert.match(
+      await statusText(target),
+      /not saved to the server\. It is still kept in this browser, and Export draft still saves a copy/,
+    );
+    assert.deepEqual(pageErrors, []);
+    await target.close();
+  }
+  passed(
+    'an imported preprod draft lists the wallets; a full server draft storage (507) leaves the browser copy and export',
+  );
   // Server drafts (BR-12, BR-18) against the real local backend (`make api`): every operation is signed by the
   // wallet's stake key for its reward address, only the public labels are sent, and save, list, load and delete work
   // end to end. Leftovers of an earlier run of this check (same test key) are deleted first through the same API.

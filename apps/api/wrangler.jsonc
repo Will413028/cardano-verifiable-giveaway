@@ -15,7 +15,10 @@
     "ALLOWED_ORIGIN": "http://127.0.0.1:4320",
     // The indexer the upload gate reads server-side (apps/api/src/bundles.ts; not a route of this Worker): the local
     // Dolos dev chain (tools/devchain/dolos.toml).
-    "INDEXER_URL": "http://127.0.0.1:3010"
+    "INDEXER_URL": "http://127.0.0.1:3010",
+    // The global cap on live server draft bytes (apps/api/src/drafts.ts `DRAFT_BYTES_CAP_DEFAULT`, ADR wallet-auth
+    // Amendment 7): 1 GiB, an initial value (SELF-IMPOSED) set again at deployment (plan, deferred items).
+    "DRAFT_BYTES_CAP": "1073741824"
   },
   // Hosting records (plan step 10). Locally Wrangler keeps them under .wrangler/state; no remote database is named
   // until deployment (MVP plan step 10). Migrations: `wrangler d1 migrations apply giveaway --local`.

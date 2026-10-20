@@ -26,7 +26,7 @@ export interface DraftFlow {
   // show; the preprod side effects of a mode switch (tip, wallets).
   run: (state: AppState, action: () => Promise<void>) => Promise<void>;
   setMode: (state: AppState, mode: Mode, round?: number) => void;
-  enterPreprod: (state: AppState) => void;
+  enterPreprod: (state: AppState) => Promise<void>;
 }
 
 const formDraft = (state: AppState): Draft => ({
@@ -71,7 +71,7 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
         'A committed draw is in progress: loading a draft would discard it. Switch the mode to start a new draw first.',
       );
   };
-  const fill = (draft: Draft) => {
+  const fill = async (draft: Draft) => {
     requireReplaceable();
     filling = true;
     try {
@@ -83,7 +83,7 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
     } finally {
       filling = false;
     }
-    if (draft.mode === 'preprod') flow.enterPreprod(state);
+    if (draft.mode === 'preprod') await flow.enterPreprod(state);
     renderFlow(state);
   };
 
@@ -108,7 +108,7 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
       if (file.size > 4_000_000) throw new Error('Draft file exceeds 4 MB');
       const draft = importDraft(await file.text());
       state.serverDraftId = undefined;
-      fill(draft);
+      await fill(draft);
       keep();
       status('Draft imported. Preview the draw when it is ready.');
     });
@@ -144,7 +144,7 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
       requireReplaceable();
       const draft = await loadServerDraft(id, signer);
       state.serverDraftId = id;
-      fill(draft);
+      await fill(draft);
       keep();
       status('Server draft loaded into the form.');
     });
@@ -167,7 +167,7 @@ export function wireDrafts(state: AppState, flow: DraftFlow): Promise<void> {
       // Nothing kept, or the visitor already started a draw while it was being read.
       if (!local || !replaceable() || state.busy) return;
       state.serverDraftId = local.serverId;
-      fill(local.draft);
+      void fill(local.draft);
       draftNote(`Restored the draft kept in this browser (${time(local.savedAt)}).`);
     },
     (e) => draftNote(`This browser keeps no drafts (${(e as Error).message}). Export the draft to keep a copy.`),

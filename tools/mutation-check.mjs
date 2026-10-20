@@ -702,3 +702,35 @@ await mustFailApi(
   'keeps drafts only, with the public labels only',
   drafts,
 );
+// Step 12 follow-up (Will 2026-10-20: global cap on draft bytes; review LOW 2–4): one guard per mutation.
+await mustFailApi(
+  'Dropping the global cap on server draft bytes',
+  (text) =>
+    text.replace(
+      'WHERE expires_at > ?6 AND NOT (owner = ?1 AND id = ?2)) + ?5 <= ?9',
+      'WHERE expires_at > ?6 AND NOT (owner = ?1 AND id = ?2)) + ?5 <= ?9 + 1e18',
+    ),
+  'refuses a save past the global cap',
+  drafts,
+);
+await mustFailApi(
+  'Listing drafts past their 30 days',
+  (text) => text.replace('WHERE owner = ? AND expires_at > ? ORDER BY', 'WHERE owner = ? AND ? > 0 ORDER BY'),
+  'the listing leaves out a draft from 30 days after its last save',
+  drafts,
+);
+await mustFailApi(
+  'Stopping the draft byte sweep after its first listing page',
+  (text) => text.replace('    if (old.length < listed.objects.length || !listed.truncated) return;\n', '    return;\n'),
+  'one Cron run deletes old draft bytes across several listing pages',
+  drafts,
+);
+await mustFailApi(
+  'Running the draft sweep after the bundle sweeps in one chain (a bundle failure holds drafts back)',
+  (text) =>
+    text.replace(
+      '        await reconcile(env, now);\n      })(),\n      sweepDrafts(env, now),\n',
+      '        await reconcile(env, now);\n        await sweepDrafts(env, now);\n      })(),\n',
+    ),
+  'a failing bundle sweep does not hold back the deletion of drafts at 30 days',
+);

@@ -2,7 +2,7 @@ import { decodeBech32 } from '@giveaway/chain';
 import { BUNDLE_BYTE_LIMIT, type DraftOperationName, sha256 } from '@giveaway/protocol';
 import { createScheduledController, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DRAFT_QUOTA, DRAFT_RETENTION, draftObjectKey, sweepDrafts } from '../src/drafts.ts';
+import { DRAFT_BYTES_CAP_DEFAULT, DRAFT_QUOTA, DRAFT_RETENTION, draftObjectKey, sweepDrafts } from '../src/drafts.ts';
 import worker, { type Env, handle } from '../src/index.ts';
 import fixture from './chain-fixture.json';
 import { authorization, draftAuthorization, rewardAddress, SEEDS, secretOf, type Who } from './sign.ts';
@@ -23,6 +23,8 @@ const draftOf = (entrants: string) =>
 const DRAFT = draftOf('alice\nbob');
 
 let client = 0;
+// The bindings requests run against; a test may replace them (a global cap, a failing bucket) for its own requests.
+let target: Env = bindings;
 const request = (
   method: string,
   path: string,
@@ -39,7 +41,7 @@ const request = (
         ...(auth ? { Authorization: auth } : {}),
       },
     }),
-    bindings,
+    target,
     { now: () => at },
   );
 const sign = (
@@ -81,6 +83,7 @@ const cron = (at: number) => worker.scheduled(createScheduledController({ schedu
 const idOf = (n: number) => n.toString(16).padStart(32, '0');
 
 beforeEach(async () => {
+  target = bindings;
   await bindings.DB.batch(['drafts', 'used_nonces'].map((table) => bindings.DB.prepare(`DELETE FROM ${table}`)));
   await bindings.DB.prepare('UPDATE nonce_sweep SET swept_through = 0').run();
   const listed = await bindings.BUNDLES.list();
@@ -187,7 +190,74 @@ describe('server drafts (BR-12, BR-18)', () => {
   });
 });
 
+describe('global cap on server draft bytes (BR-18, ADR Amendment 7)', () => {
+  it('refuses a save past the global cap with 507, whoever saves, and counts only live drafts', async () => {
+    expect(bindings.DRAFT_BYTES_CAP).toBe(String(DRAFT_BYTES_CAP_DEFAULT));
+    target = { ...bindings, DRAFT_BYTES_CAP: String(2 * DRAFT.length) } as Env;
+    expect((await save(T)).status).toBe(200);
+    expect((await save(T + 1, DRAFT, { id: OTHER_ID, who: 'other' })).status).toBe(200);
+    // Full: a third draft is refused for any identity, well under its own quota, and nothing of it stays.
+    const full = [
+      507,
+      'Server draft storage is full (the global cap). The draft is still kept in this browser and can be exported.',
+    ];
+    expect(await answer(await save(T + 2, DRAFT, { id: idOf(7), who: 'busy' }))).toEqual(full);
+    expect([await rows(), (await objects()).length]).toEqual([2, 2]);
+    // Replacing a draft counts its new size, not its old one: the same size fits, a larger one does not.
+    expect((await save(T + 3, draftOf('alice\nbob'))).status).toBe(200);
+    expect(await answer(await save(T + 4, draftOf('alice\nbob\ncarol')))).toEqual(full);
+    expect(new Uint8Array(await (await load(T + 5)).arrayBuffer())).toEqual(DRAFT);
+    // Room again after a deletion, and an expired draft is not counted even before the Cron removes it.
+    expect((await remove(T + 6, { id: OTHER_ID, who: 'other' })).status).toBe(200);
+    expect((await save(T + 7, DRAFT, { id: idOf(7), who: 'busy' })).status).toBe(200);
+    expect((await save(T + 3 + DRAFT_RETENTION, DRAFT, { id: idOf(8), who: 'other' })).status).toBe(200);
+  });
+
+  it('refuses saves when the configured cap is malformed, rather than lifting it', async () => {
+    target = { ...bindings, DRAFT_BYTES_CAP: '1e9' } as Env;
+    expect(await answer(await save(T))).toEqual([503, 'Server drafts are not configured (DRAFT_BYTES_CAP)']);
+    expect([await rows(), (await objects()).length]).toEqual([0, 0]);
+  });
+});
+
 describe('30 days after the last save (B5)', () => {
+  it('the listing leaves out a draft from 30 days after its last save, before the Cron removes it', async () => {
+    expect((await save(T)).status).toBe(200);
+    expect(await (await list(T + DRAFT_RETENTION - 1)).json()).toMatchObject({ drafts: [{ id: ID }] });
+    expect(await (await list(T + DRAFT_RETENTION)).json()).toEqual({ drafts: [] });
+    expect(await rows()).toBe(1);
+  });
+
+  it('one Cron run deletes old draft bytes across several listing pages', async () => {
+    const old = [0, 1, 2, 3, 4].map((n) => draftObjectKey(T + n, n.toString(16).repeat(32)));
+    const young = draftObjectKey(T + DAY, 'e'.repeat(32));
+    for (const key of [...old, young]) await bindings.BUNDLES.put(key, DRAFT);
+    // Pages of 2 keys: the 5 old ones span three pages.
+    await sweepDrafts(bindings, T + 4 + DRAFT_RETENTION, 2);
+    expect(await objects()).toEqual([young]);
+  });
+
+  it('a failing bundle sweep does not hold back the deletion of drafts at 30 days', async () => {
+    expect((await save(T)).status).toBe(200);
+    const bucket = bindings.BUNDLES;
+    const failing = {
+      ...bindings,
+      BUNDLES: new Proxy(bucket, {
+        get(object, property) {
+          if (property === 'list')
+            return (options?: R2ListOptions) =>
+              options?.prefix === 'bundles/' ? Promise.reject(new Error('bundle listing down')) : bucket.list(options);
+          const value = Reflect.get(object, property);
+          return typeof value === 'function' ? value.bind(object) : value;
+        },
+      }),
+    } as Env;
+    await expect(
+      worker.scheduled(createScheduledController({ scheduledTime: (T + DRAFT_RETENTION) * 1000 }), failing),
+    ).rejects.toThrow('Cron sweep failed');
+    expect([await rows(), (await objects()).length]).toEqual([0, 0]);
+  });
+
   it('a draft is refused from 30 days after its last save, and the Cron deletes its record and bytes', async () => {
     expect((await save(T)).status).toBe(200);
     expect((await save(T + DAY, DRAFT, { id: OTHER_ID })).status).toBe(200);

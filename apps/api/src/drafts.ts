@@ -27,9 +27,28 @@ export interface DraftEnv {
   // The bucket the hosted bundles use, under its own prefix (drafts/); bundle reconciliation lists only bundles/.
   BUNDLES: R2Bucket;
   NONCE_KEY?: string;
+  // The global cap on live server draft bytes (wrangler.jsonc `vars`; decimal bytes). Unset: DRAFT_BYTES_CAP_DEFAULT.
+  DRAFT_BYTES_CAP?: string;
 }
 // Server drafts per identity at any time (BR-18; PD4 Amendment default, SELF-IMPOSED).
 export const DRAFT_QUOTA = 5;
+// The global cap on the bytes of all live server drafts together (Will 2026-10-20, ADR wallet-auth Amendment 7,
+// BR-18). Necessity condition: a draft identity costs nothing (any stake key signs), so the quota per identity bounds
+// one identity, not the storage; without this cap the only bound would be the per-address rate limit. Checked in the
+// same statement as the quota. Initial value (SELF-IMPOSED, set at deployment per the plan's deferred items): 1 GiB,
+// a tenth of R2's free Standard storage (10 GB-month, Cloudflare R2 pricing page read 2026-10-20), shared with the
+// hosted bundles in the same bucket; it holds about 178 drafts of the largest size (BUNDLE_BYTE_LIMIT, 6,030,512
+// bytes) and far more typical ones. Bytes no record names (a save that stopped midway) are not counted; they are gone
+// within 30 days like all draft bytes.
+export const DRAFT_BYTES_CAP_DEFAULT = 1024 * 1024 * 1024;
+export function draftBytesCap(env: DraftEnv): number {
+  if (env.DRAFT_BYTES_CAP === undefined || env.DRAFT_BYTES_CAP === '') return DRAFT_BYTES_CAP_DEFAULT;
+  const cap = Number(env.DRAFT_BYTES_CAP);
+  // A malformed setting refuses saves rather than lifting the cap.
+  if (!/^\d{1,15}$/.test(env.DRAFT_BYTES_CAP) || !Number.isSafeInteger(cap))
+    throw new HttpError(503, 'Server drafts are not configured (DRAFT_BYTES_CAP)');
+  return cap;
+}
 // 30 days (B5), in seconds.
 export const DRAFT_RETENTION = 30 * 86400;
 // The object key of one save: the save time first (12 digits, so keys sort by it) and a random part. Every save gets
@@ -54,7 +73,10 @@ function draftId(id: string): string {
 
 // PUT /drafts/{id}: creates or replaces the signer's draft. The signed message names the draft and the SHA-256 of the
 // body. The bytes are written under a new key first; one statement then writes the record only if the draft exists or
-// the identity holds fewer than DRAFT_QUOTA live drafts, and the replaced bytes are deleted after it. A failure between
+// the identity holds fewer than DRAFT_QUOTA live drafts, and only if all live drafts, this one counted at its new size
+// (its replaced version not), stay within the global byte cap; the replaced bytes are deleted after it. Over the quota
+// is 403 (this wallet's limit); over the global cap is 507 Insufficient Storage (the service's limit: the page says
+// that the browser copy and the export still work). A failure between
 // the two steps leaves bytes no record names: they are deleted by the Cron at the latest when their save time is 30
 // days old (`sweepDrafts`), like every draft's bytes.
 export async function saveDraft(
@@ -65,6 +87,7 @@ export async function saveDraft(
   domain: string | null,
 ): Promise<DraftInfo> {
   draftId(id);
+  const cap = draftBytesCap(env);
   const signed = await verifyDraftSigned(request, { domain, operation: 'draft-save', draft: id }, now, env.NONCE_KEY);
   const owner = draftIdentity(signed);
   const bytes = await readLimited(request, 'Draft');
@@ -88,16 +111,30 @@ export async function saveDraft(
     env.DB.prepare(
       `INSERT INTO drafts (owner, id, object_key, content_hash, size, saved_at, expires_at)
        SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
-       WHERE EXISTS (SELECT 1 FROM drafts WHERE owner = ?1 AND id = ?2)
-          OR (SELECT COUNT(*) FROM drafts WHERE owner = ?1 AND expires_at > ?6) < ?8
+       WHERE (EXISTS (SELECT 1 FROM drafts WHERE owner = ?1 AND id = ?2)
+          OR (SELECT COUNT(*) FROM drafts WHERE owner = ?1 AND expires_at > ?6) < ?8)
+         AND (SELECT COALESCE(SUM(size), 0) FROM drafts
+              WHERE expires_at > ?6 AND NOT (owner = ?1 AND id = ?2)) + ?5 <= ?9
        ON CONFLICT (owner, id) DO UPDATE SET object_key = excluded.object_key, content_hash = excluded.content_hash,
          size = excluded.size, saved_at = excluded.saved_at, expires_at = excluded.expires_at
        RETURNING id`,
-    ).bind(owner, id, key, contentHash, bytes.length, now, expiresAt, DRAFT_QUOTA),
+    ).bind(owner, id, key, contentHash, bytes.length, now, expiresAt, DRAFT_QUOTA, cap),
   ]);
   if (written.results.length !== 1) {
     await env.BUNDLES.delete(key);
-    throw new HttpError(403, `This wallet already keeps ${DRAFT_QUOTA} server drafts (the quota); delete one first`);
+    // Which condition refused it, read afterwards (only the message depends on it).
+    const held = await env.DB.prepare(
+      `SELECT EXISTS (SELECT 1 FROM drafts WHERE owner = ?1 AND id = ?2) AS present,
+         (SELECT COUNT(*) FROM drafts WHERE owner = ?1 AND expires_at > ?3) AS count`,
+    )
+      .bind(owner, id, now)
+      .first<{ present: number; count: number }>();
+    if (held && !held.present && held.count >= DRAFT_QUOTA)
+      throw new HttpError(403, `This wallet already keeps ${DRAFT_QUOTA} server drafts (the quota); delete one first`);
+    throw new HttpError(
+      507,
+      'Server draft storage is full (the global cap). The draft is still kept in this browser and can be exported.',
+    );
   }
   const replaced = (previous.results[0] as { object_key?: string } | undefined)?.object_key;
   if (replaced && replaced !== key) await env.BUNDLES.delete(replaced);
@@ -181,11 +218,12 @@ export const DRAFT_SWEEP_PAGES = 10;
 // by their key alone. Keys sort by save time, so the listing stops at the first younger one. Each page is listed from
 // the start again: the keys deleted from the previous page are gone from the listing (R2 lists with strong
 // consistency), so the next old keys come first.
-export async function sweepDrafts(env: DraftEnv, now: number): Promise<void> {
+// `pageSize` is R2's maximum; tests pass a smaller one to cover several pages.
+export async function sweepDrafts(env: DraftEnv, now: number, pageSize = 1000): Promise<void> {
   await env.DB.prepare('DELETE FROM drafts WHERE expires_at <= ?').bind(now).run();
   const cutoff = now - DRAFT_RETENTION;
   for (let page = 0; page < DRAFT_SWEEP_PAGES; page++) {
-    const listed = await env.BUNDLES.list({ prefix: DRAFT_PREFIX, limit: 1000 });
+    const listed = await env.BUNDLES.list({ prefix: DRAFT_PREFIX, limit: pageSize });
     const old = listed.objects.map((object) => object.key).filter((key) => savedAtOf(key) <= cutoff);
     if (old.length) await env.BUNDLES.delete(old);
     if (old.length < listed.objects.length || !listed.truncated) return;

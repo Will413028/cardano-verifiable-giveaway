@@ -21,6 +21,8 @@ export interface Env extends HostingEnv {
   ALLOWED_ORIGIN?: string;
   // Per-client-address limit of the write routes (wrangler.jsonc `ratelimits`; see `limited` below).
   WRITE_LIMIT: RateLimit;
+  // The global cap on live server draft bytes (apps/api/src/drafts.ts `draftBytesCap`).
+  DRAFT_BYTES_CAP?: string;
 }
 // What tests replace: the clock (Unix seconds; expiry and Cron are tested with injected time) and the indexer reader.
 export interface Deps {

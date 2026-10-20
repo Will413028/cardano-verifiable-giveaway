@@ -123,6 +123,11 @@ async function draftRequest(
     credentials: 'omit',
     signal: AbortSignal.timeout(60000),
   });
+  // The service's global draft storage is full (BR-18): nothing is lost, the browser copy and the export still work.
+  if (response.status === 507)
+    throw new Error(
+      'Server draft storage is full right now, so this draft was not saved to the server. It is still kept in this browser, and Export draft still saves a copy.',
+    );
   if (!response.ok)
     throw new Error(
       `The backend refused the draft operation (${operation}): HTTP ${response.status} (${(await response.text()).slice(0, 300)})`,
