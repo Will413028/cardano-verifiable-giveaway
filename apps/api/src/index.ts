@@ -61,8 +61,8 @@ const WRITES = new Set(['PUT', 'POST', 'DELETE']);
 // bounds the number of such requests. If no write route did costly work before the owner check (or an edge rule in
 // front of the Worker took over the per-address limit), this binding would have no reason to exist. It counts per
 // Cloudflare location and approximately (plan prerequisites), which bounds a single source, not a distributed one; it
-// keeps the address only in its counter and nothing is written (BR-05). The nonce endpoint is not limited: it only
-// draws random bytes and stores nothing. The values in wrangler.jsonc are initial defaults (SELF-IMPOSED).
+// keeps the address only in its counter and nothing is written (BR-05). The nonce endpoint counts with the write
+// routes: it writes a row (apps/api/src/auth.ts). The values in wrangler.jsonc are initial defaults (SELF-IMPOSED).
 async function limited(request: Request, env: Env): Promise<boolean> {
   const { success } = await env.WRITE_LIMIT.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' });
   return !success;
@@ -87,17 +87,19 @@ export async function handle(request: Request, env: Env, deps: Partial<Deps> = {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
-  if (path === '/nonce' && request.method === 'GET')
-    return Response.json(issueNonce(now()), { headers: { ...cors, 'Cache-Control': 'no-store' } });
-  if (!route) return reply(404, 'Not found', cors);
-  const [, txHash, extendRoute] = route;
+  const nonceRoute = path === '/nonce' && request.method === 'GET';
+  if (!route && !nonceRoute) return reply(404, 'Not found', cors);
   const domain = allowed === null ? null : new URL(allowed).host;
-  if (WRITES.has(request.method) && (await limited(request, env)))
-    return reply(429, 'Too many write requests from this address; try again in a minute', {
-      ...cors,
-      'Retry-After': '60',
-    });
   try {
+    if ((nonceRoute || WRITES.has(request.method)) && (await limited(request, env)))
+      return reply(429, 'Too many write requests from this address; try again in a minute', {
+        ...cors,
+        'Retry-After': '60',
+      });
+    if (nonceRoute)
+      return Response.json(await issueNonce(env.DB, now()), { headers: { ...cors, 'Cache-Control': 'no-store' } });
+    if (!route) return reply(404, 'Not found', cors);
+    const [, txHash, extendRoute] = route;
     if (extendRoute) {
       if (request.method !== 'POST') return reply(405, 'Method not allowed', { ...cors, Allow: 'POST, OPTIONS' });
       return Response.json(await extend(env, request, txHash, now(), domain), { headers: cors });

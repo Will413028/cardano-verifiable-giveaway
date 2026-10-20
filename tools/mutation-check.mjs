@@ -444,8 +444,8 @@ await mustFailApi(
   'Replacing the first hosting time on a later hosting',
   (text) =>
     text.replace(
-      '       ON CONFLICT (tx_hash) DO NOTHING`,\n      ).bind(txHash, now, firstHostingKeepUntil',
-      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n      ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO NOTHING`,\n    ).bind(txHash, now, firstHostingKeepUntil',
+      '       ON CONFLICT (tx_hash) DO UPDATE SET first_hosted_at = excluded.first_hosted_at`,\n    ).bind(txHash, now, firstHostingKeepUntil',
     ),
   'keeps the expiry of its first hosting',
   bundles,
@@ -464,13 +464,23 @@ await mustFailApi(
 // test written for it.
 const auth = `${root}apps/api/src/auth.ts`;
 await mustFailApi(
-  'Dropping the one-time nonce check (a used nonce is overwritten instead of refused)',
+  'Dropping the one-time nonce check (the issued nonce is read, not used up)',
   (text) =>
     text.replace(
-      "'INSERT INTO used_nonces (nonce, expires_at) VALUES (?, ?)'",
-      "'INSERT OR REPLACE INTO used_nonces (nonce, expires_at) VALUES (?, ?)'",
+      "'DELETE FROM nonces WHERE nonce = ?1 AND issued_at = ?2 RETURNING nonce'",
+      "'SELECT nonce FROM nonces WHERE nonce = ?1 AND ?2 = ?2'",
     ),
   'refuses a reused nonce',
+  auth,
+);
+await mustFailApi(
+  'Not binding the window to the issue time of the nonce (a message may be post-dated)',
+  (text) =>
+    text.replace(
+      "'DELETE FROM nonces WHERE nonce = ?1 AND issued_at = ?2 RETURNING nonce'",
+      "'DELETE FROM nonces WHERE nonce = ?1 AND ?2 = ?2 RETURNING nonce'",
+    ),
+  'post-dated past the issue time of its nonce',
   auth,
 );
 await mustFailApi(
@@ -505,8 +515,8 @@ await mustFailApi(
   'Not rate limiting the write routes per client address',
   (text) =>
     text.replace(
-      'if (WRITES.has(request.method) && (await limited(request, env)))',
-      'if (WRITES.has(request.method) && false)',
+      'if ((nonceRoute || WRITES.has(request.method)) && (await limited(request, env)))',
+      'if ((nonceRoute || WRITES.has(request.method)) && false)',
     ),
   'refuses writes past 20 a minute from one address',
 );

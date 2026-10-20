@@ -1,2 +1,33 @@
 # False positive: deterministic dev-chain tx hash (test keys) under the fixture key "duplicateKey" (step 10, H1 test).
 17d7443a494cb08a9367333b70a84b639f41fc6b:apps/api/test/chain-fixture.json:generic-api-key:25
+# False positive: the "key" fields of tests/cose-vectors.json are COSE_Key public keys (Ed25519) of the S1 spike's deterministic
+# test seeds, copied with COSE verification in step 11; no secret key is in the file.
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:7
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:15
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:23
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:31
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:39
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:47
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:55
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:63
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:71
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:79
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:87
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:95
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:103
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:111
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:119
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:127
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:135
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:143
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:151
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:159
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:167
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:175
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:183
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:191
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:202
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:210
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:218
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:226
+72bb986f88a3d88d3c76664793e0a4c3c506f0b7:tests/cose-vectors.json:generic-api-key:234

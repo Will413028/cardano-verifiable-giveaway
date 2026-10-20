@@ -19,11 +19,14 @@ import { HttpError } from './http.ts';
 // commitment, the stake key (PD3, PD10), signing for its reward address; the owner is the identity the backend read
 // from the commitment transaction (`commitmentOwner`), never an address the wallet reports.
 //
-// The nonce endpoint is stateless: it hands out 16 random bytes and the backend's clock. Freshness is the window
-// counted from that clock (a page with a wrong clock still signs a message the backend accepts), and one-time use is
-// the `used_nonces` row written with the operation. The backend does not remember which nonces it issued: that would
-// make an unauthenticated GET write a row, and it would add nothing against replay, since only the owner's key can
-// sign a message and each signed message is used at most once and only inside its window.
+// Nonces are issued by the backend (ADR Decision: "伺服器發的一次性 nonce"): GET /nonce draws 16 random bytes,
+// records them with the backend's clock in `nonces` (migration 0004) and answers both. A signed message is accepted
+// only with a nonce this backend issued, at the issue time recorded for it, within 5 minutes of that time, and the
+// row is deleted when the message is used (`consumeNonce`), so it authorizes one operation. Binding the window to the
+// issued row is what stops a message signed now from naming a later `issued` time and becoming usable then (review of
+// step 11: the window counted from a client-chosen time could be post-dated). The row holds a nonce and a time,
+// nothing about the client (B3); issuing writes a row from an unauthenticated request, so GET /nonce is rate limited
+// with the write routes, and the Cron sweep deletes rows past their window.
 
 export const NETWORK = 'preprod';
 // Generous bounds for the two CBOR hex strings (a COSE_Sign1 carrying a ~600-byte message and a 32-byte key).
@@ -35,12 +38,10 @@ export interface Nonce {
   expiresAt: number;
 }
 // GET /nonce.
-export function issueNonce(now: number): Nonce {
-  return {
-    nonce: hex(crypto.getRandomValues(new Uint8Array(16))),
-    issuedAt: now,
-    expiresAt: now + OWNER_OPERATION_VALIDITY,
-  };
+export async function issueNonce(db: D1Database, now: number): Promise<Nonce> {
+  const nonce = hex(crypto.getRandomValues(new Uint8Array(16)));
+  await db.prepare('INSERT INTO nonces (nonce, issued_at) VALUES (?, ?)').bind(nonce, now).run();
+  return { nonce, issuedAt: now, expiresAt: now + OWNER_OPERATION_VALIDITY };
 }
 
 export interface Signed {
@@ -96,21 +97,26 @@ export function requireOwner(signed: Signed, owner: string): void {
     );
 }
 
-// Records the one-time use of the message's nonce. Put it in the same D1 batch as the operation it authorizes: a
-// nonce used before violates the primary key, the batch rolls back, and `nonceReused` recognizes the error.
-export function useNonce(db: D1Database, op: OwnerOperation): D1PreparedStatement {
-  return db
-    .prepare('INSERT INTO used_nonces (nonce, expires_at) VALUES (?, ?)')
-    .bind(op.nonce, op.issuedAt + OWNER_OPERATION_VALIDITY);
+// Uses up the message's nonce, after the signature and the owner were checked and before the operation runs: the
+// issued row must exist with the message's issue time, and deleting it is the one-time use (one statement, so two
+// requests with the same message cannot both take it). A failure of the operation afterwards costs the owner a new
+// signature, nothing else.
+export async function consumeNonce(db: D1Database, op: OwnerOperation): Promise<void> {
+  const issued = await db
+    .prepare('DELETE FROM nonces WHERE nonce = ?1 AND issued_at = ?2 RETURNING nonce')
+    .bind(op.nonce, op.issuedAt)
+    .first();
+  if (!issued)
+    throw new HttpError(
+      409,
+      'The nonce of this signed message was not issued by this backend or was already used; sign the operation again',
+    );
 }
-export const nonceReused = (e: unknown) => /UNIQUE constraint failed: used_nonces\.nonce/.test(String(e));
-export const reusedNonce = () =>
-  new HttpError(409, 'This signed message was already used (one-time nonce); sign the operation again');
 
-// The Cron sweep: a nonce whose message has expired is refused by the time check anyway.
+// The Cron sweep: a nonce past its window is refused by the time check anyway.
 export async function sweepNonces(db: D1Database, now: number, limit: number): Promise<void> {
   await db
-    .prepare('DELETE FROM used_nonces WHERE nonce IN (SELECT nonce FROM used_nonces WHERE expires_at <= ? LIMIT ?)')
-    .bind(now, limit)
+    .prepare('DELETE FROM nonces WHERE nonce IN (SELECT nonce FROM nonces WHERE issued_at <= ? LIMIT ?)')
+    .bind(now - OWNER_OPERATION_VALIDITY, limit)
     .run();
 }

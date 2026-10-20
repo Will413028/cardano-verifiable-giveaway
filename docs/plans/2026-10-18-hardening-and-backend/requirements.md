@@ -8,13 +8,13 @@
 |---|---|---|---|---|
 | BR-01 | API | 網頁直連專案 Dolos；Dolos 前的 reverse proxy 只放行驗證與建交易需要的 Blockfrost 形狀唯讀端點（PD8 A，2026-10-19）；`apps/api` 不轉發 indexer | BK Decision；DL Decision；PD8 | 8、9 |
 | BR-02 | API | 已刪除（PD8 A，2026-10-19）：原「proxy 每次請求只查一個身分、以（身分鍵, offset）快取」是為了省 Koios 額度，proxy 移除後不再適用；B6 對任何日後的快取仍成立 | WA Decision；PD8 | 9 |
-| BR-03 | API | 後端寫入端點依 owner 限流；後端寫入路由（PUT、POST、DELETE）另依 IP 限流（Workers Rate Limiting binding，步驟 11）；公開讀取路徑的 IP 限流放在 Dolos 前的 reverse proxy；全域日預算刪除（PD8 A，2026-10-19） | WA Decision；WA Amendment 6；design-review 2026-10-18；DL Followup；PD8 | 9、11 |
+| BR-03 | API | 後端寫入端點依 owner 限流；後端寫入路由（PUT、POST、DELETE 與發 nonce）另依 IP 限流（Workers Rate Limiting binding，步驟 11）；公開讀取路徑的 IP 限流放在 Dolos 前的 reverse proxy；全域日預算刪除（PD8 A，2026-10-19） | WA Decision；WA Amendment 6；design-review 2026-10-18；DL Followup；PD8 | 9、11 |
 | BR-04 | API | CORS 只開放自家網域；每次操作的簽章 payload 放在 `Authorization` header，不發 session、不用 cookie（PD4）；讀取端點不加 CAPTCHA | WA Decision | 9 |
 | BR-05 | API | 不記錄請求內容；IP 只保留到限流所需時間 | WA Decision | 9 |
 | BR-06 | API | bundle 上傳：`sha256(bytes)` 等於已上鏈承諾的 bundleHash、通過 `validateBundle`、大小在協定的 byte 上限內（PD2 B，2026-10-20：付費方案，不另設代管上限）；上傳是擁有者操作，帶 owner 的簽章（步驟 11，WA Amendment 5） | WA Decision；WA Amendment 5；PD2 | 10、11 |
 | BR-07 | 資料實體 | 代管紀錄以 `txHash` 為主鍵、owner 由該交易推導；bytes 以 bundleHash 定址並參照計數；擁有者刪除只移除自己的紀錄；營運端下架以 bundleHash 留 tombstone | WA Amendment 2 | 10 |
 | BR-08 | 流程 | bundle 預設保存到基準時間後 12 個月，基準時間＝min(round 的時間, 該承諾第一次被代管的時間)（Will 2026-10-20）；第一次代管時間＝擁有者第一次以簽章成功代管的時間（只有 owner 簽章的上傳能建立紀錄，第三方無法讓它提早，步驟 11）；它在紀錄到期、刪除、下架後仍保留到 round 後 12 個月（有延長時到延長後的到期日），所以重新上傳不重新起算（已過到期日 410）；到期自動下架 | WA Decision；WA Amendment 5 | 10、10b、11 |
-| BR-09 | API | 擁有者操作（代管、刪除、延長）以 CIP-30 `signData` 簽章；payload 含網域、操作、txHash、bundleHash、network、一次性 nonce，5 分鐘有效；簽章 key 是承諾交易推導出的 organizer 身分 stake key（對其 reward address 簽）；後端只存 nonce 的使用紀錄 | WA Decision；WA Amendment 6 | 11 |
+| BR-09 | API | 擁有者操作（代管、刪除、延長）以 CIP-30 `signData` 簽章；payload 含網域、操作、txHash、bundleHash、network、一次性 nonce，5 分鐘有效；簽章 key 是承諾交易推導出的 organizer 身分 stake key（對其 reward address 簽）；後端只存自己發出的 nonce 與發出時間，用掉即刪 | WA Decision；WA Amendment 6 | 11 |
 | BR-10 | 畫面 | 驗證連結帶 `txHash`＋bundleHash，beacon 與得獎者由 verifier 重算 | WA Decision | 10 |
 | BR-11 | 畫面 | 草稿一律存本機 IndexedDB，可匯出 | WA Decision | 12 |
 | BR-12 | API | 伺服器草稿需錢包簽章存取，保存 30 天 | WA Decision | 12 |

@@ -8,7 +8,7 @@ import {
   sha256,
   validateBundle,
 } from '@giveaway/protocol';
-import { nonceReused, requireOwner, reusedNonce, sweepNonces, useNonce, verifySigned } from './auth.ts';
+import { consumeNonce, requireOwner, sweepNonces, verifySigned } from './auth.ts';
 import { HttpError } from './http.ts';
 import { firstHostingKeepUntil, hostingExpiry, SWEEP_LIMIT } from './retention.ts';
 
@@ -217,12 +217,7 @@ export async function upload(
     if (existing.bundle_hash !== bundleHash)
       throw new HttpError(409, 'The bundle hash does not match the commitment of this transaction');
     requireOwner(signed, existing.owner);
-    try {
-      await useNonce(env.DB, signed.op).run();
-    } catch (e) {
-      if (nonceReused(e)) throw reusedNonce();
-      throw e;
-    }
+    await consumeNonce(env.DB, signed.op);
     await env.BUNDLES.put(objectKey(bundleHash), bytes);
     await confirmStored(env, txHash, bundleHash, now);
     return { status: 200, hosted: { txHash, bundleHash, owner: existing.owner, expiresAt: existing.expires_at } };
@@ -256,30 +251,23 @@ export async function upload(
     );
   // One statement, so a concurrent takedown, deletion claim or upload by the same owner cannot slip between the checks
   // and the write; the first hosting time is recorded in the same transaction (a D1 batch), only when this insert
-  // made the record, and so is the nonce's one-time use (a reused nonce rolls the batch back).
-  let batch: D1Result[];
-  try {
-    batch = await env.DB.batch([
-      useNonce(env.DB, signed.op),
-      env.DB.prepare(
-        `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
+  // made the record. The signed message's nonce is used up first (it authorized this attempt, whatever its outcome).
+  await consumeNonce(env.DB, signed.op);
+  const [inserted] = await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO hosted (tx_hash, bundle_hash, owner, round, hosted_at, expires_at)
      SELECT ?1, ?2, ?3, ?4, ?5, ?6
      WHERE NOT EXISTS (SELECT 1 FROM tombstones WHERE bundle_hash = ?2)
        AND NOT EXISTS (SELECT 1 FROM collecting WHERE bundle_hash = ?2)
        AND (SELECT COUNT(*) FROM hosted WHERE owner = ?3 AND expires_at > ?5) < ?7
      ON CONFLICT (tx_hash) DO NOTHING`,
-      ).bind(txHash, bundleHash, owner, round, now, expiresAt, OWNER_QUOTA),
-      env.DB.prepare(
-        `INSERT INTO first_hosting (tx_hash, first_hosted_at, keep_until)
+    ).bind(txHash, bundleHash, owner, round, now, expiresAt, OWNER_QUOTA),
+    env.DB.prepare(
+      `INSERT INTO first_hosting (tx_hash, first_hosted_at, keep_until)
        SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM hosted WHERE tx_hash = ?1 AND hosted_at = ?2)
        ON CONFLICT (tx_hash) DO NOTHING`,
-      ).bind(txHash, now, firstHostingKeepUntil(round, now)),
-    ]);
-  } catch (e) {
-    if (nonceReused(e)) throw reusedNonce();
-    throw e;
-  }
-  const inserted = batch[1];
+    ).bind(txHash, now, firstHostingKeepUntil(round, now)),
+  ]);
   if (inserted.meta.changes !== 1) {
     if (await removed(env, bundleHash))
       throw new HttpError(410, 'This bundle was taken down and cannot be hosted again');
@@ -370,7 +358,7 @@ export async function takedown(env: HostingEnv, bundleHash: string, now: number)
 }
 
 // The Cron sweep (BR-08): removes up to SWEEP_LIMIT records past `expires_at`, then the bytes no record names any more,
-// then first hosting times that no longer matter, then nonce use records whose message has expired.
+// then first hosting times that no longer matter, then issued nonces past their window.
 // Returns how many records it removed.
 export async function sweep(env: HostingEnv, now: number): Promise<number> {
   const { results } = await env.DB.prepare(

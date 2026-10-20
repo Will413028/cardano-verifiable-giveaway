@@ -6,7 +6,7 @@ import { objectKey } from '../src/bundles.ts';
 import worker, { type Env, handle } from '../src/index.ts';
 import { addMonths, HOSTING_MONTHS } from '../src/retention.ts';
 import fixture from './chain-fixture.json';
-import { authorization, rewardAddress, SEEDS, secretOf, type Who } from './sign.ts';
+import { authorization, issuedNonce, rewardAddress, SEEDS, secretOf, type Who } from './sign.ts';
 
 // Signed owner operations (plan step 11; BR-09, BR-13, BR-17; B3) against real local D1, R2 and the Rate Limiting
 // binding (Miniflare), the real BlockfrostChain replaying chain-fixture.json, and signatures made with the fixture's
@@ -53,11 +53,13 @@ const sign = (
   extra: Parameters<typeof authorization>[1] | object = {},
   who: Who = 'organizer',
 ) => authorization(who, { operation, txHash: txs.organizer, bundleHash: VALID_HASH, at, ...extra });
-const host = (at: number, auth = sign('host', at)) =>
-  request('PUT', `/bundles/${txs.organizer}`, at, { auth, body: bundles.valid });
-const remove = (at: number, auth = sign('delete', at)) => request('DELETE', `/bundles/${txs.organizer}`, at, { auth });
-const extend = (at: number, auth = sign('extend', at)) =>
-  request('POST', `/bundles/${txs.organizer}/extend`, at, { auth });
+type Auth = string | Promise<string>;
+const host = async (at: number, auth: Auth = sign('host', at)) =>
+  request('PUT', `/bundles/${txs.organizer}`, at, { auth: await auth, body: bundles.valid });
+const remove = async (at: number, auth: Auth = sign('delete', at)) =>
+  request('DELETE', `/bundles/${txs.organizer}`, at, { auth: await auth });
+const extend = async (at: number, auth: Auth = sign('extend', at)) =>
+  request('POST', `/bundles/${txs.organizer}/extend`, at, { auth: await auth });
 const answer = async (response: Response) => [response.status, await response.text()];
 const json = async <T>(response: Response, status = 200) => {
   expect(response.status).toBe(status);
@@ -76,7 +78,7 @@ const firstHosting = () =>
 
 beforeEach(async () => {
   await bindings.DB.batch(
-    ['hosted', 'tombstones', 'collecting', 'first_hosting', 'used_nonces'].map((table) =>
+    ['hosted', 'tombstones', 'collecting', 'first_hosting', 'nonces'].map((table) =>
       bindings.DB.prepare(`DELETE FROM ${table}`),
     ),
   );
@@ -85,12 +87,13 @@ beforeEach(async () => {
 });
 
 describe('nonce endpoint (BR-09, B3)', () => {
-  it('issues a fresh nonce with the backend clock and a 5-minute window, and stores nothing', async () => {
+  it('issues a fresh nonce with the backend clock and a 5-minute window, and records only the nonce and that time', async () => {
     const one = await json<{ nonce: string; issuedAt: number; expiresAt: number }>(await request('GET', '/nonce', T));
     const two = await json<{ nonce: string }>(await request('GET', '/nonce', T));
     expect(one).toEqual({ nonce: expect.stringMatching(/^[a-f0-9]{32}$/), issuedAt: T, expiresAt: T + 300 });
     expect(two.nonce).not.toBe(one.nonce);
-    expect(await bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n')).toBe(0);
+    const { results } = await bindings.DB.prepare('SELECT * FROM nonces ORDER BY nonce').all();
+    expect(results).toEqual([one.nonce, two.nonce].sort().map((nonce) => ({ nonce, issued_at: T })));
   });
 });
 
@@ -162,23 +165,40 @@ describe('signed owner operations (BR-09, BR-13, BR-17)', () => {
 
   it('refuses a reused nonce: a signed message authorizes one operation', async () => {
     expect((await host(EARLY)).status).toBe(201);
-    const once = sign('extend', EARLY);
+    const once = await sign('extend', EARLY);
     expect((await extend(EARLY + 10, once)).status).toBe(200);
     expect(await answer(await extend(EARLY + 20, once))).toEqual([
       409,
-      'This signed message was already used (one-time nonce); sign the operation again',
+      'The nonce of this signed message was not issued by this backend or was already used; sign the operation again',
     ]);
     expect(await expiry()).toBe(addMonths(EARLY, 24));
     // A deletion replayed after the owner hosted again would delete the new hosting.
-    const deletion = sign('delete', EARLY + 30);
+    const deletion = await sign('delete', EARLY + 30);
     expect((await remove(EARLY + 40, deletion)).status).toBe(200);
     expect((await host(EARLY + 50)).status).toBe(201);
     expect((await remove(EARLY + 60, deletion)).status).toBe(409);
     expect((await request('GET', `/bundles/${txs.organizer}`, EARLY + 70)).status).toBe(200);
     // And the hosting itself: the same signed upload twice.
-    const upload = sign('host', EARLY + 80);
+    const upload = await sign('host', EARLY + 80);
     expect((await host(EARLY + 90, upload)).status).toBe(200);
     expect((await host(EARLY + 100, upload)).status).toBe(409);
+  });
+
+  it('refuses a nonce the backend did not issue, and a message post-dated past the issue time of its nonce', async () => {
+    expect((await host(EARLY)).status).toBe(201);
+    const refused = [
+      409,
+      'The nonce of this signed message was not issued by this backend or was already used; sign the operation again',
+    ];
+    expect(await answer(await extend(EARLY, sign('extend', EARLY, { nonce: '7'.repeat(32) })))).toEqual(refused);
+    // Signed with a nonce issued at EARLY, but naming a later issue time: inside its own claimed window at EARLY + 200,
+    // it would otherwise still be usable long after the nonce was handed out.
+    const nonce = await issuedNonce(EARLY);
+    expect(
+      await answer(await extend(EARLY + 200, sign('extend', EARLY + 200, { nonce, issuedAt: EARLY + 100 }))),
+    ).toEqual(refused);
+    expect(await expiry()).toBe(addMonths(EARLY, HOSTING_MONTHS));
+    expect((await extend(EARLY + 200, sign('extend', EARLY + 200, { nonce, issuedAt: EARLY }))).status).toBe(200);
   });
 
   it('refuses a message signed for another site', async () => {
@@ -251,14 +271,16 @@ describe('signed owner operations (BR-09, BR-13, BR-17)', () => {
       'Malformed Authorization header (expected CIP30 <COSE_Sign1 hex> <COSE_Key hex>)',
     ]);
     // The signed text must be exactly the rendered owner operation.
-    const loose = sign('delete', EARLY, { text: 'delete please' });
+    const loose = await sign('delete', EARLY, { text: 'delete please' });
     expect(await answer(await remove(EARLY, loose))).toEqual([401, 'The signed message is not an owner operation']);
     expect((await request('GET', `/bundles/${txs.organizer}`, EARLY)).status).toBe(200);
   });
 
-  it('the Cron run deletes nonce use records once their message has expired', async () => {
+  it('a used nonce is gone, and the Cron run deletes unused ones once their window has passed', async () => {
     expect((await host(EARLY)).status).toBe(201);
-    const count = () => bindings.DB.prepare('SELECT COUNT(*) AS n FROM used_nonces').first('n');
+    const count = () => bindings.DB.prepare('SELECT COUNT(*) AS n FROM nonces').first('n');
+    expect(await count()).toBe(0);
+    expect((await request('GET', '/nonce', EARLY)).status).toBe(200);
     expect(await count()).toBe(1);
     await worker.scheduled(createScheduledController({ scheduledTime: (EARLY + 299) * 1000 }), bindings);
     expect(await count()).toBe(1);
@@ -287,7 +309,12 @@ describe('the first hosting time is the owner’s (ADR Amendment 5, plan step 11
 });
 
 describe('per-address rate limit of the write routes', () => {
-  it('refuses writes past 20 a minute from one address with 429, and only from that address and only writes', async () => {
+  it('refuses writes past 20 a minute from one address with 429, and only from that address and only writes', {
+    timeout: 20000,
+  }, async () => {
+    // The local limiter counts per wall-clock minute: start away from a minute boundary so all requests share one.
+    const second = (Date.now() / 1000) % 60;
+    if (second > 50) await new Promise((resolve) => setTimeout(resolve, (61 - second) * 1000));
     const ip = '203.0.113.9';
     const write = () => request('PUT', `/bundles/${txs.organizer}`, T, { ip, body: bundles.valid });
     // Unsigned uploads: refused cheaply (401), each still counted.
@@ -296,9 +323,9 @@ describe('per-address rate limit of the write routes', () => {
     expect([limited.status, limited.headers.get('Retry-After')]).toEqual([429, '60']);
     expect((await request('DELETE', `/bundles/${txs.organizer}`, T, { ip })).status).toBe(429);
     expect((await request('POST', `/bundles/${txs.organizer}/extend`, T, { ip })).status).toBe(429);
-    // Reads and the nonce are not limited; another address is not affected.
+    // Issuing a nonce writes a row, so it counts too; reads do not, and another address is not affected.
+    expect((await request('GET', '/nonce', T, { ip })).status).toBe(429);
     expect((await request('GET', `/bundles/${txs.organizer}`, T, { ip })).status).toBe(404);
-    expect((await request('GET', '/nonce', T, { ip })).status).toBe(200);
     expect(
       (await request('PUT', `/bundles/${txs.organizer}`, T, { ip: '203.0.113.10', body: bundles.valid })).status,
     ).toBe(401);

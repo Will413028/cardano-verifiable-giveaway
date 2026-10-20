@@ -1,4 +1,4 @@
-import { nonceReused, requireOwner, reusedNonce, useNonce, verifySigned } from './auth.ts';
+import { consumeNonce, requireOwner, verifySigned } from './auth.ts';
 import { release, TX_HASH } from './bundles.ts';
 import { HttpError } from './http.ts';
 import { hostingExpiry, MAX_EXTENSIONS } from './retention.ts';
@@ -36,12 +36,7 @@ export async function remove(
     await env.DB.prepare('SELECT owner, bundle_hash FROM hosted WHERE tx_hash = ?').bind(txHash).first<Owned>(),
     signed,
   );
-  try {
-    await useNonce(env.DB, signed.op).run();
-  } catch (e) {
-    if (nonceReused(e)) throw reusedNonce();
-    throw e;
-  }
+  await consumeNonce(env.DB, signed.op);
   await release(env, txHash, now);
   return { txHash, deleted: true };
 }
@@ -76,25 +71,19 @@ export async function extend(
     );
   const extensions = record.extensions + 1;
   const expiresAt = hostingExpiry(record.round, record.first_hosted_at, extensions);
-  let results: D1Result[];
-  try {
-    results = await env.DB.batch([
-      useNonce(env.DB, signed.op),
-      // Conditional on the count read above, so two concurrent extensions cannot both count.
-      env.DB.prepare(
-        `UPDATE first_hosting SET extensions = ?2,
+  await consumeNonce(env.DB, signed.op);
+  const results = await env.DB.batch([
+    // Conditional on the count read above, so two concurrent extensions cannot both count.
+    env.DB.prepare(
+      `UPDATE first_hosting SET extensions = ?2,
            keep_until = CASE WHEN keep_until IS NULL THEN NULL ELSE max(keep_until, ?3) END
          WHERE tx_hash = ?1 AND extensions = ?2 - 1`,
-      ).bind(txHash, extensions, expiresAt),
-      env.DB.prepare(
-        'UPDATE hosted SET expires_at = ?2 WHERE tx_hash = ?1 AND (SELECT extensions FROM first_hosting WHERE tx_hash = ?1) = ?3',
-      ).bind(txHash, expiresAt, extensions),
-    ]);
-  } catch (e) {
-    if (nonceReused(e)) throw reusedNonce();
-    throw e;
-  }
-  if (results[1].meta.changes !== 1)
+    ).bind(txHash, extensions, expiresAt),
+    env.DB.prepare(
+      'UPDATE hosted SET expires_at = ?2 WHERE tx_hash = ?1 AND (SELECT extensions FROM first_hosting WHERE tx_hash = ?1) = ?3',
+    ).bind(txHash, expiresAt, extensions),
+  ]);
+  if (results[0].meta.changes !== 1)
     throw new HttpError(409, 'The hosting was extended by a concurrent request; retry');
   return { txHash, expiresAt, extensionsLeft: MAX_EXTENSIONS - extensions };
 }

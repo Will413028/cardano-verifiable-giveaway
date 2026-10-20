@@ -58,7 +58,7 @@ const put = async (txHash: string, body: string | Uint8Array, at = T, on: Env = 
     at,
     body,
     on,
-    authorization(ownerOf(txHash), { operation: 'host', txHash, bundleHash: await sha256(body), at }),
+    await authorization(ownerOf(txHash), { operation: 'host', txHash, bundleHash: await sha256(body), at }),
   );
 const get = (txHash: string, at = T) => call('GET', txHash, at);
 const stored = async (bundleHash: string) => (await bindings.BUNDLES.head(objectKey(bundleHash))) !== null;
@@ -104,7 +104,7 @@ beforeEach(async () => {
     bindings.DB.prepare('DELETE FROM tombstones'),
     bindings.DB.prepare('DELETE FROM collecting'),
     bindings.DB.prepare('DELETE FROM first_hosting'),
-    bindings.DB.prepare('DELETE FROM used_nonces'),
+    bindings.DB.prepare('DELETE FROM nonces'),
     bindings.DB.prepare("UPDATE reconcile_cursor SET after = ''"),
   ]);
   const listed = await bindings.BUNDLES.list();
@@ -173,7 +173,7 @@ describe('upload gate (BR-06)', () => {
         body: stream,
         duplex: 'half',
         headers: {
-          Authorization: authorization('organizer', {
+          Authorization: await authorization('organizer', {
             operation: 'host',
             txHash: txs.organizer,
             bundleHash: VALID_HASH,

@@ -1,4 +1,5 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
+import { env } from 'cloudflare:test';
 import { decodeBech32 } from '@giveaway/chain';
 import { hex, type OwnerOperation, type OwnerOperationName, ownerOperationText } from '@giveaway/protocol';
 import fixture from './chain-fixture.json';
@@ -59,25 +60,34 @@ export function signData(secret: Uint8Array, address: Uint8Array, payload: Uint8
 }
 
 export const DOMAIN = '127.0.0.1:4320';
-// A fresh nonce per call unless one is given (the page takes it from GET /nonce).
-export const freshNonce = () => hex(crypto.getRandomValues(new Uint8Array(16)));
+// A nonce the backend issued at `issuedAt`, written as GET /nonce writes it (apps/api/src/auth.ts `issueNonce`), so a
+// test can sign for any time it injects.
+export async function issuedNonce(issuedAt: number): Promise<string> {
+  const nonce = hex(crypto.getRandomValues(new Uint8Array(16)));
+  await (env as unknown as { DB: D1Database }).DB.prepare('INSERT INTO nonces (nonce, issued_at) VALUES (?, ?)')
+    .bind(nonce, issuedAt)
+    .run();
+  return nonce;
+}
 
 // The Authorization header of an owner operation, by default as the page would build it: signed by `who`'s stake key
-// for its reward address, for this site and preprod, issued `at`. Each field can be replaced to build a bad one.
-export function authorization(
+// for its reward address, for this site and preprod, with a nonce issued `at`. Each field can be replaced to build a
+// bad one.
+export async function authorization(
   who: Who,
   fields: Pick<OwnerOperation, 'txHash' | 'bundleHash'> & { operation: OwnerOperationName; at: number } & Partial<
       OwnerOperation & { secret: Uint8Array; address: Uint8Array; text: string }
     >,
-): string {
+): Promise<string> {
+  const issuedAt = fields.issuedAt ?? fields.at;
   const op: OwnerOperation = {
     domain: fields.domain ?? DOMAIN,
     operation: fields.operation,
     network: fields.network ?? 'preprod',
     txHash: fields.txHash,
     bundleHash: fields.bundleHash,
-    nonce: fields.nonce ?? freshNonce(),
-    issuedAt: fields.issuedAt ?? fields.at,
+    nonce: fields.nonce ?? (await issuedNonce(issuedAt)),
+    issuedAt,
   };
   const payload = new TextEncoder().encode(fields.text ?? ownerOperationText(op));
   const { signature, key } = signData(
