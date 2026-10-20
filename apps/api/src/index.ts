@@ -1,7 +1,8 @@
 // Convenience backend entry (ADR 2026-10-18-typescript-convenience-backend). It forwards nothing to the indexer: since
 // PD8 A the page reads the project Dolos directly, through the reverse proxy in deploy/dolos-proxy/ (BR-01). Routes:
 // bundle hosting (plan step 10), signed by the owner since step 11, and the owner's deletion and extension (step 11,
-// apps/api/src/owner.ts) with the nonce they sign (apps/api/src/auth.ts); drafts (12) add theirs here. It never signs,
+// apps/api/src/owner.ts) with the nonce they sign (apps/api/src/auth.ts), and the signed server drafts (step 12,
+// apps/api/src/drafts.ts). It never signs,
 // submits, generates randomness or decides PASS/FAIL (B2), and verification never depends on it (B1).
 //
 // BR-05: no request content is logged. Nothing here writes to the console, and wrangler.jsonc keeps Workers
@@ -10,6 +11,7 @@
 import { BlockfrostChain } from '@giveaway/chain';
 import { issueNonce } from './auth.ts';
 import { type HostingChain, type HostingEnv, read, reconcile, sweep, upload } from './bundles.ts';
+import { deleteDraft, listDrafts, loadDraft, saveDraft, sweepDrafts } from './drafts.ts';
 import { HttpError } from './http.ts';
 import { extend, remove } from './owner.ts';
 
@@ -50,6 +52,8 @@ function reply(status: number, message: string, headers: Record<string, string>)
 }
 
 const BUNDLE_ROUTE = /^\/bundles\/([^/]+)(\/extend)?$/;
+// GET /drafts (list), and PUT, GET, DELETE /drafts/{id}.
+const DRAFT_ROUTE = /^\/drafts(?:\/([^/]+))?$/;
 const WRITES = new Set(['PUT', 'POST', 'DELETE']);
 
 // Per-IP rate limiting of the write routes (plan step 11; ADR wallet-auth "濫用防護", Amendment 6): the Workers Rate
@@ -62,7 +66,10 @@ const WRITES = new Set(['PUT', 'POST', 'DELETE']);
 // front of the Worker took over the per-address limit), this binding would have no reason to exist. It counts per
 // Cloudflare location and approximately (plan prerequisites), which bounds a single source, not a distributed one; it
 // keeps the address only in its counter and nothing is written (BR-05). The nonce endpoint is not limited: it writes
-// nothing and computes one HMAC (apps/api/src/auth.ts). The values in wrangler.jsonc are initial defaults (SELF-IMPOSED).
+// nothing and computes one HMAC (apps/api/src/auth.ts). The draft routes (step 12) are limited whatever their method:
+// a signed draft read costs an Ed25519 verification and, once verified, a D1 write (the nonce use record), and any key
+// of the sender's own verifies, so reads are as unbounded as writes without it. The values in wrangler.jsonc are
+// initial defaults (SELF-IMPOSED).
 async function limited(request: Request, env: Env): Promise<boolean> {
   const { success } = await env.WRITE_LIMIT.limit({ key: clientKey(request.headers.get('CF-Connecting-IP')) });
   return !success;
@@ -107,10 +114,11 @@ export async function handle(request: Request, env: Env, deps: Partial<Deps> = {
       },
     });
   const nonceRoute = path === '/nonce' && request.method === 'GET';
-  if (!route && !nonceRoute) return reply(404, 'Not found', cors);
+  const draftRoute = DRAFT_ROUTE.exec(path);
+  if (!route && !nonceRoute && !draftRoute) return reply(404, 'Not found', cors);
   const domain = allowed === null ? null : new URL(allowed).host;
   try {
-    if (WRITES.has(request.method) && (await limited(request, env)))
+    if ((WRITES.has(request.method) || draftRoute) && (await limited(request, env)))
       return reply(429, 'Too many write requests from this address; try again in a minute', {
         ...cors,
         'Retry-After': '60',
@@ -119,6 +127,7 @@ export async function handle(request: Request, env: Env, deps: Partial<Deps> = {
       return Response.json(await issueNonce(env.NONCE_KEY, now()), {
         headers: { ...cors, 'Cache-Control': 'no-store' },
       });
+    if (draftRoute) return await drafts(request, env, draftRoute[1], now(), domain, cors);
     if (!route) return reply(404, 'Not found', cors);
     const [, txHash, extendRoute] = route;
     if (extendRoute) {
@@ -152,13 +161,53 @@ export async function handle(request: Request, env: Env, deps: Partial<Deps> = {
   }
 }
 
+// The draft routes (apps/api/src/drafts.ts); every one is signed by the identity whose drafts it touches.
+async function drafts(
+  request: Request,
+  env: Env,
+  id: string | undefined,
+  at: number,
+  domain: string | null,
+  cors: Record<string, string>,
+): Promise<Response> {
+  if (id === undefined) {
+    if (request.method !== 'GET') return reply(405, 'Method not allowed', { ...cors, Allow: 'GET, OPTIONS' });
+    return Response.json(await listDrafts(env, request, at, domain), {
+      headers: { ...cors, 'Cache-Control': 'no-store' },
+    });
+  }
+  if (request.method === 'GET') {
+    const { bytes } = await loadDraft(env, request, id, at, domain);
+    return new Response(bytes.body, {
+      headers: { ...cors, 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store' },
+    });
+  }
+  if (request.method === 'PUT') return Response.json(await saveDraft(env, request, id, at, domain), { headers: cors });
+  if (request.method === 'DELETE')
+    return Response.json(await deleteDraft(env, request, id, at, domain), { headers: cors });
+  return reply(405, 'Method not allowed', { ...cors, Allow: 'GET, PUT, DELETE, OPTIONS' });
+}
+
 export default {
   fetch: (request, env) => handle(request, env),
   // Cron Trigger (wrangler.jsonc): expired records and their unreferenced bytes are removed (BR-08), as are expired
-  // nonce use records, then bytes no record names are reconciled (apps/api/src/bundles.ts, "Writing and deleting bytes").
+  // nonce use records, then bytes no record names are reconciled (apps/api/src/bundles.ts, "Writing and deleting bytes");
+  // drafts past their 30 days go with their bytes (B5, apps/api/src/drafts.ts).
   scheduled: async (controller, env) => {
     const now = Math.floor(controller.scheduledTime / 1000);
-    await sweep(env, now);
-    await reconcile(env, now);
+    // Independent of each other: a failure of the bundle sweeps does not hold back the drafts' 30 days (B5).
+    const runs = await Promise.allSettled([
+      (async () => {
+        await sweep(env, now);
+        await reconcile(env, now);
+      })(),
+      sweepDrafts(env, now),
+    ]);
+    const failed = runs.filter((run) => run.status === 'rejected');
+    if (failed.length)
+      throw new AggregateError(
+        failed.map((run) => run.reason),
+        'Cron sweep failed',
+      );
   },
 } satisfies ExportedHandler<Env>;

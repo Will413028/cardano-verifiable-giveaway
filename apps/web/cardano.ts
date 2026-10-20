@@ -18,6 +18,7 @@ import {
   commitmentValidUntil,
   COMMITMENT_TRANSFER,
   decodeCborAll,
+  encodeBech32,
   identityKeyHash,
   identityOf,
   identityRewardAccount,
@@ -112,6 +113,29 @@ export async function signOwnerOperation(id: string, owner: string, text: string
     throw new Error('Enable the CIP-30 wallet that committed this draw, then refresh wallets');
   const wallet = await enable();
   if ((await wallet.getNetworkId()) !== 0) throw new Error('Switch your wallet to preprod');
+  return signWithStakeKey(
+    wallet,
+    owner,
+    text,
+    "The wallet did not sign with this draw's organizer stake key. Use the wallet that committed the draw.",
+  );
+}
+
+// Signs a draft operation (plan step 12; @giveaway/protocol `draftOperationText`) with the wallet's identity: the stake
+// key of its change address, for its reward address (PD4 Amendment: a draft belongs to the signing wallet's identity;
+// it exists before any commitment, so there is no committed owner to take it from). An enterprise address has no stake
+// key and is refused with the reason (identityOf).
+export async function signDraftOperation(id: string, text: string): Promise<DataSignature> {
+  const enable = injected()[id]?.enable;
+  if (!id || typeof enable !== 'function')
+    throw new Error('Server drafts are signed by your wallet: enable a CIP-30 wallet, then refresh wallets');
+  const wallet = await enable();
+  if ((await wallet.getNetworkId()) !== 0) throw new Error('Switch your wallet to preprod');
+  const owner = encodeBech32('addr_test', unhex(await wallet.getChangeAddress()));
+  return signWithStakeKey(wallet, owner, text, 'The wallet did not sign with its stake key for its reward address.');
+}
+
+async function signWithStakeKey(wallet: Cip30Api, owner: string, text: string, refusal: string) {
   const address = identityRewardAccount(owner);
   const payload = hex(new TextEncoder().encode(text));
   const signed = await wallet.signData(address, payload);
@@ -122,9 +146,7 @@ export async function signOwnerOperation(id: string, owner: string, text: string
     verified.keyHash !== identityKeyHash(owner) ||
     hex(verified.payload) !== payload
   )
-    throw new Error(
-      "The wallet did not sign with this draw's organizer stake key. Use the wallet that committed the draw.",
-    );
+    throw new Error(refusal);
   return signed;
 }
 

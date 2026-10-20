@@ -53,9 +53,10 @@ export interface Hosted {
   expiresAt: number;
 }
 
-// The request body, refused as soon as it passes the protocol's canonical bundle limit (BUNDLE_BYTE_LIMIT).
-async function readLimited(request: Request): Promise<Uint8Array> {
-  const tooLarge = () => new HttpError(413, `Bundle exceeds ${BUNDLE_BYTE_LIMIT} bytes`);
+// The request body, refused as soon as it passes the protocol's canonical bundle limit (BUNDLE_BYTE_LIMIT), which also
+// bounds a server draft (BR-18). `what` names the body in the refusal.
+export async function readLimited(request: Request, what = 'Bundle'): Promise<Uint8Array> {
+  const tooLarge = () => new HttpError(413, `${what} exceeds ${BUNDLE_BYTE_LIMIT} bytes`);
   if (Number(request.headers.get('Content-Length')) > BUNDLE_BYTE_LIMIT) throw tooLarge();
   if (!request.body) return new Uint8Array();
   const chunks: Uint8Array[] = [];

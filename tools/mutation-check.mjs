@@ -527,8 +527,8 @@ await mustFailApi(
   'Not rate limiting the write routes per client address',
   (text) =>
     text.replace(
-      'if (WRITES.has(request.method) && (await limited(request, env)))',
-      'if (WRITES.has(request.method) && false)',
+      'if ((WRITES.has(request.method) || draftRoute) && (await limited(request, env)))',
+      'if ((WRITES.has(request.method) || draftRoute) && false)',
     ),
   'refuses writes past 20 a minute from one address',
 );
@@ -617,4 +617,88 @@ await mustFailApi(
     ),
   'an earlier sweep after a later one does not lower the watermark',
   auth,
+);
+// Step 12 (server drafts, BR-12, BR-18; B3, B5): one guard per mutation, each against the backend test written for it.
+const drafts = `${root}apps/api/src/drafts.ts`;
+await mustFailApi(
+  'Not deleting draft records past their 30 days on the Cron run',
+  (text) => text.replace("  await env.DB.prepare('DELETE FROM drafts WHERE expires_at <= ?').bind(now).run();\n", ''),
+  'the Cron deletes its record and bytes',
+  drafts,
+);
+await mustFailApi(
+  'Not deleting draft bytes 30 days after their save time on the Cron run',
+  (text) => text.replace('    if (old.length) await env.BUNDLES.delete(old);\n', ''),
+  'the Cron deletes its record and bytes',
+  drafts,
+);
+await mustFailApi(
+  'Serving a draft past its 30 days before the Cron removes it',
+  (text) =>
+    text.replace(
+      'FROM drafts WHERE owner = ? AND id = ? AND expires_at > ?',
+      'FROM drafts WHERE owner = ? AND id = ? AND ? > 0',
+    ),
+  'a draft is refused from 30 days after its last save',
+  drafts,
+);
+await mustFailApi(
+  'Dropping the server draft quota per identity',
+  (text) =>
+    text.replace('OR (SELECT COUNT(*) FROM drafts WHERE owner = ?1 AND expires_at > ?6) < ?8', 'OR ?8 > 0 OR ?6 > 0'),
+  'refuses a draft past the quota',
+  drafts,
+);
+await mustFailApi(
+  'Not checking the signed content hash of a saved draft',
+  (text) => text.replace('  if (signed.op.content !== contentHash)\n', '  if (false)\n'),
+  'signed content hash is not the hash of the uploaded bytes',
+  drafts,
+);
+await mustFailApi(
+  "Loading a draft by id alone, whoever's identity signed",
+  (text) =>
+    text.replace(
+      'FROM drafts WHERE owner = ? AND id = ? AND expires_at > ?',
+      'FROM drafts WHERE (owner = ? OR 1) AND id = ? AND expires_at > ?',
+    ),
+  "another identity's key finds no draft",
+  drafts,
+);
+await mustFailApi(
+  "Accepting any key's signature as a draft identity (not only a stake key for its reward address)",
+  (text) => text.replace('  if (!byStakeKey)\n', '  if (false)\n'),
+  "another identity's key finds no draft",
+  auth,
+);
+await mustFailApi(
+  'Accepting a draft signature for another draft',
+  (text) => text.replace('  if (signed.op.draft !== expected.draft)', '  if (false)'),
+  'a signature for one operation, draft or format is not accepted for another',
+  auth,
+);
+await mustFailApi(
+  'Accepting a signed message for another operation',
+  (text) => text.replace('  if (op.operation !== expected.operation)\n', '  if (false)\n'),
+  'a signature for one operation, draft or format is not accepted for another',
+  auth,
+);
+await mustFailApi(
+  'Not rate limiting the draft reads per client address',
+  (text) =>
+    text.replace(
+      'if ((WRITES.has(request.method) || draftRoute) && (await limited(request, env)))',
+      'if (WRITES.has(request.method) && (await limited(request, env)))',
+    ),
+  'limits every draft route per client address',
+);
+await mustFailApi(
+  'Keeping any bytes as a server draft (no draft format or public-labels check)',
+  (text) =>
+    text.replace(
+      "    validateServerDraft(JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)));\n",
+      '',
+    ),
+  'keeps drafts only, with the public labels only',
+  drafts,
 );

@@ -75,3 +75,71 @@ export function parseOwnerOperation(text: string): OwnerOperation {
   if (ownerOperationText(op) !== text) throw new Error('Owner operation: not the canonical message text');
   return op;
 }
+
+// The message an organizer signs to save, load, list or delete a server draft (plan step 12; BR-12, BR-18; ADR
+// 2026-10-18-wallet-auth-and-bounded-retention, PD4 Amendment: draft identity is the signing wallet's identity). Same
+// rules as the owner operation above (one field per line, fixed order, exact re-rendering, a backend nonce and its
+// 5-minute window), with a header and operation names of its own: neither format parses as the other, so a signature
+// for a hosted-bundle operation never authorizes a draft operation or the reverse, and the backend still compares the
+// operation with the route. A draft is not a commitment, so there is no transaction or bundle hash: `draft` names the
+// draft (or `all` for the listing) and `content` the SHA-256 of the bytes being saved (`none` for the other operations).
+export const DRAFT_OPERATION_FORMAT = 'giveaway-draft-operation-1';
+export const DRAFT_OPERATIONS = ['draft-save', 'draft-load', 'draft-delete', 'draft-list'] as const;
+export type DraftOperationName = (typeof DRAFT_OPERATIONS)[number];
+// A server draft's name, chosen by the page (16 random bytes, hex); unique per identity, not globally.
+export const DRAFT_ID = /^[a-f0-9]{32}$/;
+export interface DraftOperation {
+  domain: string;
+  operation: DraftOperationName;
+  network: string;
+  // A draft id, or 'all' for draft-list.
+  draft: string;
+  // The SHA-256 (hex) of the saved bytes for draft-save, 'none' otherwise.
+  content: string;
+  nonce: string;
+  issuedAt: number;
+}
+
+export function draftOperationText(op: DraftOperation): string {
+  return [
+    `Open Draw draft operation (${DRAFT_OPERATION_FORMAT})`,
+    `domain: ${op.domain}`,
+    `operation: ${op.operation}`,
+    `network: ${op.network}`,
+    `draft: ${op.draft}`,
+    `content: ${op.content}`,
+    `nonce: ${op.nonce}`,
+    `issued: ${time(op.issuedAt)}`,
+    `expires: ${time(op.issuedAt + OWNER_OPERATION_VALIDITY)}`,
+  ].join('\n');
+}
+
+// The draft operation a signed message names; throws unless the text is exactly what draftOperationText renders and
+// its draft and content fields have the shape its operation needs.
+export function parseDraftOperation(text: string): DraftOperation {
+  const fields = new Map<string, string>();
+  for (const line of text.split('\n').slice(1)) {
+    const at = line.indexOf(': ');
+    if (at > 0) fields.set(line.slice(0, at), line.slice(at + 2));
+  }
+  const field = (name: string, shape: RegExp) => {
+    const value = fields.get(name) ?? '';
+    if (!shape.test(value)) throw new Error(`Draft operation: invalid ${name}`);
+    return value;
+  };
+  const operation = field('operation', /^[a-z-]+$/) as DraftOperationName;
+  if (!DRAFT_OPERATIONS.includes(operation)) throw new Error('Draft operation: unknown operation');
+  const issued = Date.parse(field('issued', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/));
+  if (!Number.isSafeInteger(issued)) throw new Error('Draft operation: invalid issued');
+  const op: DraftOperation = {
+    domain: field('domain', DOMAIN),
+    operation,
+    network: field('network', /^[a-z]{1,16}$/),
+    draft: field('draft', operation === 'draft-list' ? /^all$/ : DRAFT_ID),
+    content: field('content', operation === 'draft-save' ? HASH : /^none$/),
+    nonce: field('nonce', NONCE),
+    issuedAt: issued / 1000,
+  };
+  if (draftOperationText(op) !== text) throw new Error('Draft operation: not the canonical message text');
+  return op;
+}
